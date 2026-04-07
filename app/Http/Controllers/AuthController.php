@@ -31,6 +31,11 @@ class AuthController extends Controller
         $validator = Validator::make($request->all(), [
             'email' => 'required|email',
             'password' => 'required|min:6',
+        ], [
+            'email.required' => 'El correo es requerido',
+            'email.email' => 'El correo debe ser válido',
+            'password.required' => 'La contraseña es requerida',
+            'password.min' => 'La contraseña debe tener al menos 6 caracteres',
         ]);
 
         if ($validator->fails()) {
