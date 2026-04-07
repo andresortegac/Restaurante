@@ -16,10 +16,10 @@ class CheckPermission
      */
     public function handle(Request $request, Closure $next, string ...$permissions): Response
     {
-        // Si el usuario no est� autenticado, redirigir al login
+        // Si el usuario no estï¿½ autenticado, redirigir al login
         if (!Auth::check()) {
             return redirect()->route('login')
-                ->with('error', 'Debe iniciar sesi�n para acceder a este recurso');
+                ->with('error', 'Debe iniciar sesiï¿½n para acceder a este recurso');
         }
 
         // Si no se especificaron permisos, permitir acceso

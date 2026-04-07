@@ -1,9 +1,9 @@
-@if(session('success'))
+﻿@if(session('success'))
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             Swal.fire({
                 icon: 'success',
-                title: 'xito!',
+                title: 'Éxito!',
                 text: '{{ session('success') }}',
                 confirmButtonColor: '#667eea',
                 confirmButtonText: 'Aceptar',
@@ -47,7 +47,7 @@
         document.addEventListener('DOMContentLoaded', function() {
             Swal.fire({
                 icon: 'info',
-                title: 'Informacin',
+                title: 'Información',
                 text: '{{ session('info') }}',
                 confirmButtonColor: '#667eea',
                 confirmButtonText: 'Aceptar'

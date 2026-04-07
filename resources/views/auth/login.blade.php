@@ -1,10 +1,10 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title>Login - Sistema de Gestin de Restaurante</title>
+    <title>Login - Sistema de Gestión de Restaurante</title>
     
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -19,15 +19,15 @@
 <body>
     <div class="login-container">
         <div class="login-header">
-            <h1>??? RestaurantePOS</h1>
-            <p>Sistema de Gestin para Restaurantes</p>
+            <h1>RestaurantePOS</h1>
+            <p>Sistema de Gestión para Restaurantes</p>
         </div>
 
-        <form method="POST" action="{{ route('login') }}" id="loginForm">
+        <form method="POST" action="{{ route('login') }}" id="loginForm" accept-charset="utf-8">
             @csrf
 
             <div class="form-group">
-                <label for="email">Correo Electrnico</label>
+                <label for="email">Correo Electrónico</label>
                 <input
                     type="email"
                     id="email"
@@ -41,7 +41,7 @@
             </div>
 
             <div class="form-group">
-                <label for="password">Contrasea</label>
+                <label for="password">Contraseña</label>
                 <input
                     type="password"
                     id="password"
@@ -59,16 +59,16 @@
                     name="remember"
                     value="true"
                 />
-                <label for="remember">Recurdame</label>
+                <label for="remember">Recuérdame</label>
             </div>
 
             <button type="submit" class="btn-login">
-                <i class="fas fa-sign-in-alt"></i> Iniciar Sesin
+                <i class="fas fa-sign-in-alt"></i> Iniciar Sesión
             </button>
         </form>
 
         <div class="demo-credentials">
-            <h4><i class="fas fa-info-circle"></i> Credenciales de Demostracin:</h4>
+            <h4><i class="fas fa-info-circle"></i> Credenciales de Demostración:</h4>
             <ul>
                 <li><strong>Admin:</strong> admin@restaurante.com / password123</li>
                 <li><strong>Cajero:</strong> cajero@restaurante.com / password123</li>

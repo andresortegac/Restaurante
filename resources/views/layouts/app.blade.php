@@ -1,10 +1,10 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title>@yield('title', 'RestaurantePOS - Sistema de Gesti�n')</title>
+    <title>@yield('title', 'RestaurantePOS - Sistema de Gestión')</title>
     
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -42,7 +42,7 @@
                                 <form method="POST" action="{{ route('logout') }}" style="display: inline;">
                                     @csrf
                                     <button type="submit" class="dropdown-item text-danger">
-                                        <i class="fas fa-sign-out-alt"></i> Cerrar Sesi�n
+                                        <i class="fas fa-sign-out-alt"></i> Cerrar Sesión
                                     </button>
                                 </form>
                             </li>
@@ -56,7 +56,7 @@
     <div class="page-layout">
         <!-- Sidebar -->
         <aside class="sidebar" id="sidebar">
-            <h6 class="sidebar-title"><i class="fas fa-bars"></i> Men Principal</h6>
+            <h6 class="sidebar-title"><i class="fas fa-bars"></i> Menú Principal</h6>
             <ul class="sidebar-menu">
                 <li>
                     <a href="{{ route('dashboard') }}" class="active">

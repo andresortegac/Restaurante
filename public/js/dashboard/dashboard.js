@@ -1,4 +1,4 @@
-/* Script para: dashboard.blade.php */
+﻿/* Script para: dashboard.blade.php */
 
 document.addEventListener('DOMContentLoaded', function() {
     cargarDatosUsuario();

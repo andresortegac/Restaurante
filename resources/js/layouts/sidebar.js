@@ -1,4 +1,4 @@
-/* Script para: layouts/app.blade.php - Sidebar */
+﻿/* Script para: layouts/app.blade.php - Sidebar */
 
 document.addEventListener('DOMContentLoaded', function() {
     // Botn para mostrar/ocultar sidebar en mvil
