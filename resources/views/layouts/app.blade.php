@@ -64,6 +64,12 @@
                     </a>
                 </li>
 
+                <li>
+                    <a href="{{ route('pos.index') }}">
+                        <i class="fas fa-cash-register"></i> Punto de Venta
+                    </a>
+                </li>
+
                 @if(Auth::user()->hasAnyPermission(['users.view', 'users.create', 'users.edit', 'users.delete']))
                 <li>
                     <a href="#" data-toggle-menu>
