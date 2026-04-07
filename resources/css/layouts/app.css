@@ -1,0 +1,31 @@
+/* Vista: layouts/app.blade.php - Variables globales y reset */
+
+:root {
+    --primary-color: #667eea;
+    --secondary-color: #764ba2;
+    --sidebar-bg: #2c3e50;
+    --sidebar-hover: #34495e;
+    --text-light: #ecf0f1;
+    --text-dark: #333;
+    --bg-light: #f5f7fa;
+    --border-color: #ddd;
+    --shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+    --shadow-lg: 0 5px 20px rgba(0, 0, 0, 0.15);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html, body {
+    height: 100%;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--bg-light);
+    color: var(--text-dark);
+    line-height: 1.6;
+}
