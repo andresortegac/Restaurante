@@ -4,7 +4,7 @@
     background-color: var(--sidebar-bg);
     color: var(--text-light);
     min-height: calc(100vh - 70px);
-    padding: 2rem 0;
+    padding: 0 0 2rem 0;
     position: sticky;
     align-self: stretch;
     width: 250px;
