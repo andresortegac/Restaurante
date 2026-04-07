@@ -5,7 +5,7 @@
 @section('content')
 <div class="pos-container" id="posApp">
     <div class="row h-100">
-        <!-- Sección de Productos -->
+        <!-- Seccion de Productos -->
         <div class="col-md-8">
             <div class="card h-100">
                 <div class="card-header">
@@ -20,7 +20,7 @@
             </div>
         </div>
 
-        <!-- Sección de Carrito y Pago -->
+        <!-- Seccion de Carrito y Pago -->
         <div class="col-md-4">
             <div class="card h-100">
                 <div class="card-header">
@@ -28,11 +28,10 @@
                 </div>
                 <div class="card-body" style="height: calc(100vh - 450px); overflow-y: auto;">
                     <div id="cartItems">
-                        <p class="text-muted text-center">El carrito está vacío</p>
+                        <p class="text-muted text-center">El carrito esta vacio</p>
                     </div>
                 </div>
 
-                <!-- Resumen de Venta -->
                 <div class="card-footer">
                     <div class="d-grid gap-2">
                         <div class="row mb-2">
@@ -53,22 +52,19 @@
                             <div class="col-6 text-end"><h5 id="total">$0.00</h5></div>
                         </div>
 
-                        <!-- Cupón de Descuento -->
                         <div class="mb-3">
-                            <label class="form-label">Cupón de Descuento</label>
-                            <input type="text" id="couponCode" class="form-control" placeholder="Ingrese código...">
-                            <button class="btn btn-sm btn-secondary mt-2 w-100" onclick="applyCoupon()">Aplicar Cupón</button>
+                            <label class="form-label">Cupon de Descuento</label>
+                            <input type="text" id="couponCode" class="form-control" placeholder="Ingrese codigo...">
+                            <button class="btn btn-sm btn-secondary mt-2 w-100" onclick="applyCoupon()">Aplicar Cupon</button>
                         </div>
 
-                        <!-- Método de Pago -->
                         <div class="mb-3">
-                            <label class="form-label">Método de Pago</label>
+                            <label class="form-label">Metodo de Pago</label>
                             <select id="paymentMethod" class="form-select">
-                                <option value="">Seleccionar método...</option>
+                                <option value="">Seleccionar metodo...</option>
                             </select>
                         </div>
 
-                        <!-- Botones de Acción -->
                         <button class="btn btn-danger w-100 mb-2" onclick="clearCart()">
                             <i class="fas fa-times"></i> Vaciar Carrito
                         </button>
@@ -82,7 +78,6 @@
     </div>
 </div>
 
-<!-- Modal para Cantidad -->
 <div class="modal fade" id="quantityModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -196,9 +191,17 @@ function loadPaymentMethods() {
         .catch(error => console.error('Error:', error));
 }
 
-function renderProducts() {
+function normalizeText(text) {
+    return (text || '')
+        .toString()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase();
+}
+
+function renderProducts(productList = products) {
     const productsList = document.getElementById('productsList');
-    productsList.innerHTML = products.map(product => `
+    productsList.innerHTML = productList.map(product => `
         <div class="product-card" onclick="selectProduct(${product.id})">
             <div class="product-image"><i class="fas fa-utensils"></i></div>
             <h6 style="margin: 8px 0; font-size: 12px;">${product.name}</h6>
@@ -210,7 +213,7 @@ function renderProducts() {
 
 function renderPaymentMethods() {
     const select = document.getElementById('paymentMethod');
-    select.innerHTML = '<option value="">Seleccionar método...</option>' + paymentMethods.map(method => `
+    select.innerHTML = '<option value="">Seleccionar metodo...</option>' + paymentMethods.map(method => `
         <option value="${method.id}">${method.name}</option>
     `).join('');
 }
@@ -232,7 +235,7 @@ function addToCartConfirm() {
         addToCart(selectedProduct, quantity);
         bootstrap.Modal.getInstance(document.getElementById('quantityModal')).hide();
     } else {
-        alert('Cantidad inválida');
+        alert('Cantidad invalida');
     }
 }
 
@@ -269,7 +272,8 @@ function updateQuantity(productId, newQuantity) {
 function renderCart() {
     const cartItems = document.getElementById('cartItems');
     if (cart.length === 0) {
-        cartItems.innerHTML = '<p class="text-muted text-center">El carrito está vacío</p>';
+        cartItems.innerHTML = '<p class="text-muted text-center">El carrito esta vacio</p>';
+        document.getElementById('completeBtn').disabled = true;
         return;
     }
 
@@ -288,12 +292,12 @@ function renderCart() {
         </div>
     `).join('');
 
-    document.getElementById('completeBtn').disabled = cart.length === 0;
+    document.getElementById('completeBtn').disabled = false;
 }
 
 function updateTotals() {
     const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    const discount = 0; // Será calculado con cupones
+    const discount = 0; // Sera calculado con cupones
     const tax = (subtotal - discount) * 0.16;
     const total = subtotal - discount + tax;
 
@@ -304,7 +308,7 @@ function updateTotals() {
 }
 
 function clearCart() {
-    if (confirm('¿Desea vaciar el carrito?')) {
+    if (confirm('Desea vaciar el carrito?')) {
         cart = [];
         renderCart();
         updateTotals();
@@ -314,22 +318,21 @@ function clearCart() {
 function applyCoupon() {
     const code = document.getElementById('couponCode').value;
     if (!code) {
-        alert('Ingrese un código de cupón');
+        alert('Ingrese un codigo de cupon');
         return;
     }
-    // Aquí iría la lógica para validar el cupón
     alert('Funcionalidad de cupones en desarrollo');
 }
 
 function completeSale() {
     const paymentMethodId = document.getElementById('paymentMethod').value;
     if (!paymentMethodId) {
-        alert('Seleccione un método de pago');
+        alert('Seleccione un metodo de pago');
         return;
     }
 
     const saleData = {
-        box_id: 1, // Por ahora usar caja 1
+        box_id: 1,
         items: cart.map(item => ({
             product_id: item.id,
             quantity: item.quantity,
@@ -362,19 +365,10 @@ function completeSale() {
     });
 }
 
-// Búsqueda de productos
 document.getElementById('searchProducts').addEventListener('input', function(e) {
-    const search = e.target.value.toLowerCase();
-    const filtered = products.filter(p => p.name.toLowerCase().includes(search));
-    const productsList = document.getElementById('productsList');
-    productsList.innerHTML = filtered.map(product => `
-        <div class="product-card" onclick="selectProduct(${product.id})">
-            <div class="product-image"><i class="fas fa-utensils"></i></div>
-            <h6 style="margin: 8px 0; font-size: 12px;">${product.name}</h6>
-            <p style="margin: 0; color: #007bff; font-weight: bold;">$${parseFloat(product.price).toFixed(2)}</p>
-            <small style="color: #999;">Stock: ${product.stock}</small>
-        </div>
-    `).join('');
+    const search = normalizeText(e.target.value.trim());
+    const filtered = products.filter(product => normalizeText(product.name).includes(search));
+    renderProducts(filtered);
 });
 </script>
 @endsection
