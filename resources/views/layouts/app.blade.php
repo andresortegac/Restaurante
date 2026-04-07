@@ -56,18 +56,35 @@
     <div class="page-layout">
         <!-- Sidebar -->
         <aside class="sidebar" id="sidebar">
+            @php
+                $isDashboardRoute = request()->routeIs('dashboard');
+                $isPosRoute = request()->routeIs('pos.*');
+            @endphp
             
             <ul class="sidebar-menu">
                 <li>
-                    <a href="{{ route('dashboard') }}" class="active">
+                    <a href="{{ route('dashboard') }}" class="{{ $isDashboardRoute ? 'active' : '' }}">
                         <i class="fas fa-dashboard"></i> Dashboard
                     </a>
                 </li>
 
                 <li>
-                    <a href="{{ route('pos.index') }}">
+                    <a href="#" data-toggle-menu class="{{ $isPosRoute ? 'expanded' : '' }}">
                         <i class="fas fa-cash-register"></i> Punto de Venta
+                        <span class="toggle-icon"><i class="fas fa-chevron-right"></i></span>
                     </a>
+                    <ul class="sidebar-submenu {{ $isPosRoute ? 'show' : '' }}">
+                        <li>
+                            <a href="{{ route('pos.index') }}" class="{{ request()->routeIs('pos.index') ? 'active' : '' }}">
+                                <i class="fas fa-store"></i> Abrir POS
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{{ route('pos.promo-codes.create') }}" class="{{ request()->routeIs('pos.promo-codes.*') ? 'active' : '' }}">
+                                <i class="fas fa-ticket-alt"></i> Codigos promocionales
+                            </a>
+                        </li>
+                    </ul>
                 </li>
 
                 @if(Auth::user()->hasAnyPermission(['users.view', 'users.create', 'users.edit', 'users.delete']))
@@ -201,3 +218,4 @@
     @include('components.alerts')
 </body>
 </html>
+

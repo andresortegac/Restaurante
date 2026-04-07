@@ -55,6 +55,10 @@
     display: inline-block;
 }
 
+.sidebar-menu .toggle-icon {
+    margin-left: auto;
+}
+
 .sidebar-menu a.expanded .toggle-icon i {
     transform: rotate(90deg);
 }
@@ -141,3 +145,4 @@
         padding: 0.75rem 1.5rem;
     }
 }
+

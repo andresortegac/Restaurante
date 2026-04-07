@@ -3,12 +3,12 @@
 use App\Http\Controllers\AuthController;
 use Illuminate\Support\Facades\Route;
 
-// Rutas públicas
+// Rutas publicas
 Route::get('/', function () {
     return redirect()->route('dashboard');
 });
 
-// Rutas de autenticación
+// Rutas de autenticacion
 Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
     Route::post('/login', [AuthController::class, 'login']);
@@ -31,6 +31,8 @@ Route::middleware('auth')->group(function () {
     // Rutas POS
     Route::prefix('pos')->name('pos.')->group(function () {
         Route::get('/', [\App\Http\Controllers\POS\POSController::class, 'index'])->name('index');
+        Route::get('/promo-codes/create', [\App\Http\Controllers\POS\DiscountController::class, 'create'])->name('promo-codes.create');
+        Route::post('/promo-codes', [\App\Http\Controllers\POS\DiscountController::class, 'store'])->name('promo-codes.store');
         
         // Productos
         Route::get('/api/products', [\App\Http\Controllers\POS\ProductController::class, 'index']);
@@ -59,4 +61,5 @@ Route::middleware('auth')->group(function () {
         Route::post('/api/validate-coupon', [\App\Http\Controllers\POS\DiscountController::class, 'validateCoupon']);
     });
 });
+
 

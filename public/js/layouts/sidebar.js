@@ -15,6 +15,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const sidebarLinks = document.querySelectorAll('.sidebar-menu a');
     sidebarLinks.forEach(function(link) {
         link.addEventListener('click', function() {
+            if (this.hasAttribute('data-toggle-menu')) {
+                return;
+            }
+
             if (window.innerWidth <= 768) {
                 sidebar.classList.remove('show');
             }
@@ -45,3 +49,4 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 });
+
