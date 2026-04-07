@@ -56,9 +56,9 @@ class PermissionSeeder extends Seeder
             ['name' => 'customers.edit', 'description' => 'Editar clientes'],
             ['name' => 'customers.delete', 'description' => 'Eliminar clientes'],
 
-            // Configuración
-            ['name' => 'settings.view', 'description' => 'Ver configuración'],
-            ['name' => 'settings.edit', 'description' => 'Editar configuración'],
+            // Configuraciï¿½n
+            ['name' => 'settings.view', 'description' => 'Ver configuraciï¿½n'],
+            ['name' => 'settings.edit', 'description' => 'Editar configuraciï¿½n'],
         ];
 
         foreach ($permissions as $permission) {

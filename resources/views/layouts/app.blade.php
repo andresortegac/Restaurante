@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title>@yield('title', 'RestaurantePOS - Sistema de Gestin')</title>
+    <title>@yield('title', 'RestaurantePOS - Sistema de Gestión')</title>
     
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -42,7 +42,7 @@
                                 <form method="POST" action="{{ route('logout') }}" style="display: inline;">
                                     @csrf
                                     <button type="submit" class="dropdown-item text-danger">
-                                        <i class="fas fa-sign-out-alt"></i> Cerrar Sesin
+                                        <i class="fas fa-sign-out-alt"></i> Cerrar Sesión
                                     </button>
                                 </form>
                             </li>
@@ -53,7 +53,7 @@
         </div>
     </nav>
 
-    <div style="display: flex;">
+    <div class="page-layout">
         <!-- Sidebar -->
         <aside class="sidebar" id="sidebar">
             <h6 class="sidebar-title"><i class="fas fa-bars"></i> Men Principal</h6>
@@ -68,7 +68,7 @@
                 <li>
                     <a href="#" data-toggle-menu>
                         <i class="fas fa-users"></i> Usuarios
-                        <span class="toggle-icon float-end"><i class="fas fa-chevron-down"></i></span>
+                        <span class="toggle-icon float-end"><i class="fas fa-chevron-right"></i></span>
                     </a>
                     <ul class="sidebar-submenu">
                         @if(Auth::user()->hasPermission('users.view'))
@@ -85,7 +85,7 @@
                 <li>
                     <a href="#" data-toggle-menu>
                         <i class="fas fa-shield-alt"></i> Roles y Permisos
-                        <span class="toggle-icon float-end"><i class="fas fa-chevron-down"></i></span>
+                        <span class="toggle-icon float-end"><i class="fas fa-chevron-right"></i></span>
                     </a>
                     <ul class="sidebar-submenu">
                         @if(Auth::user()->hasPermission('roles.view'))
@@ -102,7 +102,7 @@
                 <li>
                     <a href="#" data-toggle-menu>
                         <i class="fas fa-receipt"></i> Pedidos
-                        <span class="toggle-icon float-end"><i class="fas fa-chevron-down"></i></span>
+                        <span class="toggle-icon float-end"><i class="fas fa-chevron-right"></i></span>
                     </a>
                     <ul class="sidebar-submenu">
                         @if(Auth::user()->hasPermission('orders.view'))
@@ -119,7 +119,7 @@
                 <li>
                     <a href="#" data-toggle-menu>
                         <i class="fas fa-chair"></i> Mesas
-                        <span class="toggle-icon float-end"><i class="fas fa-chevron-down"></i></span>
+                        <span class="toggle-icon float-end"><i class="fas fa-chevron-right"></i></span>
                     </a>
                     <ul class="sidebar-submenu">
                         @if(Auth::user()->hasPermission('tables.view'))
@@ -136,7 +136,7 @@
                 <li>
                     <a href="#" data-toggle-menu>
                         <i class="fas fa-box"></i> Inventario
-                        <span class="toggle-icon float-end"><i class="fas fa-chevron-down"></i></span>
+                        <span class="toggle-icon float-end"><i class="fas fa-chevron-right"></i></span>
                     </a>
                     <ul class="sidebar-submenu">
                         @if(Auth::user()->hasPermission('inventory.view'))
@@ -153,7 +153,7 @@
                 <li>
                     <a href="#" data-toggle-menu>
                         <i class="fas fa-chart-bar"></i> Reportes
-                        <span class="toggle-icon float-end"><i class="fas fa-chevron-down"></i></span>
+                        <span class="toggle-icon float-end"><i class="fas fa-chevron-right"></i></span>
                     </a>
                     <ul class="sidebar-submenu">
                         <li><a href="#"><i class="fas fa-money-bill-wave"></i> Ventas</a></li>
@@ -166,7 +166,7 @@
                 <li>
                     <a href="#" data-toggle-menu>
                         <i class="fas fa-users"></i> Clientes
-                        <span class="toggle-icon float-end"><i class="fas fa-chevron-down"></i></span>
+                        <span class="toggle-icon float-end"><i class="fas fa-chevron-right"></i></span>
                     </a>
                     <ul class="sidebar-submenu">
                         <li><a href="#"><i class="fas fa-list"></i> Listar</a></li>

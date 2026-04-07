@@ -29,12 +29,8 @@ document.addEventListener('DOMContentLoaded', function() {
             const submenu = this.nextElementSibling;
             if (submenu && submenu.classList.contains('sidebar-submenu')) {
                 submenu.classList.toggle('show');
-                // Cambiar icono del toggle
-                const icon = this.querySelector('.toggle-icon');
-                if (icon) {
-                    icon.classList.toggle('fa-chevron-down');
-                    icon.classList.toggle('fa-chevron-up');
-                }
+                // Agregar clase expanded al enlace padre
+                this.classList.toggle('expanded');
             }
         });
     });

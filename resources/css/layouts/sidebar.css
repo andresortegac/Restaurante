@@ -5,10 +5,10 @@
     color: var(--text-light);
     min-height: calc(100vh - 70px);
     padding: 2rem 0;
-    position: fixed;
+    position: sticky;
+    align-self: stretch;
     width: 250px;
-    top: 70px;
-    left: 0;
+    top: 0;
     overflow-y: auto;
     box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
     z-index: 999;
@@ -40,6 +40,24 @@
     text-decoration: none;
     transition: all 0.3s;
     border-left: 3px solid transparent;
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+.sidebar-menu a:focus,
+.sidebar-menu a:active,
+.sidebar-menu a:visited {
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+.sidebar-menu a .toggle-icon i {
+    transition: transform 0.2s ease;
+    display: inline-block;
+}
+
+.sidebar-menu a.expanded .toggle-icon i {
+    transform: rotate(90deg);
 }
 
 .sidebar-menu a:hover {
@@ -49,6 +67,13 @@
 }
 
 .sidebar-menu a.active {
+    background-color: var(--sidebar-hover);
+    border-left-color: var(--primary-color);
+    color: var(--primary-color);
+    font-weight: 600;
+}
+
+.sidebar-menu a[data-toggle-menu].expanded {
     background-color: var(--sidebar-hover);
     border-left-color: var(--primary-color);
     color: var(--primary-color);

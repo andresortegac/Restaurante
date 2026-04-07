@@ -28,4 +28,29 @@ body {
     background-color: var(--bg-light);
     color: var(--text-dark);
     line-height: 1.6;
+    padding-top: 70px;
+    overflow: hidden;
+}
+
+.navbar {
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    z-index: 1100;
+}
+
+.page-layout {
+    display: flex;
+    height: calc(100vh - 70px);
+    min-height: calc(100vh - 70px);
+    align-items: stretch;
+    overflow: hidden;
+}
+
+.main-content {
+    overflow-y: auto;
+    height: calc(100vh - 70px);
+    width: 100%;
 }
