@@ -3,63 +3,37 @@
 namespace App\Http\Controllers\POS;
 
 use App\Http\Controllers\Controller;
+use App\Models\Invoice;
+use App\Models\Sale;
 use Illuminate\Http\Request;
 
 class InvoiceController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
+    public function show($id)
     {
-        //
+        $invoice = Invoice::findOrFail($id);
+        return response()->json($invoice->load('sale'));
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-        //
-    }
-
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
-        //
-    }
+        $validated = $request->validate([
+            'sale_id' => 'required|exists:sales,id',
+            'invoice_type' => 'required|in:factura,boleta',
+        ]);
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
-    {
-        //
-    }
+        $sale = Sale::findOrFail($validated['sale_id']);
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(string $id)
-    {
-        //
-    }
+        if ($sale->invoice) {
+            return response()->json(['error' => 'Esta venta ya tiene una factura'], 422);
+        }
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
-    {
-        //
-    }
+        $invoice = new Invoice($validated);
+        $invoice->invoice_number = $invoice->generateInvoiceNumber();
+        $invoice->status = 'issued';
+        $invoice->issued_at = now();
+        $invoice->save();
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
-    {
-        //
+        return response()->json($invoice, 201);
     }
 }

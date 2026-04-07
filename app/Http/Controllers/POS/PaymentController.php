@@ -3,63 +3,34 @@
 namespace App\Http\Controllers\POS;
 
 use App\Http\Controllers\Controller;
+use App\Models\Payment;
+use App\Models\PaymentMethod;
+use App\Models\Sale;
 use Illuminate\Http\Request;
 
 class PaymentController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
+    public function getMethods()
     {
-        //
+        return response()->json(PaymentMethod::where('active', true)->get());
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-        //
-    }
-
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
-        //
-    }
+        $validated = $request->validate([
+            'sale_id' => 'required|exists:sales,id',
+            'payment_method_id' => 'required|exists:payment_methods,id',
+            'amount' => 'required|numeric|min:0',
+            'reference' => 'nullable|string',
+        ]);
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
-    {
-        //
-    }
+        $sale = Sale::findOrFail($validated['sale_id']);
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(string $id)
-    {
-        //
-    }
+        if ($validated['amount'] > $sale->total) {
+            return response()->json(['error' => 'El monto excede el total de la venta'], 422);
+        }
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
-    {
-        //
+        $payment = Payment::create($validated);
+        return response()->json($payment, 201);
     }
 }

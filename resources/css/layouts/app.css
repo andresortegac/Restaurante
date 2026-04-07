@@ -28,7 +28,6 @@ body {
     background-color: var(--bg-light);
     color: var(--text-dark);
     line-height: 1.6;
-    padding-top: 70px;
     overflow: hidden;
 }
 
@@ -43,14 +42,19 @@ body {
 
 .page-layout {
     display: flex;
+    position: fixed;
+    top: 70px;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
     height: calc(100vh - 70px);
-    min-height: calc(100vh - 70px);
-    align-items: stretch;
     overflow: hidden;
 }
 
 .main-content {
+    flex: 1;
     overflow-y: auto;
-    height: calc(100vh - 70px);
+    height: 100%;
     width: 100%;
 }

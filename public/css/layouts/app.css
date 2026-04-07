@@ -28,29 +28,36 @@ body {
     background-color: var(--bg-light);
     color: var(--text-dark);
     line-height: 1.6;
-    padding-top: 70px;
     overflow: hidden;
 }
 
 .navbar {
     position: fixed !important;
-    top: 0;
-    left: 0;
-    right: 0;
-    width: 100%;
-    z-index: 1100;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    z-index: 1100 !important;
+    height: 70px !important;
 }
 
 .page-layout {
-    display: flex;
-    height: calc(100vh - 70px);
-    min-height: calc(100vh - 70px);
-    align-items: stretch;
-    overflow: hidden;
+    display: flex !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    overflow: hidden !important;
+    padding-top: 70px !important;
+    z-index: 1 !important;
 }
 
 .main-content {
+    flex: 1;
     overflow-y: auto;
-    height: calc(100vh - 70px);
     width: 100%;
 }
+
+

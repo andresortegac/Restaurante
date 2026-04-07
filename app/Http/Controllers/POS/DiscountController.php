@@ -3,63 +3,41 @@
 namespace App\Http\Controllers\POS;
 
 use App\Http\Controllers\Controller;
+use App\Models\Discount;
+use App\Models\PromotionCoupon;
 use Illuminate\Http\Request;
 
 class DiscountController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
     public function index()
     {
-        //
+        $discounts = Discount::where('active', true)->get();
+        return response()->json($discounts);
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
+    public function validateCoupon(Request $request)
     {
-        //
-    }
+        $validated = $request->validate([
+            'code' => 'required|string',
+            'purchase_amount' => 'nullable|numeric|min:0',
+        ]);
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
-    {
-        //
-    }
+        $coupon = PromotionCoupon::where('code', $validated['code'])->first();
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
-    {
-        //
-    }
+        if (!$coupon) {
+            return response()->json(['error' => 'Cupón no válido'], 404);
+        }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(string $id)
-    {
-        //
-    }
+        $purchaseAmount = $validated['purchase_amount'] ?? 0;
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
-    {
-        //
-    }
+        if (!$coupon->canBeUsed($purchaseAmount)) {
+            return response()->json(['error' => 'Este cupón no puede ser utilizado'], 422);
+        }
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
-    {
-        //
+        return response()->json([
+            'coupon' => $coupon,
+            'discount' => $coupon->discount,
+            'discount_amount' => $coupon->discount->calculateDiscountAmount($purchaseAmount),
+        ]);
     }
 }

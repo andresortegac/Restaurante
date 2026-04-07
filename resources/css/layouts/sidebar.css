@@ -3,13 +3,11 @@
 .sidebar {
     background-color: var(--sidebar-bg);
     color: var(--text-light);
-    min-height: calc(100vh - 70px);
-    padding: 0 0 2rem 0;
-    position: sticky;
-    align-self: stretch;
     width: 250px;
-    top: 0;
+    height: 100%;
+    padding: 0 0 2rem 0;
     overflow-y: auto;
+    flex-shrink: 0;
     box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
     z-index: 999;
 }

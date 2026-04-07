@@ -56,7 +56,7 @@
     <div class="page-layout">
         <!-- Sidebar -->
         <aside class="sidebar" id="sidebar">
-            <h6 class="sidebar-title"><i class="fas fa-bars"></i> Menú Principal</h6>
+            
             <ul class="sidebar-menu">
                 <li>
                     <a href="{{ route('dashboard') }}" class="active">

@@ -3,7 +3,14 @@
 .navbar {
     background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    padding: 1rem 2rem;
+    height: 70px !important;
+    padding: 0 2rem !important;
+}
+
+.navbar .container-fluid {
+    display: flex !important;
+    height: 100% !important;
+    align-items: center !important;
 }
 
 .navbar-brand {

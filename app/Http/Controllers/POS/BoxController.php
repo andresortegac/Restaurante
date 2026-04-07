@@ -3,63 +3,46 @@
 namespace App\Http\Controllers\POS;
 
 use App\Http\Controllers\Controller;
+use App\Models\Box;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class BoxController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
     public function index()
     {
-        //
+        return response()->json(Box::all());
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
+    public function open(Request $request, $id)
     {
-        //
+        $box = Box::findOrFail($id);
+        $validated = $request->validate([
+            'opening_balance' => 'required|numeric|min:0',
+        ]);
+
+        if (!$box->isOpen()) {
+            $box->openBox($validated['opening_balance']);
+            $box->user_id = Auth::id();
+            $box->save();
+            return response()->json($box);
+        }
+
+        return response()->json(['error' => 'La caja ya está abierta'], 422);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
+    public function close(Request $request, $id)
     {
-        //
-    }
+        $box = Box::findOrFail($id);
+        $validated = $request->validate([
+            'closing_balance' => 'required|numeric|min:0',
+        ]);
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
-    {
-        //
-    }
+        if ($box->isOpen()) {
+            $box->closeBox($validated['closing_balance']);
+            return response()->json($box);
+        }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(string $id)
-    {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
-    {
-        //
+        return response()->json(['error' => 'La caja ya está cerrada'], 422);
     }
 }
