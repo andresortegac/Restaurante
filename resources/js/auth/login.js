@@ -8,19 +8,19 @@ document.addEventListener('DOMContentLoaded', function() {
         
         Swal.fire({
             icon: 'error',
-            title: 'Error en la autenticación',
+            title: 'Error en la autenticacin',
             html: '<pre style="text-align: left; margin: 10px 0;">' + errorMessage + '</pre>',
             confirmButtonColor: '#667eea',
             confirmButtonText: 'Entendido'
         });
     }
 
-    // Mostrar mensaje de éxito si existe
+    // Mostrar mensaje de xito si existe
     const successMessage = window.successMessage;
     if (successMessage) {
         Swal.fire({
             icon: 'success',
-            title: 'Éxito',
+            title: 'xito',
             text: successMessage,
             confirmButtonColor: '#667eea',
             confirmButtonText: 'Continuar'
@@ -39,7 +39,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 Swal.fire({
                     icon: 'warning',
                     title: 'Campos requeridos',
-                    text: 'Por favor, completa todos los campos de inicio de sesión.',
+                    text: 'Por favor, completa todos los campos de inicio de sesin.',
                     confirmButtonColor: '#667eea'
                 });
             }

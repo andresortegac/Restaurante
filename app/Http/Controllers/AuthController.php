@@ -1,4 +1,4 @@
-<?php
+ï»¿<?php
 
 namespace App\Http\Controllers;
 
@@ -15,7 +15,7 @@ class AuthController extends Controller
      */
     public function showLogin()
     {
-        // Si el usuario ya está autenticado, redirigir al dashboard
+        // Si el usuario ya est autenticado, redirigir al dashboard
         if (Auth::check()) {
             return redirect()->route('dashboard');
         }
@@ -33,9 +33,9 @@ class AuthController extends Controller
             'password' => 'required|min:6',
         ], [
             'email.required' => 'El correo es requerido',
-            'email.email' => 'El correo debe ser válido',
-            'password.required' => 'La contraseña es requerida',
-            'password.min' => 'La contraseña debe tener al menos 6 caracteres',
+            'email.email' => 'El correo debe ser vlido',
+            'password.required' => 'La contrasea es requerida',
+            'password.min' => 'La contrasea debe tener al menos 6 caracteres',
         ]);
 
         if ($validator->fails()) {
@@ -52,7 +52,7 @@ class AuthController extends Controller
 
             return redirect()
                 ->intended(route('dashboard'))
-                ->with('success', 'Bienvenido al sistema de gestión de restaurante');
+                ->with('success', 'Bienvenido al sistema de gestin de restaurante');
         }
 
         return back()
@@ -71,7 +71,7 @@ class AuthController extends Controller
         $request->session()->regenerateToken();
 
         return redirect()->route('login')
-            ->with('success', 'Sesión cerrada correctamente');
+            ->with('success', 'Sesin cerrada correctamente');
     }
 
     /**

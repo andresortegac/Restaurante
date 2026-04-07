@@ -1,7 +1,7 @@
 /* Script para: layouts/app.blade.php - Sidebar */
 
 document.addEventListener('DOMContentLoaded', function() {
-    // Botón para mostrar/ocultar sidebar en móvil
+    // Botn para mostrar/ocultar sidebar en mvil
     const sidebarToggle = document.getElementById('sidebarToggle');
     const sidebar = document.getElementById('sidebar');
 
@@ -21,7 +21,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Manejar menús colapsables
+    // Manejar mens colapsables
     const toggleButtons = document.querySelectorAll('[data-toggle-menu]');
     toggleButtons.forEach(function(button) {
         button.addEventListener('click', function(e) {
@@ -39,7 +39,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Cerrar sidebar cuando se haceclic fuera en móvil
+    // Cerrar sidebar cuando se haceclic fuera en mvil
     document.addEventListener('click', function(event) {
         const isClickInsideSidebar = sidebar.contains(event.target);
         const isClickOnToggle = sidebarToggle && sidebarToggle.contains(event.target);

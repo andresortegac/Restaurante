@@ -5,10 +5,10 @@
 @section('content')
     <!-- Welcome Section -->
     <div class="welcome-section">
-        <h1><i class="fas fa-wave-hand"></i> ¡Bienvenido, {{ Auth::user()->name }}!</h1>
+        <h1><i class="fas fa-wave-hand"></i> Bienvenido, {{ Auth::user()->name }}!</h1>
         <p>
-            Has iniciado sesión correctamente en el Sistema de Gestión de Restaurantes.
-            Aquí puedes gestionar todas las operaciones del restaurante.
+            Has iniciado sesin correctamente en el Sistema de Gestin de Restaurantes.
+            Aqu puedes gestionar todas las operaciones del restaurante.
         </p>
     </div>
 
@@ -37,7 +37,7 @@
         <div class="col-md-6">
             <div class="card mb-4">
                 <div class="card-header">
-                    <h5 class="card-title mb-0"><i class="fas fa-user-circle"></i> Información de Cuenta</h5>
+                    <h5 class="card-title mb-0"><i class="fas fa-user-circle"></i> Informacin de Cuenta</h5>
                 </div>
                 <div class="card-body">
                     <table class="table table-sm table-borderless">
@@ -50,7 +50,7 @@
                             <td>{{ Auth::user()->email }}</td>
                         </tr>
                         <tr>
-                            <td><strong>Último acceso:</strong></td>
+                            <td><strong>ltimo acceso:</strong></td>
                             <td>Hace poco</td>
                         </tr>
                     </table>
@@ -94,8 +94,8 @@
             <div class="row">
                 <div class="col-md-3">
                     <p class="text-center">
-                        <strong>Sesión Activa</strong><br>
-                        <span class="badge bg-success">En línea</span>
+                        <strong>Sesin Activa</strong><br>
+                        <span class="badge bg-success">En lnea</span>
                     </p>
                 </div>
                 <div class="col-md-3">
@@ -112,7 +112,7 @@
                 </div>
                 <div class="col-md-3">
                     <p class="text-center">
-                        <strong>Versión</strong><br>
+                        <strong>Versin</strong><br>
                         <span class="badge bg-info">v1.0.0</span>
                     </p>
                 </div>

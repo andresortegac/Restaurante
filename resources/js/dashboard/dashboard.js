@@ -5,7 +5,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function cargarDatosUsuario() {
-    // Obtener información del usuario autenticado
+    // Obtener informacin del usuario autenticado
     fetch('/api/user', {
         headers: {
             'Accept': 'application/json',
@@ -26,7 +26,7 @@ function cargarDatosUsuario() {
     .catch(error => {
         console.error('Error:', error);
         document.getElementById('roles-container').innerHTML = 
-            '<p class="text-danger"><i class="fas fa-exclamation-circle"></i> Error al cargar información</p>';
+            '<p class="text-danger"><i class="fas fa-exclamation-circle"></i> Error al cargar informacin</p>';
     });
 }
 
@@ -68,11 +68,11 @@ function mostrarPermisos(permisos) {
         return;
     }
 
-    // Agrupar permisos por categoría (users, roles, orders, etc.)
+    // Agrupar permisos por categora (users, roles, orders, etc.)
     const gruposPorCategoria = {};
     
     permisos.forEach(permission => {
-        // Extraer categoría del nombre del permiso (ej: users.view -> users)
+        // Extraer categora del nombre del permiso (ej: users.view -> users)
         const categoria = permission.name.split('.')[0];
         if (!gruposPorCategoria[categoria]) {
             gruposPorCategoria[categoria] = [];

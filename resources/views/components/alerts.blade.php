@@ -3,7 +3,7 @@
         document.addEventListener('DOMContentLoaded', function() {
             Swal.fire({
                 icon: 'success',
-                title: '¡Éxito!',
+                title: 'xito!',
                 text: '{{ session('success') }}',
                 confirmButtonColor: '#667eea',
                 confirmButtonText: 'Aceptar',
@@ -47,7 +47,7 @@
         document.addEventListener('DOMContentLoaded', function() {
             Swal.fire({
                 icon: 'info',
-                title: 'Información',
+                title: 'Informacin',
                 text: '{{ session('info') }}',
                 confirmButtonColor: '#667eea',
                 confirmButtonText: 'Aceptar'

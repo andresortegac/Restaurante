@@ -30,7 +30,7 @@
             </p>
 
             <div class="error-details">
-                <p><strong>Usuario:</strong> {{ Auth::user()->name ?? 'Anónimo' }}</p>
+                <p><strong>Usuario:</strong> {{ Auth::user()->name ?? 'Annimo' }}</p>
                 <p><strong>Email:</strong> {{ Auth::user()->email ?? 'N/A' }}</p>
             </div>
 
@@ -39,7 +39,7 @@
                     <i class="fas fa-arrow-left"></i> Volver al Dashboard
                 </a>
                 <button onclick="window.history.back()" class="btn-error btn-secondary-error">
-                    <i class="fas fa-undo"></i> Atrás
+                    <i class="fas fa-undo"></i> Atrs
                 </button>
             </div>
         </div>
