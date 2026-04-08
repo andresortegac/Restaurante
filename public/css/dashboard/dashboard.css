@@ -1,9 +1,13 @@
 ﻿/* Vista: dashboard.blade.php */
 
 .main-content {
-    margin-left: 250px;
-    padding: 2rem 2rem 2rem 2rem;
+    padding: 2rem;
     min-height: calc(100vh - 70px);
+}
+
+.dashboard-panel {
+    width: min(100%, 1280px);
+    margin: 0 auto;
 }
 
 .welcome-section {
@@ -186,8 +190,11 @@
 /* Responsive */
 @media (max-width: 768px) {
     .main-content {
-        margin-left: 0;
         padding: 1rem;
+    }
+
+    .dashboard-panel {
+        width: 100%;
     }
 
     .dashboard-grid {
