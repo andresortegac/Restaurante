@@ -48,7 +48,7 @@ class ProductManagementController extends Controller
 
         return view('products.menu.form', [
             'pageTitle' => 'Crear producto',
-            'product' => new Product(['active' => true]),
+            'product' => new Product(['active' => true, 'tracks_stock' => false]),
             'categoryName' => old('category_name'),
             'taxRates' => $this->taxRates(),
             'categoryOptions' => $this->categoryOptions(),
@@ -145,7 +145,7 @@ class ProductManagementController extends Controller
 
         return view('products.combos.form', [
             'pageTitle' => 'Crear combo',
-            'combo' => new Product(['active' => true, 'product_type' => 'combo']),
+            'combo' => new Product(['active' => true, 'product_type' => 'combo', 'tracks_stock' => false]),
             'categoryName' => old('category_name', 'Combos'),
             'taxRates' => $this->taxRates(),
             'categoryOptions' => $this->categoryOptions(),
@@ -372,7 +372,8 @@ class ProductManagementController extends Controller
             'sku' => ['required', 'string', 'max:255', Rule::unique('products', 'sku')->ignore($product?->id)],
             'category_name' => ['required', 'string', 'max:255'],
             'price' => ['required', 'numeric', 'min:0'],
-            'stock' => ['required', 'integer', 'min:0'],
+            'stock' => ['nullable', Rule::requiredIf($request->boolean('tracks_stock')), 'integer', 'min:0'],
+            'tracks_stock' => ['nullable', 'boolean'],
             'tax_rate_id' => ['nullable', 'exists:tax_rates,id'],
             'active' => ['nullable', 'boolean'],
         ]);
@@ -386,7 +387,8 @@ class ProductManagementController extends Controller
             'sku' => ['required', 'string', 'max:255', Rule::unique('products', 'sku')->ignore($combo?->id)],
             'category_name' => ['required', 'string', 'max:255'],
             'price' => ['required', 'numeric', 'min:0'],
-            'stock' => ['required', 'integer', 'min:0'],
+            'stock' => ['nullable', Rule::requiredIf($request->boolean('tracks_stock')), 'integer', 'min:0'],
+            'tracks_stock' => ['nullable', 'boolean'],
             'tax_rate_id' => ['nullable', 'exists:tax_rates,id'],
             'active' => ['nullable', 'boolean'],
             'components' => ['required', 'array', 'min:1'],
@@ -452,12 +454,14 @@ class ProductManagementController extends Controller
     private function buildProductPayload(array $validated, Request $request, string $type): array
     {
         $category = $this->resolveCategory($validated['category_name']);
+        $tracksStock = $request->boolean('tracks_stock');
 
         return [
             'name' => $validated['name'],
             'description' => $validated['description'] ?? null,
             'price' => $validated['price'],
-            'stock' => $validated['stock'],
+            'stock' => $tracksStock ? (int) ($validated['stock'] ?? 0) : 0,
+            'tracks_stock' => $tracksStock,
             'category' => $category->name,
             'category_id' => $category->id,
             'tax_rate_id' => $validated['tax_rate_id'] ?? null,

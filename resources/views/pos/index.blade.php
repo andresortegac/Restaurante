@@ -257,6 +257,10 @@ function buildPrintUrl(saleId) {
     return `${salesPrintBaseUrl}/${saleId}/print`;
 }
 
+function usesStockControl(product) {
+    return Boolean(product?.tracks_stock);
+}
+
 function showMessage(icon, title, text) {
     if (window.Swal) {
         return Swal.fire({
@@ -341,7 +345,7 @@ function renderProducts(productList = products) {
             <div class="product-image"><i class="fas fa-utensils"></i></div>
             <h6 style="margin: 8px 0; font-size: 12px;">${product.name}</h6>
             <p style="margin: 0; color: #007bff; font-weight: bold;">$${parseFloat(product.price).toFixed(2)}</p>
-            <small style="color: #999;">Stock: ${product.stock}</small>
+            <small style="color: #999;">${usesStockControl(product) ? `Stock: ${product.stock}` : 'Disponible'}</small>
             <div style="margin-top: 6px; font-size: 11px; color: #666;">${product.product_type === 'combo' ? 'Combo' : 'Producto'}</div>
         </div>
     `).join('');
@@ -370,10 +374,11 @@ function selectProduct(productId) {
         return;
     }
 
-    const availableStock = Number(selectedProduct.stock ?? 0);
+    const tracksStock = usesStockControl(selectedProduct);
+    const availableStock = tracksStock ? Number(selectedProduct.stock ?? 0) : Number.POSITIVE_INFINITY;
     const currentQuantityInCart = cart.find(item => Number(item.id) === Number(selectedProduct.id))?.quantity ?? 0;
 
-    if (availableStock < 1 || currentQuantityInCart >= availableStock) {
+    if (tracksStock && (availableStock < 1 || currentQuantityInCart >= availableStock)) {
         showMessage('warning', 'Stock agotado', 'Producto sin stock disponible.');
         return;
     }
@@ -391,6 +396,7 @@ function addToCart(product, quantity) {
             ...product,
             price: Number(product.price),
             stock: Number(product.stock ?? 0),
+            tracks_stock: usesStockControl(product),
             quantity
         });
     }
@@ -412,9 +418,10 @@ function updateQuantity(productId, newQuantity) {
         return;
     }
 
+    const tracksStock = usesStockControl(item);
     const availableStock = Number(products.find(product => Number(product.id) === Number(productId))?.stock ?? item.stock ?? 0);
 
-    if (newQuantity > availableStock) {
+    if (tracksStock && newQuantity > availableStock) {
         showMessage('warning', 'Stock insuficiente', `No puedes superar el stock disponible (${availableStock}).`);
         return;
     }
@@ -562,7 +569,7 @@ function syncProductStockFromCart() {
     cart.forEach(item => {
         const product = products.find(productItem => Number(productItem.id) === Number(item.id));
 
-        if (product) {
+        if (product && usesStockControl(product)) {
             product.stock = Math.max(0, Number(product.stock ?? 0) - Number(item.quantity ?? 0));
         }
     });

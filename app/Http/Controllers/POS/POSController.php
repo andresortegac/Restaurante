@@ -29,6 +29,7 @@ class POSController extends Controller
                     'name' => $this->sanitizeString($product->name),
                     'price' => (float) $product->price,
                     'stock' => (int) $product->stock,
+                    'tracks_stock' => (bool) $product->tracks_stock,
                     'sku' => $this->sanitizeNullableString($product->sku),
                     'product_type' => $product->product_type ?: 'simple',
                 ];

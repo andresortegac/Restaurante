@@ -8,7 +8,7 @@
             <div>
                 <span class="module-kicker">Gestion de Productos / RF-21</span>
                 <h1>{{ $pageTitle }}</h1>
-                <p>Configura el producto principal del combo y define los componentes que lo conforman.</p>
+                <p>Configura el producto principal del combo y define los componentes que lo conforman. El stock del combo es opcional y normalmente puede quedar desactivado.</p>
             </div>
             <div class="summary-group">
                 <a href="{{ route('products.combos.index') }}" class="btn btn-outline-secondary">
@@ -65,9 +65,21 @@
                             <input type="number" class="form-control" id="price" name="price" min="0" step="0.01" value="{{ old('price', $combo->price) }}" required>
                         </div>
 
+                        <div class="form-switch-row full-width">
+                            <div>
+                                <label class="form-label d-block mb-1" for="tracks_stock">Control de stock</label>
+                                <div class="form-help">En la mayoria de los casos un combo no necesita stock propio porque depende de sus componentes o del inventario de cocina.</div>
+                            </div>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" role="switch" id="tracks_stock" name="tracks_stock" value="1" @checked(old('tracks_stock', $combo->exists ? $combo->tracks_stock : false))>
+                                <label class="form-check-label" for="tracks_stock">Controlar stock en POS</label>
+                            </div>
+                        </div>
+
                         <div>
-                            <label class="form-label" for="stock">Stock</label>
-                            <input type="number" class="form-control" id="stock" name="stock" min="0" step="1" value="{{ old('stock', $combo->stock ?? 0) }}" required>
+                            <label class="form-label" for="stock">Stock disponible</label>
+                            <input type="number" class="form-control" id="stock" name="stock" min="0" step="1" value="{{ old('stock', $combo->stock ?? 0) }}">
+                            <div class="form-help" id="stockHelp">Activala solo si realmente quieres limitar la venta del combo por unidades disponibles.</div>
                         </div>
 
                         <div class="form-switch-row full-width">
@@ -199,12 +211,28 @@
             const container = document.getElementById('comboComponentRows');
             const template = document.getElementById('componentRowTemplate');
             const addButton = document.getElementById('addComponentRow');
+            const tracksStockToggle = document.getElementById('tracks_stock');
+            const stockInput = document.getElementById('stock');
+            const stockHelp = document.getElementById('stockHelp');
             let nextIndex = {{ count($componentRows) }};
+
+            function syncStockField() {
+                const tracksStock = tracksStockToggle.checked;
+
+                stockInput.disabled = !tracksStock;
+                stockInput.required = tracksStock;
+                stockHelp.textContent = tracksStock
+                    ? 'Este combo descontara stock cada vez que se venda desde el POS.'
+                    : 'Este combo se vendera sin controlar stock propio en POS.';
+            }
 
             addButton.addEventListener('click', function () {
                 const html = template.innerHTML.replace(/__INDEX__/g, String(nextIndex++));
                 container.insertAdjacentHTML('beforeend', html);
             });
+
+            tracksStockToggle.addEventListener('change', syncStockField);
+            syncStockField();
 
             container.addEventListener('click', function (event) {
                 const removeButton = event.target.closest('[data-remove-component]');

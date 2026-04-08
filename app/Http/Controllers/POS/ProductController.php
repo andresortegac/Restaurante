@@ -5,6 +5,7 @@ namespace App\Http\Controllers\POS;
 use App\Http\Controllers\Controller;
 use App\Models\Product;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class ProductController extends Controller
 {
@@ -24,6 +25,7 @@ class ProductController extends Controller
                     'name' => $this->sanitizeString($product->name),
                     'price' => (float) $product->price,
                     'stock' => (int) $product->stock,
+                    'tracks_stock' => (bool) $product->tracks_stock,
                     'sku' => $this->sanitizeString((string) $product->sku),
                     'product_type' => $product->product_type ?: 'simple',
                 ];
@@ -44,12 +46,17 @@ class ProductController extends Controller
         $validated = $request->validate([
             'name' => 'required|string',
             'price' => 'required|numeric|min:0',
-            'stock' => 'required|integer|min:0',
+            'stock' => ['nullable', Rule::requiredIf($request->boolean('tracks_stock')), 'integer', 'min:0'],
+            'tracks_stock' => 'nullable|boolean',
             'category' => 'required|string',
             'sku' => 'required|unique:products',
         ]);
 
-        $product = Product::create($validated);
+        $product = Product::create([
+            ...$validated,
+            'tracks_stock' => $request->boolean('tracks_stock'),
+            'stock' => $request->boolean('tracks_stock') ? (int) ($validated['stock'] ?? 0) : 0,
+        ]);
         return response()->json($product, 201);
     }
 

@@ -47,7 +47,7 @@
                                         <th>Categoria</th>
                                         <th>Precio</th>
                                         <th>Impuesto</th>
-                                        <th>Stock</th>
+                                        <th>Stock POS</th>
                                         <th>Estado</th>
                                         <th class="text-end">Acciones</th>
                                     </tr>
@@ -62,7 +62,7 @@
                                             <td>{{ $product->menuCategory->name ?? $product->category }}</td>
                                             <td>${{ number_format($product->price, 2) }}</td>
                                             <td>{{ $product->taxRate->name ?? 'Sin impuesto' }}</td>
-                                            <td>{{ $product->stock }}</td>
+                                            <td>{{ $product->tracks_stock ? $product->stock : 'No aplica' }}</td>
                                             <td>
                                                 <span class="badge rounded-pill {{ $product->active ? 'bg-success' : 'bg-secondary' }}">
                                                     {{ $product->active ? 'Activo' : 'Inactivo' }}

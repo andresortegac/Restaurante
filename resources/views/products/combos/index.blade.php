@@ -44,7 +44,7 @@
                                 <div class="combo-card-header">
                                     <div>
                                         <h6 class="mb-1">{{ $combo->name }}</h6>
-                                        <div class="table-note">{{ $combo->sku }} | {{ $combo->menuCategory->name ?? 'Sin categoria' }} | {{ $combo->taxRate->name ?? 'Sin impuesto' }}</div>
+                                        <div class="table-note">{{ $combo->sku }} | {{ $combo->menuCategory->name ?? 'Sin categoria' }} | {{ $combo->taxRate->name ?? 'Sin impuesto' }} | {{ $combo->tracks_stock ? 'Controla stock' : 'Sin control de stock' }}</div>
                                     </div>
                                     <div class="combo-actions">
                                         <span class="summary-chip">${{ number_format($combo->price, 2) }}</span>

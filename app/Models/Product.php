@@ -16,6 +16,7 @@ class Product extends Model
         'description',
         'price',
         'stock',
+        'tracks_stock',
         'category',
         'category_id',
         'tax_rate_id',
@@ -27,6 +28,7 @@ class Product extends Model
     protected $casts = [
         'price' => 'decimal:2',
         'stock' => 'integer',
+        'tracks_stock' => 'boolean',
         'category_id' => 'integer',
         'tax_rate_id' => 'integer',
         'active' => 'boolean',
@@ -59,17 +61,29 @@ class Product extends Model
 
     public function isInStock($quantity = 1)
     {
+        if (! $this->tracks_stock) {
+            return true;
+        }
+
         return $this->stock >= $quantity;
     }
 
     public function reduceStock($quantity)
     {
+        if (! $this->tracks_stock) {
+            return;
+        }
+
         $this->stock -= $quantity;
         $this->save();
     }
 
     public function increaseStock($quantity)
     {
+        if (! $this->tracks_stock) {
+            return;
+        }
+
         $this->stock += $quantity;
         $this->save();
     }

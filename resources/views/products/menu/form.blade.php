@@ -8,7 +8,7 @@
             <div>
                 <span class="module-kicker">Gestion de Productos / RF-20</span>
                 <h1>{{ $pageTitle }}</h1>
-                <p>Configura nombre, categoria, precio, stock e impuesto del producto. Si escribes una categoria nueva, el sistema la crea automaticamente.</p>
+                <p>Configura nombre, categoria, precio e impuesto del producto. El stock en POS es opcional y puede quedar desactivado para platos o comidas.</p>
             </div>
             <div class="summary-group">
                 <a href="{{ route('products.menu.index') }}" class="btn btn-outline-secondary">
@@ -66,9 +66,21 @@
                             <input type="number" class="form-control" id="price" name="price" min="0" step="0.01" value="{{ old('price', $product->price) }}" required>
                         </div>
 
+                        <div class="form-switch-row full-width">
+                            <div>
+                                <label class="form-label d-block mb-1" for="tracks_stock">Control de stock</label>
+                                <div class="form-help">Desactivalo para platos o comidas preparadas. Activalo solo si este producto debe descontar existencias en caja.</div>
+                            </div>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" role="switch" id="tracks_stock" name="tracks_stock" value="1" @checked(old('tracks_stock', $product->exists ? $product->tracks_stock : false))>
+                                <label class="form-check-label" for="tracks_stock">Controlar stock en POS</label>
+                            </div>
+                        </div>
+
                         <div>
-                            <label class="form-label" for="stock">Stock</label>
-                            <input type="number" class="form-control" id="stock" name="stock" min="0" step="1" value="{{ old('stock', $product->stock ?? 0) }}" required>
+                            <label class="form-label" for="stock">Stock disponible</label>
+                            <input type="number" class="form-control" id="stock" name="stock" min="0" step="1" value="{{ old('stock', $product->stock ?? 0) }}">
+                            <div class="form-help" id="stockHelp">Usalo para bebidas u otros productos que si deben controlar unidades disponibles.</div>
                         </div>
 
                         <div class="form-switch-row full-width">
@@ -96,4 +108,25 @@
             </div>
         </div>
     </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const tracksStockToggle = document.getElementById('tracks_stock');
+            const stockInput = document.getElementById('stock');
+            const stockHelp = document.getElementById('stockHelp');
+
+            function syncStockField() {
+                const tracksStock = tracksStockToggle.checked;
+
+                stockInput.disabled = !tracksStock;
+                stockInput.required = tracksStock;
+                stockHelp.textContent = tracksStock
+                    ? 'Este producto descontara stock cada vez que se venda desde el POS.'
+                    : 'Este producto se vendera sin controlar stock en POS, ideal para platos o comidas preparadas.';
+            }
+
+            tracksStockToggle.addEventListener('change', syncStockField);
+            syncStockField();
+        });
+    </script>
 @endsection
