@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\ProductManagementController;
 use Illuminate\Support\Facades\Route;
 
 // Rutas publicas
@@ -23,6 +24,30 @@ Route::middleware('auth')->group(function () {
         return view('dashboard');
     })->name('dashboard');
 
+    // Gestion de productos
+    Route::prefix('products')->name('products.')->group(function () {
+        Route::get('/menu', [ProductManagementController::class, 'menu'])->name('menu.index');
+        Route::get('/menu/create', [ProductManagementController::class, 'createMenuProduct'])->name('menu.create');
+        Route::post('/menu', [ProductManagementController::class, 'storeMenuProduct'])->name('menu.store');
+        Route::get('/menu/{product}/edit', [ProductManagementController::class, 'editMenuProduct'])->name('menu.edit');
+        Route::put('/menu/{product}', [ProductManagementController::class, 'updateMenuProduct'])->name('menu.update');
+        Route::delete('/menu/{product}', [ProductManagementController::class, 'destroyMenuProduct'])->name('menu.destroy');
+
+        Route::get('/combos', [ProductManagementController::class, 'combos'])->name('combos.index');
+        Route::get('/combos/create', [ProductManagementController::class, 'createCombo'])->name('combos.create');
+        Route::post('/combos', [ProductManagementController::class, 'storeCombo'])->name('combos.store');
+        Route::get('/combos/{product}/edit', [ProductManagementController::class, 'editCombo'])->name('combos.edit');
+        Route::put('/combos/{product}', [ProductManagementController::class, 'updateCombo'])->name('combos.update');
+        Route::delete('/combos/{product}', [ProductManagementController::class, 'destroyCombo'])->name('combos.destroy');
+
+        Route::get('/taxes', [ProductManagementController::class, 'taxes'])->name('taxes.index');
+        Route::get('/taxes/create', [ProductManagementController::class, 'createTax'])->name('taxes.create');
+        Route::post('/taxes', [ProductManagementController::class, 'storeTax'])->name('taxes.store');
+        Route::get('/taxes/{taxRate}/edit', [ProductManagementController::class, 'editTax'])->name('taxes.edit');
+        Route::put('/taxes/{taxRate}', [ProductManagementController::class, 'updateTax'])->name('taxes.update');
+        Route::delete('/taxes/{taxRate}', [ProductManagementController::class, 'destroyTax'])->name('taxes.destroy');
+    });
+
     // API para verificar roles y permisos
     Route::get('/api/user', [AuthController::class, 'getCurrentUser'])->name('api.user');
     Route::get('/api/user/has-role/{role}', [AuthController::class, 'hasRole'])->name('api.user.has-role');
@@ -31,6 +56,8 @@ Route::middleware('auth')->group(function () {
     // Rutas POS
     Route::prefix('pos')->name('pos.')->group(function () {
         Route::get('/', [\App\Http\Controllers\POS\POSController::class, 'index'])->name('index');
+        Route::get('/sales-history', [\App\Http\Controllers\POS\POSController::class, 'salesHistory'])->name('sales-history.index');
+        Route::get('/sales/{sale}/print', [\App\Http\Controllers\POS\InvoiceController::class, 'printSale'])->name('sales.print');
         Route::get('/promo-codes/create', [\App\Http\Controllers\POS\DiscountController::class, 'create'])->name('promo-codes.create');
         Route::post('/promo-codes', [\App\Http\Controllers\POS\DiscountController::class, 'store'])->name('promo-codes.store');
         

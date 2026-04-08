@@ -10,7 +10,27 @@ class ProductController extends Controller
 {
     public function index()
     {
-        return response()->json(Product::where('active', true)->get());
+        $products = Product::query()
+            ->where('active', true)
+            ->where(function ($query) {
+                $query->whereIn('product_type', ['simple', 'combo'])
+                    ->orWhereNull('product_type');
+            })
+            ->orderBy('name')
+            ->get()
+            ->map(function (Product $product): array {
+                return [
+                    'id' => (int) $product->id,
+                    'name' => $this->sanitizeString($product->name),
+                    'price' => (float) $product->price,
+                    'stock' => (int) $product->stock,
+                    'sku' => $this->sanitizeString((string) $product->sku),
+                    'product_type' => $product->product_type ?: 'simple',
+                ];
+            })
+            ->values();
+
+        return response()->json($products);
     }
 
     public function show($id)
@@ -44,5 +64,14 @@ class ProductController extends Controller
     {
         Product::findOrFail($id)->delete();
         return response()->json(null, 204);
+    }
+
+    private function sanitizeString(string $value): string
+    {
+        if ($value === '' || preg_match('//u', $value)) {
+            return $value;
+        }
+
+        return mb_convert_encoding($value, 'UTF-8', 'Windows-1252, ISO-8859-1, UTF-8');
     }
 }

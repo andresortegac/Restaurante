@@ -43,6 +43,24 @@ class PermissionSeeder extends Seeder
             ['name' => 'inventory.edit', 'description' => 'Editar productos de inventario'],
             ['name' => 'inventory.delete', 'description' => 'Eliminar productos de inventario'],
 
+            // Productos
+            ['name' => 'products.view', 'description' => 'Ver menu y productos'],
+            ['name' => 'products.create', 'description' => 'Crear productos del menu'],
+            ['name' => 'products.edit', 'description' => 'Editar productos del menu'],
+            ['name' => 'products.delete', 'description' => 'Eliminar productos del menu'],
+
+            // Combos
+            ['name' => 'combos.view', 'description' => 'Ver combos o productos compuestos'],
+            ['name' => 'combos.create', 'description' => 'Crear combos o productos compuestos'],
+            ['name' => 'combos.edit', 'description' => 'Editar combos o productos compuestos'],
+            ['name' => 'combos.delete', 'description' => 'Eliminar combos o productos compuestos'],
+
+            // Impuestos
+            ['name' => 'taxes.view', 'description' => 'Ver configuracion de impuestos'],
+            ['name' => 'taxes.create', 'description' => 'Crear configuraciones de impuestos'],
+            ['name' => 'taxes.edit', 'description' => 'Editar configuraciones de impuestos'],
+            ['name' => 'taxes.delete', 'description' => 'Eliminar configuraciones de impuestos'],
+
             // Reportes
             ['name' => 'reports.view', 'description' => 'Ver reportes'],
             ['name' => 'reports.export', 'description' => 'Exportar reportes'],
@@ -56,9 +74,9 @@ class PermissionSeeder extends Seeder
             ['name' => 'customers.edit', 'description' => 'Editar clientes'],
             ['name' => 'customers.delete', 'description' => 'Eliminar clientes'],
 
-            // Configuraci�n
-            ['name' => 'settings.view', 'description' => 'Ver configuraci�n'],
-            ['name' => 'settings.edit', 'description' => 'Editar configuraci�n'],
+            // Configuracion
+            ['name' => 'settings.view', 'description' => 'Ver configuracion'],
+            ['name' => 'settings.edit', 'description' => 'Editar configuracion'],
         ];
 
         foreach ($permissions as $permission) {

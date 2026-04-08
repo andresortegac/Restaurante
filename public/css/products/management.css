@@ -1,0 +1,355 @@
+/* Vista: modulo de gestion de productos */
+
+.module-page {
+    width: min(100%, 1280px);
+    margin: 0 auto;
+}
+
+.module-hero {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1.5rem;
+    padding: 2rem;
+    margin-bottom: 1.5rem;
+    border-radius: 18px;
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.14), rgba(118, 75, 162, 0.12));
+    border: 1px solid rgba(102, 126, 234, 0.12);
+    box-shadow: var(--shadow);
+}
+
+.module-kicker {
+    display: inline-block;
+    margin-bottom: 0.75rem;
+    color: var(--primary-color);
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.module-hero h1 {
+    margin-bottom: 0.75rem;
+    color: #24324a;
+    font-size: clamp(1.8rem, 3vw, 2.4rem);
+}
+
+.module-hero p {
+    max-width: 860px;
+    margin: 0;
+    color: #556274;
+    font-size: 1rem;
+}
+
+.summary-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    justify-content: flex-end;
+}
+
+.summary-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.55rem 0.9rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.9);
+    color: #31415e;
+    font-size: 0.9rem;
+    font-weight: 700;
+    box-shadow: 0 8px 20px rgba(44, 62, 80, 0.08);
+}
+
+.module-card {
+    border: none;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+}
+
+.module-card .card-body {
+    padding: 1.5rem;
+}
+
+.module-card .table th {
+    color: #68768a;
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.module-card .table td,
+.module-card .table th {
+    padding: 1rem 1.25rem;
+}
+
+.table-note {
+    color: #7d8a9c;
+    font-size: 0.85rem;
+}
+
+.module-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.module-list-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1rem 1.1rem;
+    border-radius: 14px;
+    background: #f7f9fc;
+    border: 1px solid #e8edf5;
+}
+
+.module-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.module-alert {
+    margin-bottom: 1.5rem;
+    border: none;
+    border-radius: 16px;
+    box-shadow: var(--shadow);
+}
+
+.table-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.table-actions form,
+.combo-actions form {
+    margin: 0;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.25rem;
+}
+
+.full-width {
+    grid-column: 1 / -1;
+}
+
+.form-help {
+    margin-top: 0.4rem;
+    color: #7d8a9c;
+    font-size: 0.85rem;
+}
+
+.form-switch-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.1rem;
+    border-radius: 14px;
+    background: #f7f9fc;
+    border: 1px solid #e8edf5;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    margin-top: 1.75rem;
+}
+
+.combo-section {
+    margin-top: 2rem;
+    padding-top: 2rem;
+    border-top: 1px solid #e8edf5;
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.component-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.component-row {
+    padding: 1rem 1.1rem;
+    border-radius: 16px;
+    background: #f7f9fc;
+    border: 1px solid #e8edf5;
+}
+
+.component-row-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) repeat(3, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.component-field-large {
+    min-width: 0;
+}
+
+.component-row-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.checkbox-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 0.75rem 1rem;
+    padding: 1rem 1.1rem;
+    border-radius: 14px;
+    background: #f7f9fc;
+    border: 1px solid #e8edf5;
+}
+
+.schema-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1rem;
+}
+
+.schema-card {
+    height: 100%;
+    padding: 1.25rem;
+    border-radius: 16px;
+    background: #f7f9fc;
+    border: 1px solid #e8edf5;
+}
+
+.schema-card.compact + .schema-card.compact {
+    margin-top: 1rem;
+}
+
+.schema-card h6 {
+    margin-bottom: 0.6rem;
+    color: #24324a;
+    font-size: 1rem;
+}
+
+.schema-card p {
+    margin-bottom: 0.75rem;
+    color: #5c6879;
+}
+
+.schema-list {
+    margin: 0;
+    padding-left: 1.2rem;
+    color: #425066;
+}
+
+.schema-list li + li {
+    margin-top: 0.35rem;
+}
+
+.combo-card + .combo-card {
+    margin-top: 1rem;
+}
+
+.combo-card {
+    padding: 1.25rem;
+    border-radius: 16px;
+    background: #f7f9fc;
+    border: 1px solid #e8edf5;
+}
+
+.combo-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.combo-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.combo-components {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.component-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.5rem 0.8rem;
+    border-radius: 999px;
+    background: rgba(102, 126, 234, 0.12);
+    color: #3d4d6a;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.empty-state {
+    padding: 2.5rem 1.5rem;
+    text-align: center;
+    color: #68768a;
+}
+
+.empty-state i {
+    margin-bottom: 1rem;
+    color: var(--primary-color);
+    font-size: 2rem;
+}
+
+@media (max-width: 768px) {
+    .module-hero {
+        flex-direction: column;
+        padding: 1.5rem;
+    }
+
+    .module-toolbar,
+    .form-switch-row,
+    .section-header,
+    .component-row-footer {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .summary-group {
+        justify-content: flex-start;
+    }
+
+    .form-grid,
+    .component-row-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .module-card .table td,
+    .module-card .table th {
+        padding: 0.85rem 1rem;
+    }
+
+    .combo-card-header,
+    .combo-actions,
+    .form-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+}

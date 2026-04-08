@@ -12,7 +12,20 @@ class PaymentController extends Controller
 {
     public function getMethods()
     {
-        return response()->json(PaymentMethod::where('active', true)->get());
+        $methods = PaymentMethod::query()
+            ->where('active', true)
+            ->orderBy('name')
+            ->get()
+            ->map(function (PaymentMethod $method): array {
+                return [
+                    'id' => (int) $method->id,
+                    'name' => $this->sanitizeString($method->name),
+                    'code' => $this->sanitizeNullableString($method->code),
+                ];
+            })
+            ->values();
+
+        return response()->json($methods);
     }
 
     public function store(Request $request)
@@ -32,5 +45,21 @@ class PaymentController extends Controller
 
         $payment = Payment::create($validated);
         return response()->json($payment, 201);
+    }
+
+    private function sanitizeString(?string $value): string
+    {
+        $value ??= '';
+
+        if ($value === '' || preg_match('//u', $value)) {
+            return $value;
+        }
+
+        return mb_convert_encoding($value, 'UTF-8', 'Windows-1252, ISO-8859-1, UTF-8');
+    }
+
+    private function sanitizeNullableString(?string $value): ?string
+    {
+        return $value === null ? null : $this->sanitizeString($value);
     }
 }

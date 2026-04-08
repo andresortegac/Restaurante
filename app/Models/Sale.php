@@ -65,7 +65,8 @@ class Sale extends Model
     public function calculateTotal()
     {
         $this->subtotal = $this->items->sum('subtotal');
-        $this->discount_amount = $this->subtotal * 0.1;
+        $discountAmount = min((float) ($this->discount_amount ?? 0), (float) $this->subtotal);
+        $this->discount_amount = max(0, $discountAmount);
         $this->tax_amount = ($this->subtotal - $this->discount_amount) * 0.16;
         $this->total = $this->subtotal - $this->discount_amount + $this->tax_amount;
         $this->save();

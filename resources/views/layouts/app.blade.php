@@ -2,6 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>@yield('title', 'RestaurantePOS - Sistema de Gestión')</title>
@@ -18,6 +19,7 @@
     <link rel="stylesheet" href="{{ asset('css/layouts/navbar.css') }}">
     <link rel="stylesheet" href="{{ asset('css/layouts/sidebar.css') }}">
     <link rel="stylesheet" href="{{ asset('css/dashboard/dashboard.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/products/management.css') }}">
 </head>
 <body>
     <!-- Navbar -->
@@ -59,6 +61,7 @@
             @php
                 $isDashboardRoute = request()->routeIs('dashboard');
                 $isPosRoute = request()->routeIs('pos.*');
+                $isProductsRoute = request()->routeIs('products.*');
             @endphp
             
             <ul class="sidebar-menu">
@@ -80,12 +83,49 @@
                             </a>
                         </li>
                         <li>
+                            <a href="{{ route('pos.sales-history.index') }}" class="{{ request()->routeIs('pos.sales-history.*') ? 'active' : '' }}">
+                                <i class="fas fa-clock-rotate-left"></i> Historial de ventas
+                            </a>
+                        </li>
+                        <li>
                             <a href="{{ route('pos.promo-codes.create') }}" class="{{ request()->routeIs('pos.promo-codes.*') ? 'active' : '' }}">
                                 <i class="fas fa-ticket-alt"></i> Codigos promocionales
                             </a>
                         </li>
                     </ul>
                 </li>
+
+                @if(Auth::user()->hasRole('Admin') || Auth::user()->hasAnyPermission(['products.view', 'products.create', 'products.edit', 'products.delete', 'combos.view', 'combos.create', 'combos.edit', 'combos.delete', 'taxes.view', 'taxes.create', 'taxes.edit', 'taxes.delete']))
+                <li>
+                    <a href="#" data-toggle-menu class="{{ $isProductsRoute ? 'expanded' : '' }}">
+                        <i class="fas fa-utensils"></i> Gestion de Productos
+                        <span class="toggle-icon"><i class="fas fa-chevron-right"></i></span>
+                    </a>
+                    <ul class="sidebar-submenu {{ $isProductsRoute ? 'show' : '' }}">
+                        @if(Auth::user()->hasRole('Admin') || Auth::user()->hasAnyPermission(['products.view', 'products.create', 'products.edit', 'products.delete']))
+                        <li>
+                            <a href="{{ route('products.menu.index') }}" class="{{ request()->routeIs('products.menu.*') ? 'active' : '' }}">
+                                <i class="fas fa-book-open"></i> Menu y Precios
+                            </a>
+                        </li>
+                        @endif
+                        @if(Auth::user()->hasRole('Admin') || Auth::user()->hasAnyPermission(['combos.view', 'combos.create', 'combos.edit', 'combos.delete']))
+                        <li>
+                            <a href="{{ route('products.combos.index') }}" class="{{ request()->routeIs('products.combos.*') ? 'active' : '' }}">
+                                <i class="fas fa-layer-group"></i> Combos
+                            </a>
+                        </li>
+                        @endif
+                        @if(Auth::user()->hasRole('Admin') || Auth::user()->hasAnyPermission(['taxes.view', 'taxes.create', 'taxes.edit', 'taxes.delete']))
+                        <li>
+                            <a href="{{ route('products.taxes.index') }}" class="{{ request()->routeIs('products.taxes.*') ? 'active' : '' }}">
+                                <i class="fas fa-percent"></i> Impuestos
+                            </a>
+                        </li>
+                        @endif
+                    </ul>
+                </li>
+                @endif
 
                 @if(Auth::user()->hasAnyPermission(['users.view', 'users.create', 'users.edit', 'users.delete']))
                 <li>

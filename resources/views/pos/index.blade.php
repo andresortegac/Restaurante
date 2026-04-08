@@ -3,6 +3,16 @@
 @section('title', 'Punto de Venta - POS')
 
 @section('content')
+<div class="pos-toolbar">
+    <div>
+        <h1>Punto de Venta</h1>
+        <p>{{ $activeBox ? 'Caja activa: ' . $activeBox->name : 'No hay una caja abierta en este momento.' }}</p>
+    </div>
+    <a href="{{ route('pos.sales-history.index') }}" class="btn btn-outline-primary">
+        <i class="fas fa-clock-rotate-left"></i> Historial de ventas
+    </a>
+</div>
+
 <div class="pos-container" id="posApp">
     <div class="row h-100">
         <!-- Seccion de Productos -->
@@ -78,29 +88,28 @@
     </div>
 </div>
 
-<div class="modal fade" id="quantityModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Cantidad de Producto</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <label class="form-label">Producto: <strong id="modalProductName"></strong></label>
-                <label class="form-label mt-2">Cantidad:</label>
-                <input type="number" id="quantityInput" class="form-control" value="1" min="1">
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-primary" onclick="addToCartConfirm()">Agregar</button>
-            </div>
-        </div>
-    </div>
-</div>
-
 <style>
+.pos-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.pos-toolbar h1 {
+    margin: 0 0 4px;
+    font-size: 32px;
+    color: #243b7a;
+}
+
+.pos-toolbar p {
+    margin: 0;
+    color: #64748b;
+}
+
 .pos-container {
-    height: calc(100vh - 120px);
+    min-height: calc(100vh - 180px);
 }
 
 .products-list {
@@ -158,37 +167,82 @@
     padding: 2px 5px;
     font-size: 12px;
 }
+
+@media (max-width: 768px) {
+    .pos-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .pos-toolbar h1 {
+        font-size: 26px;
+    }
+}
 </style>
 
 <script>
 let cart = [];
-let products = [];
-let paymentMethods = [];
-let selectedProduct = null;
+let products = @json($initialProducts ?? []);
+let paymentMethods = @json($initialPaymentMethods ?? []);
+const activeBoxId = @json(optional($activeBox)->id);
+const csrfToken = @json(csrf_token());
+const salesHistoryUrl = @json(route('pos.sales-history.index'));
+const salesPrintBaseUrl = @json(url('/pos/sales'));
 
 document.addEventListener('DOMContentLoaded', function() {
-    loadProducts();
-    loadPaymentMethods();
+    renderProducts();
+    renderPaymentMethods();
+    updateTotals();
+    loadProducts(true);
+    loadPaymentMethods(true);
 });
 
-function loadProducts() {
-    fetch('/pos/api/products')
-        .then(response => response.json())
-        .then(data => {
-            products = data;
-            renderProducts();
-        })
-        .catch(error => console.error('Error:', error));
+async function loadProducts(isBackgroundRefresh = false) {
+    try {
+        const response = await fetch('/pos/api/products', {
+            headers: {
+                'Accept': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error('No se pudieron cargar los productos del POS.');
+        }
+
+        const data = await response.json();
+        products = Array.isArray(data) ? data : [];
+        applyProductFilter();
+    } catch (error) {
+        console.error('Error al cargar productos:', error);
+
+        if (!isBackgroundRefresh && products.length === 0) {
+            renderProducts([]);
+        }
+    }
 }
 
-function loadPaymentMethods() {
-    fetch('/pos/api/payment-methods')
-        .then(response => response.json())
-        .then(data => {
-            paymentMethods = data;
+async function loadPaymentMethods(isBackgroundRefresh = false) {
+    try {
+        const response = await fetch('/pos/api/payment-methods', {
+            headers: {
+                'Accept': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error('No se pudieron cargar los metodos de pago.');
+        }
+
+        const data = await response.json();
+        paymentMethods = Array.isArray(data) ? data : [];
+        renderPaymentMethods();
+    } catch (error) {
+        console.error('Error al cargar metodos de pago:', error);
+
+        if (!isBackgroundRefresh && paymentMethods.length === 0) {
             renderPaymentMethods();
-        })
-        .catch(error => console.error('Error:', error));
+        }
+    }
 }
 
 function normalizeText(text) {
@@ -199,78 +253,185 @@ function normalizeText(text) {
         .toLowerCase();
 }
 
+function buildPrintUrl(saleId) {
+    return `${salesPrintBaseUrl}/${saleId}/print`;
+}
+
+function showMessage(icon, title, text) {
+    if (window.Swal) {
+        return Swal.fire({
+            icon,
+            title,
+            text,
+            confirmButtonText: 'Aceptar',
+            confirmButtonColor: icon === 'error' ? '#dc3545' : '#1d4ed8'
+        });
+    }
+
+    alert(text);
+    return Promise.resolve({});
+}
+
+function confirmAction(title, text, confirmButtonText = 'Aceptar') {
+    if (window.Swal) {
+        return Swal.fire({
+            icon: 'warning',
+            title,
+            text,
+            showCancelButton: true,
+            confirmButtonText,
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#dc3545',
+            cancelButtonColor: '#6b7280'
+        });
+    }
+
+    return Promise.resolve({
+        isConfirmed: confirm(text)
+    });
+}
+
+async function showSaleSuccess(sale) {
+    const total = Number(sale.total ?? 0).toFixed(2);
+
+    if (window.Swal) {
+        const result = await Swal.fire({
+            icon: 'success',
+            title: 'Venta completada',
+            html: `La venta <strong>#${sale.id}</strong> se registro correctamente por <strong>$${total}</strong>.`,
+            showConfirmButton: true,
+            confirmButtonText: 'Imprimir factura',
+            confirmButtonColor: '#1d4ed8',
+            showDenyButton: true,
+            denyButtonText: 'Ver historial',
+            denyButtonColor: '#667eea',
+            showCancelButton: true,
+            cancelButtonText: 'Cerrar'
+        });
+
+        if (result.isConfirmed) {
+            window.open(buildPrintUrl(sale.id), '_blank', 'noopener');
+        }
+
+        if (result.isDenied) {
+            window.location.href = salesHistoryUrl;
+        }
+
+        return;
+    }
+
+    alert(`Venta completada exitosamente. ID: ${sale.id}`);
+}
+
 function renderProducts(productList = products) {
     const productsList = document.getElementById('productsList');
+
+    if (!Array.isArray(productList) || productList.length === 0) {
+        productsList.innerHTML = `
+            <div class="text-center text-muted">
+                <i class="fas fa-box-open d-block mb-2"></i>
+                No hay productos disponibles para vender.
+            </div>
+        `;
+        return;
+    }
+
     productsList.innerHTML = productList.map(product => `
         <div class="product-card" onclick="selectProduct(${product.id})">
             <div class="product-image"><i class="fas fa-utensils"></i></div>
             <h6 style="margin: 8px 0; font-size: 12px;">${product.name}</h6>
             <p style="margin: 0; color: #007bff; font-weight: bold;">$${parseFloat(product.price).toFixed(2)}</p>
             <small style="color: #999;">Stock: ${product.stock}</small>
+            <div style="margin-top: 6px; font-size: 11px; color: #666;">${product.product_type === 'combo' ? 'Combo' : 'Producto'}</div>
         </div>
     `).join('');
 }
 
 function renderPaymentMethods() {
     const select = document.getElementById('paymentMethod');
+
+    if (!Array.isArray(paymentMethods) || paymentMethods.length === 0) {
+        select.disabled = true;
+        select.innerHTML = '<option value="">No hay metodos activos</option>';
+        return;
+    }
+
+    select.disabled = false;
     select.innerHTML = '<option value="">Seleccionar metodo...</option>' + paymentMethods.map(method => `
         <option value="${method.id}">${method.name}</option>
     `).join('');
 }
 
 function selectProduct(productId) {
-    selectedProduct = products.find(p => p.id === productId);
-    if (selectedProduct && selectedProduct.stock > 0) {
-        document.getElementById('modalProductName').textContent = selectedProduct.name;
-        document.getElementById('quantityInput').value = 1;
-        new bootstrap.Modal(document.getElementById('quantityModal')).show();
-    } else {
-        alert('Producto sin stock disponible');
-    }
-}
+    const selectedProduct = products.find(product => Number(product.id) === Number(productId)) || null;
 
-function addToCartConfirm() {
-    const quantity = parseInt(document.getElementById('quantityInput').value);
-    if (quantity > 0 && quantity <= selectedProduct.stock) {
-        addToCart(selectedProduct, quantity);
-        bootstrap.Modal.getInstance(document.getElementById('quantityModal')).hide();
-    } else {
-        alert('Cantidad invalida');
+    if (!selectedProduct) {
+        showMessage('error', 'Producto no disponible', 'No se encontro el producto seleccionado.');
+        return;
     }
+
+    const availableStock = Number(selectedProduct.stock ?? 0);
+    const currentQuantityInCart = cart.find(item => Number(item.id) === Number(selectedProduct.id))?.quantity ?? 0;
+
+    if (availableStock < 1 || currentQuantityInCart >= availableStock) {
+        showMessage('warning', 'Stock agotado', 'Producto sin stock disponible.');
+        return;
+    }
+
+    addToCart(selectedProduct, 1);
 }
 
 function addToCart(product, quantity) {
-    const existingItem = cart.find(item => item.id === product.id);
+    const existingItem = cart.find(item => Number(item.id) === Number(product.id));
+
     if (existingItem) {
         existingItem.quantity += quantity;
     } else {
-        cart.push({ ...product, quantity });
+        cart.push({
+            ...product,
+            price: Number(product.price),
+            stock: Number(product.stock ?? 0),
+            quantity
+        });
     }
+
     renderCart();
     updateTotals();
 }
 
 function removeFromCart(productId) {
-    cart = cart.filter(item => item.id !== productId);
+    cart = cart.filter(item => Number(item.id) !== Number(productId));
     renderCart();
     updateTotals();
 }
 
 function updateQuantity(productId, newQuantity) {
-    const item = cart.find(i => i.id === productId);
-    if (item) {
-        if (newQuantity > 0) {
-            item.quantity = newQuantity;
-        } else {
-            removeFromCart(productId);
-        }
+    const item = cart.find(cartItem => Number(cartItem.id) === Number(productId));
+
+    if (!item) {
+        return;
+    }
+
+    const availableStock = Number(products.find(product => Number(product.id) === Number(productId))?.stock ?? item.stock ?? 0);
+
+    if (newQuantity > availableStock) {
+        showMessage('warning', 'Stock insuficiente', `No puedes superar el stock disponible (${availableStock}).`);
+        return;
+    }
+
+    if (newQuantity > 0) {
+        item.quantity = newQuantity;
         renderCart();
         updateTotals();
+        return;
     }
+
+    removeFromCart(productId);
 }
 
 function renderCart() {
     const cartItems = document.getElementById('cartItems');
+
     if (cart.length === 0) {
         cartItems.innerHTML = '<p class="text-muted text-center">El carrito esta vacio</p>';
         document.getElementById('completeBtn').disabled = true;
@@ -297,7 +458,7 @@ function renderCart() {
 
 function updateTotals() {
     const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    const discount = 0; // Sera calculado con cupones
+    const discount = 0;
     const tax = (subtotal - discount) * 0.16;
     const total = subtotal - discount + tax;
 
@@ -307,8 +468,10 @@ function updateTotals() {
     document.getElementById('total').textContent = '$' + total.toFixed(2);
 }
 
-function clearCart() {
-    if (confirm('Desea vaciar el carrito?')) {
+async function clearCart() {
+    const confirmation = await confirmAction('Vaciar carrito', 'Desea vaciar el carrito?', 'Vaciar');
+
+    if (confirmation.isConfirmed) {
         cart = [];
         renderCart();
         updateTotals();
@@ -317,22 +480,36 @@ function clearCart() {
 
 function applyCoupon() {
     const code = document.getElementById('couponCode').value;
+
     if (!code) {
-        alert('Ingrese un codigo de cupon');
+        showMessage('info', 'Cupon requerido', 'Ingrese un codigo de cupon.');
         return;
     }
-    alert('Funcionalidad de cupones en desarrollo');
+
+    showMessage('info', 'En desarrollo', 'La funcionalidad de cupones estara disponible pronto.');
 }
 
-function completeSale() {
+async function completeSale() {
+    if (cart.length === 0) {
+        showMessage('warning', 'Carrito vacio', 'Agrega al menos un producto al carrito.');
+        return;
+    }
+
+    if (!activeBoxId) {
+        showMessage('warning', 'Caja no disponible', 'No hay una caja abierta para registrar la venta.');
+        return;
+    }
+
     const paymentMethodId = document.getElementById('paymentMethod').value;
+
     if (!paymentMethodId) {
-        alert('Seleccione un metodo de pago');
+        showMessage('warning', 'Metodo de pago requerido', 'Seleccione un metodo de pago.');
         return;
     }
 
     const saleData = {
-        box_id: 1,
+        box_id: activeBoxId,
+        payment_method_id: Number(paymentMethodId),
         items: cart.map(item => ({
             product_id: item.id,
             quantity: item.quantity,
@@ -340,35 +517,77 @@ function completeSale() {
         }))
     };
 
-    fetch('/pos/api/sales', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-        },
-        body: JSON.stringify(saleData)
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.id) {
-            alert('Venta completada exitosamente. ID: ' + data.id);
-            cart = [];
-            renderCart();
-            updateTotals();
-            document.getElementById('paymentMethod').value = '';
-            document.getElementById('couponCode').value = '';
+    const completeBtn = document.getElementById('completeBtn');
+    completeBtn.disabled = true;
+
+    try {
+        const response = await fetch('/pos/api/sales', {
+            method: 'POST',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrfToken
+            },
+            body: JSON.stringify(saleData)
+        });
+
+        const data = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+            throw new Error(extractErrorMessage(data, 'Error al completar la venta'));
         }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('Error al completar la venta');
-    });
+
+        if (!data.id) {
+            throw new Error('La venta no se pudo registrar correctamente.');
+        }
+
+        syncProductStockFromCart();
+        cart = [];
+        renderCart();
+        updateTotals();
+        document.getElementById('paymentMethod').value = '';
+        document.getElementById('couponCode').value = '';
+        await showSaleSuccess(data);
+    } catch (error) {
+        console.error('Error al completar la venta:', error);
+        await showMessage('error', 'No se pudo completar la venta', error.message || 'Error al completar la venta');
+    } finally {
+        if (cart.length > 0) {
+            completeBtn.disabled = false;
+        }
+    }
 }
 
-document.getElementById('searchProducts').addEventListener('input', function(e) {
-    const search = normalizeText(e.target.value.trim());
+function syncProductStockFromCart() {
+    cart.forEach(item => {
+        const product = products.find(productItem => Number(productItem.id) === Number(item.id));
+
+        if (product) {
+            product.stock = Math.max(0, Number(product.stock ?? 0) - Number(item.quantity ?? 0));
+        }
+    });
+
+    applyProductFilter();
+}
+
+function applyProductFilter() {
+    const search = normalizeText(document.getElementById('searchProducts').value.trim());
     const filtered = products.filter(product => normalizeText(product.name).includes(search));
     renderProducts(filtered);
-});
+}
+
+function extractErrorMessage(data, fallbackMessage) {
+    if (data?.errors) {
+        const validationMessages = Object.values(data.errors).flat();
+
+        if (validationMessages.length > 0) {
+            return validationMessages.join(' ');
+        }
+    }
+
+    return data?.message || data?.error || fallbackMessage;
+}
+
+document.getElementById('searchProducts').addEventListener('input', applyProductFilter);
 </script>
 @endsection
