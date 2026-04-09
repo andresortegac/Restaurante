@@ -242,31 +242,6 @@
                 </div>
             </div>
 
-            <div class="card module-card service-card">
-                <div class="card-header"><h5 class="mb-0">Historial</h5></div>
-                <div class="card-body">
-                    <div class="history-list">
-                        @forelse($recentOrders as $recentOrder)
-                            <div class="history-item">
-                                <div class="d-flex justify-content-between gap-3">
-                                    <div><strong>{{ $recentOrder->order_number }}</strong><div class="seat-note">{{ $recentOrder->created_at->format('d/m/Y H:i') }}</div></div>
-                                    <span class="badge rounded-pill {{ $recentOrder->status === 'open' ? 'text-bg-primary' : ($recentOrder->status === 'paid' ? 'text-bg-success' : 'text-bg-secondary') }}">{{ $recentOrder->status === 'open' ? 'Abierto' : ($recentOrder->status === 'paid' ? 'Pagado' : 'Cancelado') }}</span>
-                                </div>
-                                <div class="mt-3 d-flex justify-content-between gap-3">
-                                    <div><div class="summary-kicker">Cliente</div><div class="seat-note">{{ $recentOrder->customer_name ?: 'Sin nombre registrado' }}</div></div>
-                                    <div class="text-end"><div class="summary-kicker">Total</div><div class="fw-bold">${{ number_format((float) $recentOrder->total, 2) }}</div></div>
-                                </div>
-                            </div>
-                        @empty
-                            <div class="empty-state py-4">
-                                <i class="fas fa-clock-rotate-left"></i>
-                                <h5 class="mb-2">Sin historial todavia</h5>
-                                <p class="mb-0">Los pedidos de esta mesa apareceran aqui.</p>
-                            </div>
-                        @endforelse
-                    </div>
-                </div>
-            </div>
         </aside>
     </div>
 </div>

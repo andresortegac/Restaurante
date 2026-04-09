@@ -45,6 +45,51 @@ class OrderManagementController extends Controller
         ]);
     }
 
+    public function history(Request $request)
+    {
+        if ($response = $this->denyIfUnauthorized($this->orderModulePermissions())) {
+            return $response;
+        }
+
+        $filters = $request->validate([
+            'search' => ['nullable', 'string', 'max:255'],
+            'status' => ['nullable', 'in:open,paid,cancelled'],
+            'table_id' => ['nullable', 'integer', 'exists:restaurant_tables,id'],
+        ]);
+
+        $orders = TableOrder::query()
+            ->with(['table', 'previousTable', 'openedBy', 'sale'])
+            ->withCount('items')
+            ->when($filters['search'] ?? null, function ($query, string $search) {
+                $query->where(function ($nestedQuery) use ($search) {
+                    $nestedQuery
+                        ->where('order_number', 'like', '%' . $search . '%')
+                        ->orWhere('customer_name', 'like', '%' . $search . '%')
+                        ->orWhere('notes', 'like', '%' . $search . '%');
+                });
+            })
+            ->when($filters['status'] ?? null, fn ($query, string $status) => $query->where('status', $status))
+            ->when($filters['table_id'] ?? null, fn ($query, int $tableId) => $query->where('restaurant_table_id', $tableId))
+            ->latest()
+            ->paginate(15)
+            ->withQueryString();
+
+        return view('orders.history', [
+            'orders' => $orders,
+            'filters' => $filters,
+            'tables' => RestaurantTable::query()
+                ->orderBy('area')
+                ->orderBy('name')
+                ->get(['id', 'name', 'code', 'area']),
+            'summary' => [
+                'total' => TableOrder::query()->count(),
+                'open' => TableOrder::query()->where('status', 'open')->count(),
+                'paid' => TableOrder::query()->where('status', 'paid')->count(),
+                'today' => TableOrder::query()->whereDate('created_at', today())->count(),
+            ],
+        ]);
+    }
+
     public function show(RestaurantTable $table)
     {
         if ($response = $this->denyIfUnauthorized($this->orderModulePermissions())) {
@@ -58,10 +103,6 @@ class OrderManagementController extends Controller
         $table->load([
             'openOrder.items.product',
             'openOrder.openedBy',
-            'orders' => fn ($query) => $query
-                ->with(['items', 'previousTable'])
-                ->latest()
-                ->take(10),
         ]);
 
         $openOrder = $table->openOrder;
@@ -74,7 +115,6 @@ class OrderManagementController extends Controller
             'availableProducts' => $this->availableProducts(),
             'orderRows' => $this->orderRows(),
             'transferTargets' => $this->transferTargets($table),
-            'recentOrders' => $table->orders,
             'activeBox' => $this->activeBox(),
         ]);
     }

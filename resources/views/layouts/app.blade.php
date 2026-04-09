@@ -64,7 +64,8 @@
                 $isPosRoute = request()->routeIs('pos.*');
                 $isProductsRoute = request()->routeIs('products.*');
                 $isTablesRoute = request()->routeIs('tables.*');
-                $isOrdersRoute = request()->routeIs('orders.*');
+                $isOrdersHistoryRoute = request()->routeIs('orders.history.*');
+                $isOrdersRoute = request()->routeIs('orders.*') && ! $isOrdersHistoryRoute;
             @endphp
             
             <ul class="sidebar-menu">
@@ -166,16 +167,19 @@
 
                 @if(Auth::user()->hasRole('Admin') || Auth::user()->hasAnyPermission(['orders.view', 'orders.create', 'orders.edit']))
                 <li>
-                    <a href="#" data-toggle-menu class="{{ $isOrdersRoute ? 'expanded' : '' }}">
+                    <a href="#" data-toggle-menu class="{{ $isOrdersRoute || $isOrdersHistoryRoute ? 'expanded' : '' }}">
                         <i class="fas fa-receipt"></i> Pedidos
                         <span class="toggle-icon float-end"><i class="fas fa-chevron-right"></i></span>
                     </a>
-                    <ul class="sidebar-submenu {{ $isOrdersRoute ? 'show' : '' }}">
+                    <ul class="sidebar-submenu {{ $isOrdersRoute || $isOrdersHistoryRoute ? 'show' : '' }}">
                         @if(Auth::user()->hasRole('Admin') || Auth::user()->hasAnyPermission(['orders.view', 'orders.create']))
-                        <li><a href="{{ route('orders.index') }}" class="{{ request()->routeIs('orders.*') ? 'active' : '' }}"><i class="fas fa-clipboard-list"></i> Pedidos por mesa</a></li>
+                        <li><a href="{{ route('orders.index') }}" class="{{ $isOrdersRoute ? 'active' : '' }}"><i class="fas fa-clipboard-list"></i> Pedidos por mesa</a></li>
                         @endif
                         @if(Auth::user()->hasRole('Admin') || Auth::user()->hasAnyPermission(['orders.view', 'orders.edit']))
                         <li><a href="{{ route('orders.index') }}#active-orders"><i class="fas fa-fire-burner"></i> Activos y cocina</a></li>
+                        @endif
+                        @if(Auth::user()->hasRole('Admin') || Auth::user()->hasPermission('orders.view'))
+                        <li><a href="{{ route('orders.history.index') }}" class="{{ $isOrdersHistoryRoute ? 'active' : '' }}"><i class="fas fa-clock-rotate-left"></i> Historial de pedidos</a></li>
                         @endif
                     </ul>
                 </li>

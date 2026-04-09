@@ -64,6 +64,7 @@ Route::middleware('auth')->group(function () {
     // Gestion de pedidos por mesa
     Route::prefix('orders')->name('orders.')->group(function () {
         Route::get('/', [OrderManagementController::class, 'index'])->name('index');
+        Route::get('/history', [OrderManagementController::class, 'history'])->name('history.index');
         Route::get('/tables/{table}', [OrderManagementController::class, 'show'])->name('show');
         Route::post('/tables/{table}', [OrderManagementController::class, 'storeOrder'])->name('store');
         Route::get('/{order}/checkout', [OrderManagementController::class, 'showCheckout'])->name('checkout');
