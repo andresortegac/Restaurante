@@ -64,6 +64,7 @@
                 $isPosRoute = request()->routeIs('pos.*');
                 $isProductsRoute = request()->routeIs('products.*');
                 $isTablesRoute = request()->routeIs('tables.*');
+                $isOrdersRoute = request()->routeIs('orders.*');
             @endphp
             
             <ul class="sidebar-menu">
@@ -163,38 +164,35 @@
                 </li>
                 @endif
 
-                @if(Auth::user()->hasAnyPermission(['orders.view', 'orders.create']))
+                @if(Auth::user()->hasRole('Admin') || Auth::user()->hasAnyPermission(['orders.view', 'orders.create', 'orders.edit']))
                 <li>
-                    <a href="#" data-toggle-menu>
+                    <a href="#" data-toggle-menu class="{{ $isOrdersRoute ? 'expanded' : '' }}">
                         <i class="fas fa-receipt"></i> Pedidos
                         <span class="toggle-icon float-end"><i class="fas fa-chevron-right"></i></span>
                     </a>
-                    <ul class="sidebar-submenu">
-                        @if(Auth::user()->hasPermission('orders.view'))
-                        <li><a href="#"><i class="fas fa-list"></i> Ver Pedidos</a></li>
+                    <ul class="sidebar-submenu {{ $isOrdersRoute ? 'show' : '' }}">
+                        @if(Auth::user()->hasRole('Admin') || Auth::user()->hasAnyPermission(['orders.view', 'orders.create']))
+                        <li><a href="{{ route('orders.index') }}" class="{{ request()->routeIs('orders.*') ? 'active' : '' }}"><i class="fas fa-clipboard-list"></i> Pedidos por mesa</a></li>
                         @endif
-                        @if(Auth::user()->hasPermission('orders.create'))
-                        <li><a href="#"><i class="fas fa-plus"></i> Nuevo Pedido</a></li>
+                        @if(Auth::user()->hasRole('Admin') || Auth::user()->hasAnyPermission(['orders.view', 'orders.edit']))
+                        <li><a href="{{ route('orders.index') }}#active-orders"><i class="fas fa-fire-burner"></i> Activos y cocina</a></li>
                         @endif
                     </ul>
                 </li>
                 @endif
 
-                @if(Auth::user()->hasRole('Admin') || Auth::user()->hasAnyPermission(['tables.view', 'tables.create', 'tables.edit', 'tables.delete', 'orders.view', 'orders.create', 'orders.edit']))
+                @if(Auth::user()->hasRole('Admin') || Auth::user()->hasAnyPermission(['tables.view', 'tables.create', 'tables.edit', 'tables.delete']))
                 <li>
                     <a href="#" data-toggle-menu class="{{ $isTablesRoute ? 'expanded' : '' }}">
                         <i class="fas fa-chair"></i> Mesas
                         <span class="toggle-icon float-end"><i class="fas fa-chevron-right"></i></span>
                     </a>
                     <ul class="sidebar-submenu {{ $isTablesRoute ? 'show' : '' }}">
-                        @if(Auth::user()->hasRole('Admin') || Auth::user()->hasAnyPermission(['tables.view', 'orders.view']))
-                        <li><a href="{{ route('tables.index') }}" class="{{ request()->routeIs('tables.index') ? 'active' : '' }}"><i class="fas fa-list"></i> Vista general</a></li>
+                        @if(Auth::user()->hasRole('Admin') || Auth::user()->hasPermission('tables.view'))
+                        <li><a href="{{ route('tables.index') }}" class="{{ request()->routeIs('tables.index') || request()->routeIs('tables.show') || request()->routeIs('tables.edit') ? 'active' : '' }}"><i class="fas fa-list"></i> Ver mesas</a></li>
                         @endif
-                        @if(Auth::user()->hasRole('Admin') || Auth::user()->hasAnyPermission(['tables.create']))
+                        @if(Auth::user()->hasRole('Admin') || Auth::user()->hasPermission('tables.create'))
                         <li><a href="{{ route('tables.create') }}" class="{{ request()->routeIs('tables.create') ? 'active' : '' }}"><i class="fas fa-plus"></i> Nueva mesa</a></li>
-                        @endif
-                        @if(Auth::user()->hasRole('Admin') || Auth::user()->hasAnyPermission(['orders.create', 'orders.edit']))
-                        <li><a href="{{ route('tables.index') }}#service-flow"><i class="fas fa-arrow-right-arrow-left"></i> Pedidos y cuentas</a></li>
                         @endif
                     </ul>
                 </li>

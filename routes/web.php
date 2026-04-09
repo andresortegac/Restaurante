@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\OrderManagementController;
 use App\Http\Controllers\ProductManagementController;
 use App\Http\Controllers\TableManagementController;
 use Illuminate\Support\Facades\Route;
@@ -58,11 +59,17 @@ Route::middleware('auth')->group(function () {
         Route::get('/{table}/edit', [TableManagementController::class, 'edit'])->name('edit');
         Route::put('/{table}', [TableManagementController::class, 'update'])->name('update');
         Route::delete('/{table}', [TableManagementController::class, 'destroy'])->name('destroy');
+    });
 
-        Route::post('/{table}/orders', [TableManagementController::class, 'storeOrder'])->name('orders.store');
-        Route::post('/orders/{order}/transfer', [TableManagementController::class, 'transferOrder'])->name('orders.transfer');
-        Route::put('/orders/{order}/split', [TableManagementController::class, 'updateSplit'])->name('orders.split');
-        Route::post('/orders/{order}/close', [TableManagementController::class, 'closeOrder'])->name('orders.close');
+    // Gestion de pedidos por mesa
+    Route::prefix('orders')->name('orders.')->group(function () {
+        Route::get('/', [OrderManagementController::class, 'index'])->name('index');
+        Route::get('/tables/{table}', [OrderManagementController::class, 'show'])->name('show');
+        Route::post('/tables/{table}', [OrderManagementController::class, 'storeOrder'])->name('store');
+        Route::post('/{order}/transfer', [OrderManagementController::class, 'transferOrder'])->name('transfer');
+        Route::put('/{order}/split', [OrderManagementController::class, 'updateSplit'])->name('split');
+        Route::post('/{order}/close', [OrderManagementController::class, 'closeOrder'])->name('close');
+        Route::get('/{order}/kitchen-ticket', [OrderManagementController::class, 'printKitchenTicket'])->name('kitchen-ticket');
     });
 
     // API para verificar roles y permisos

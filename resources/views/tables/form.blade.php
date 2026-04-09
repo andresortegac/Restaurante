@@ -12,7 +12,7 @@
             <div>
                 <span class="module-kicker">Gestion de Mesas / RF-06 y RF-07</span>
                 <h1>{{ $pageTitle }}</h1>
-                <p>Configura la identificacion de la mesa, su area, capacidad y estado operativo para que quede disponible en el flujo de salon.</p>
+                <p>Configura la identificacion de la mesa, su area, capacidad y estado operativo para que quede disponible en el flujo del salon y en el modulo de pedidos.</p>
             </div>
             <div class="summary-group">
                 <a href="{{ route('tables.index') }}" class="btn btn-outline-secondary">
@@ -88,7 +88,7 @@
                     </div>
 
                     <div class="form-actions">
-                        <a href="{{ $restaurantTable->exists ? route('tables.show', $restaurantTable) : route('tables.index') }}" class="btn btn-outline-secondary">Cancelar</a>
+                        <a href="{{ route('tables.index') }}" class="btn btn-outline-secondary">Cancelar</a>
                         <button type="submit" class="btn btn-primary">{{ $submitLabel }}</button>
                     </div>
                 </form>

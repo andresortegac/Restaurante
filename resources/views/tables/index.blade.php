@@ -8,6 +8,7 @@
         $canCreateTable = $user->hasRole('Admin') || $user->hasPermission('tables.create');
         $canEditTable = $user->hasRole('Admin') || $user->hasPermission('tables.edit');
         $canDeleteTable = $user->hasRole('Admin') || $user->hasPermission('tables.delete');
+        $canManageOrders = $user->hasRole('Admin') || $user->hasAnyPermission(['orders.view', 'orders.create', 'orders.edit']);
         $statusLabels = [
             'free' => 'Libre',
             'occupied' => 'Ocupada',
@@ -18,21 +19,18 @@
             'occupied' => 'status-occupied',
             'reserved' => 'status-reserved',
         ];
-        $serviceTables = $tables->filter(function ($restaurantTable) {
-            return $restaurantTable->is_active && ($restaurantTable->status !== 'free' || $restaurantTable->openOrder);
-        })->values();
     @endphp
 
     <div class="module-page">
         <section class="module-hero">
             <div>
-                <span class="module-kicker">Gestion de Mesas / RF-06 al RF-10</span>
-                <h1>Mesas, pedidos y cuentas</h1>
-                <p>Administra las mesas del salon, visualiza su estado en tiempo real y entra al flujo operativo para asignar pedidos, transferirlos o dividir la cuenta.</p>
+                <span class="module-kicker">Gestion de Mesas / RF-06 y RF-07</span>
+                <h1>Configuracion de mesas</h1>
+                <p>Crea, edita y organiza las mesas del salon. La toma de pedidos para meseros ahora se realiza desde el modulo lateral de <strong>Pedidos</strong>.</p>
             </div>
             <div class="summary-group">
                 <span class="summary-chip">{{ $summary['total'] }} mesas activas</span>
-                <span class="summary-chip">{{ $summary['openOrders'] }} pedidos abiertos</span>
+                <span class="summary-chip">{{ $summary['occupied'] }} ocupadas</span>
                 <span class="summary-chip">{{ $summary['reserved'] }} reservadas</span>
             </div>
         </section>
@@ -66,14 +64,21 @@
 
         <div class="module-toolbar">
             <div>
-                <h5 class="mb-1">Vista general del salon</h5>
-                <p class="table-note mb-0">Cada tarjeta muestra el estado actual de la mesa y te lleva directo al detalle operativo.</p>
+                <h5 class="mb-1">Catalogo del salon</h5>
+                <p class="table-note mb-0">Cada tarjeta muestra la configuracion de la mesa y un acceso rapido al flujo de pedidos cuando el usuario tiene permisos.</p>
             </div>
-            @if($canCreateTable)
-                <a href="{{ route('tables.create') }}" class="btn btn-primary">
-                    <i class="fas fa-plus"></i> Nueva mesa
-                </a>
-            @endif
+            <div class="table-card-actions">
+                @if($canManageOrders)
+                    <a href="{{ route('orders.index') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-receipt"></i> Ir a pedidos
+                    </a>
+                @endif
+                @if($canCreateTable)
+                    <a href="{{ route('tables.create') }}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Nueva mesa
+                    </a>
+                @endif
+            </div>
         </div>
 
         @if($tables->isEmpty())
@@ -82,7 +87,7 @@
                     <div class="empty-state">
                         <i class="fas fa-chair"></i>
                         <h5 class="mb-2">Todavia no hay mesas configuradas</h5>
-                        <p class="mb-0">Crea la primera mesa para empezar a asignar pedidos desde el salon.</p>
+                        <p class="mb-0">Crea la primera mesa para dejar listo el salon y luego tomar pedidos desde el modulo correspondiente.</p>
                     </div>
                 </div>
             </div>
@@ -113,13 +118,18 @@
                                 <div class="seat-note">personas</div>
                             </div>
                             <div class="meta-box">
-                                <div class="summary-kicker">Pedido abierto</div>
+                                <div class="summary-kicker">Disponibilidad</div>
+                                <div class="fw-bold">{{ $restaurantTable->is_active ? 'Activa' : 'Inactiva' }}</div>
+                                <div class="seat-note">{{ $restaurantTable->notes ?: 'Sin notas internas.' }}</div>
+                            </div>
+                            <div class="meta-box">
+                                <div class="summary-kicker">Pedido actual</div>
                                 @if($openOrder)
                                     <div class="fw-bold">{{ $openOrder->order_number }}</div>
-                                    <div class="seat-note">{{ $itemsCount }} items cargados</div>
+                                    <div class="seat-note">{{ $itemsCount }} items registrados</div>
                                 @else
-                                    <div class="fw-bold">Sin pedido</div>
-                                    <div class="seat-note">Lista para recibir clientes</div>
+                                    <div class="fw-bold">Sin pedido abierto</div>
+                                    <div class="seat-note">La mesa esta lista para servicio</div>
                                 @endif
                             </div>
                             <div class="meta-box">
@@ -127,17 +137,18 @@
                                 <div class="fw-bold">${{ number_format((float) ($openOrder?->total ?? 0), 2) }}</div>
                                 <div class="seat-note">{{ $openOrder?->customer_name ?: 'Sin cliente asociado' }}</div>
                             </div>
-                            <div class="meta-box">
-                                <div class="summary-kicker">Disponibilidad</div>
-                                <div class="fw-bold">{{ $restaurantTable->is_active ? 'Activa' : 'Inactiva' }}</div>
-                                <div class="seat-note">{{ $restaurantTable->notes ?: 'Sin notas internas.' }}</div>
-                            </div>
                         </div>
 
                         <div class="table-card-actions">
-                            <a href="{{ route('tables.show', $restaurantTable) }}" class="btn btn-primary btn-sm">
-                                Gestionar mesa
+                            <a href="{{ route('tables.show', $restaurantTable) }}" class="btn btn-outline-primary btn-sm">
+                                Ver detalle
                             </a>
+
+                            @if($canManageOrders)
+                                <a href="{{ route('orders.show', $restaurantTable) }}" class="btn btn-primary btn-sm">
+                                    {{ $openOrder ? 'Continuar pedido' : 'Tomar pedido' }}
+                                </a>
+                            @endif
 
                             @if($canEditTable)
                                 <a href="{{ route('tables.edit', $restaurantTable) }}" class="btn btn-outline-primary btn-sm">
@@ -157,62 +168,5 @@
                 @endforeach
             </div>
         @endif
-
-        <section class="mt-4" id="service-flow">
-            <div class="card module-card">
-                <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-3">
-                    <div>
-                        <h5 class="mb-1">Pedidos y cuentas en curso</h5>
-                        <p class="table-note mb-0">Acceso rapido a las mesas reservadas u ocupadas para continuar el servicio.</p>
-                    </div>
-                    <a href="{{ route('tables.index') }}#service-flow" class="btn btn-outline-secondary btn-sm">Actualizar vista</a>
-                </div>
-                <div class="card-body">
-                    @if($serviceTables->isEmpty())
-                        <div class="empty-state py-4">
-                            <i class="fas fa-receipt"></i>
-                            <h5 class="mb-2">No hay servicio activo en este momento</h5>
-                            <p class="mb-0">Cuando una mesa tenga pedido abierto o quede reservada aparecera en este panel.</p>
-                        </div>
-                    @else
-                        <div class="tables-grid">
-                            @foreach($serviceTables as $serviceTable)
-                                @php
-                                    $serviceOrder = $serviceTable->openOrder;
-                                    $serviceStatusLabel = $statusLabels[$serviceTable->status] ?? ucfirst($serviceTable->status);
-                                    $serviceStatusClass = $statusClasses[$serviceTable->status] ?? 'status-free';
-                                @endphp
-
-                                <div class="table-card">
-                                    <div class="table-card-header">
-                                        <div>
-                                            <div class="summary-kicker">{{ $serviceTable->area ?: 'Salon principal' }}</div>
-                                            <h5 class="mb-1">{{ $serviceTable->name }}</h5>
-                                            <div class="seat-note">Codigo {{ $serviceTable->code }}</div>
-                                        </div>
-                                        <span class="status-pill {{ $serviceStatusClass }}">{{ $serviceStatusLabel }}</span>
-                                    </div>
-
-                                    <div class="meta-box mb-3">
-                                        <div class="summary-kicker">Servicio</div>
-                                        @if($serviceOrder)
-                                            <div class="fw-bold">{{ $serviceOrder->order_number }}</div>
-                                            <div class="seat-note">${{ number_format((float) $serviceOrder->total, 2) }} acumulados</div>
-                                        @else
-                                            <div class="fw-bold">Sin pedido abierto</div>
-                                            <div class="seat-note">Mesa en espera o reservada</div>
-                                        @endif
-                                    </div>
-
-                                    <a href="{{ route('tables.show', $serviceTable) }}#service-flow" class="btn btn-primary w-100">
-                                        Abrir flujo de servicio
-                                    </a>
-                                </div>
-                            @endforeach
-                        </div>
-                    @endif
-                </div>
-            </div>
-        </section>
     </div>
 @endsection

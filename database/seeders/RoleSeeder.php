@@ -61,7 +61,6 @@ class RoleSeeder extends Seeder
                 'orders.view',
                 'orders.create',
                 'orders.edit',
-                'tables.view',
                 'customers.view',
             ])->pluck('id')->toArray();
             $waiterRole->permissions()->sync($waiterPermissions);
