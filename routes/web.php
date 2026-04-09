@@ -66,6 +66,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/', [OrderManagementController::class, 'index'])->name('index');
         Route::get('/tables/{table}', [OrderManagementController::class, 'show'])->name('show');
         Route::post('/tables/{table}', [OrderManagementController::class, 'storeOrder'])->name('store');
+        Route::get('/{order}/checkout', [OrderManagementController::class, 'showCheckout'])->name('checkout');
+        Route::post('/{order}/checkout', [OrderManagementController::class, 'processCheckout'])->name('checkout.store');
         Route::post('/{order}/transfer', [OrderManagementController::class, 'transferOrder'])->name('transfer');
         Route::put('/{order}/split', [OrderManagementController::class, 'updateSplit'])->name('split');
         Route::post('/{order}/close', [OrderManagementController::class, 'closeOrder'])->name('close');

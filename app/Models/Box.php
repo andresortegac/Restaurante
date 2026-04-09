@@ -37,6 +37,11 @@ class Box extends Model
         return $this->hasMany(Sale::class);
     }
 
+    public function movements()
+    {
+        return $this->hasMany(BoxMovement::class);
+    }
+
     public function isOpen()
     {
         return $this->status === 'open';
@@ -56,5 +61,12 @@ class Box extends Model
         $this->status = 'closed';
         $this->closed_at = now();
         $this->save();
+    }
+
+    public function currentBalance(): float
+    {
+        $movementTotal = (float) $this->movements()->sum('amount');
+
+        return (float) $this->opening_balance + $movementTotal;
     }
 }

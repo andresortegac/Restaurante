@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Enviando a cocina</title>
+    <title>{{ $title ?? 'Enviando a cocina' }}</title>
     <style>
         body { margin: 0; font-family: Arial, sans-serif; background: #f4f6fb; color: #1f2937; display: grid; place-items: center; min-height: 100vh; }
         .card { width: min(520px, calc(100vw - 32px)); background: #fff; border-radius: 18px; padding: 28px; box-shadow: 0 20px 50px rgba(15, 23, 42, 0.12); }
@@ -17,11 +17,11 @@
 </head>
 <body>
     <div class="card">
-        <h1>Preparando comanda de cocina</h1>
-        <p>Estamos abriendo la impresion de cocina y en unos segundos volveras al pedido de la mesa.</p>
+        <h1>{{ $title ?? 'Preparando comanda de cocina' }}</h1>
+        <p>{{ $message ?? 'Estamos abriendo la impresion de cocina y en unos segundos volveras al pedido de la mesa.' }}</p>
         <div class="actions">
-            <a class="btn btn-primary" href="{{ $printUrl }}" target="_blank" rel="noopener noreferrer">Abrir impresion</a>
-            <a class="btn btn-secondary" href="{{ $redirectUrl }}">Volver al pedido</a>
+            <a class="btn btn-primary" href="{{ $printUrl }}" target="_blank" rel="noopener noreferrer">{{ $primaryActionLabel ?? 'Abrir impresion' }}</a>
+            <a class="btn btn-secondary" href="{{ $redirectUrl }}">{{ $secondaryActionLabel ?? 'Volver al pedido' }}</a>
         </div>
     </div>
 

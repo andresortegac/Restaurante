@@ -193,6 +193,20 @@
                     <strong>Estado</strong>
                     <span>{{ ucfirst($invoice->status) }}</span>
                 </div>
+                <div class="meta-card">
+                    <strong>Origen</strong>
+                    <span>
+                        @if($sale->tableOrder)
+                            {{ $sale->tableOrder->order_number }} / {{ $sale->tableOrder->table?->name ?? 'Mesa no disponible' }}
+                        @else
+                            Punto de venta
+                        @endif
+                    </span>
+                </div>
+                <div class="meta-card">
+                    <strong>Cliente</strong>
+                    <span>{{ $sale->customer_name ?: 'Consumidor final' }}</span>
+                </div>
             </div>
 
             <table class="items-table">
@@ -207,7 +221,7 @@
                 <tbody>
                     @foreach($sale->items as $item)
                         <tr>
-                            <td>{{ $item->product?->name ?? 'Producto eliminado' }}</td>
+                            <td>{{ $item->product_name ?: ($item->product?->name ?? 'Producto eliminado') }}</td>
                             <td>{{ $item->quantity }}</td>
                             <td>${{ number_format((float) $item->unit_price, 2) }}</td>
                             <td>${{ number_format((float) $item->subtotal, 2) }}</td>
@@ -230,6 +244,27 @@
                     <div class="value">${{ number_format((float) $sale->total, 2) }}</div>
                 </div>
             </div>
+
+            @php
+                $payment = $sale->payments->first();
+            @endphp
+
+            @if($payment)
+                <div class="summary-grid" style="margin-top: 16px;">
+                    <div class="summary-card">
+                        <strong>Monto recibido</strong>
+                        <div class="value">${{ number_format((float) $payment->received_amount, 2) }}</div>
+                    </div>
+                    <div class="summary-card">
+                        <strong>Cambio</strong>
+                        <div class="value">${{ number_format((float) $payment->change_amount, 2) }}</div>
+                    </div>
+                    <div class="summary-card">
+                        <strong>Propina</strong>
+                        <div class="value">${{ number_format((float) $payment->tip_amount, 2) }}</div>
+                    </div>
+                </div>
+            @endif
         </div>
     </div>
 

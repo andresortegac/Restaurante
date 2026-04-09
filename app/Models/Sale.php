@@ -12,6 +12,8 @@ class Sale extends Model
     protected $fillable = [
         'user_id',
         'box_id',
+        'table_order_id',
+        'customer_name',
         'subtotal',
         'discount_amount',
         'tax_amount',
@@ -37,6 +39,11 @@ class Sale extends Model
         return $this->belongsTo(Box::class);
     }
 
+    public function tableOrder()
+    {
+        return $this->belongsTo(TableOrder::class);
+    }
+
     public function items()
     {
         return $this->hasMany(SaleItem::class);
@@ -47,15 +54,21 @@ class Sale extends Model
         return $this->hasMany(Payment::class);
     }
 
+    public function boxMovements()
+    {
+        return $this->hasMany(BoxMovement::class);
+    }
+
     public function invoice()
     {
         return $this->hasOne(Invoice::class);
     }
 
-    public function addItem($productId, $quantity, $unitPrice)
+    public function addItem($productId, $quantity, $unitPrice, ?string $productName = null)
     {
         return $this->items()->create([
             'product_id' => $productId,
+            'product_name' => $productName,
             'quantity' => $quantity,
             'unit_price' => $unitPrice,
             'subtotal' => $quantity * $unitPrice,

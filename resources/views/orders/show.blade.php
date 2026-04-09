@@ -208,10 +208,19 @@
 
                         <a href="{{ route('orders.kitchen-ticket', $openOrder) }}" target="_blank" class="btn btn-outline-primary w-100 mt-3">Reimprimir comanda</a>
 
-                        <form method="POST" action="{{ route('orders.close', $openOrder) }}" class="mt-3" onsubmit="return confirm('Deseas cerrar la cuenta y liberar esta mesa?');">
-                            @csrf
-                            <button type="submit" class="btn btn-success w-100">Cerrar cuenta y liberar mesa</button>
-                        </form>
+                        <a href="{{ route('orders.checkout', $openOrder) }}" class="btn btn-success w-100 mt-3">Cobrar y cerrar cuenta</a>
+                        @if(!$activeBox)
+                            <div class="meta-box mt-3">
+                                <div class="summary-kicker">Caja requerida</div>
+                                <div class="seat-note mb-0">Abre una caja antes de registrar el pago de esta mesa.</div>
+                            </div>
+                        @else
+                            <div class="meta-box mt-3">
+                                <div class="summary-kicker">Caja activa para el cobro</div>
+                                <div class="fw-bold">{{ $activeBox->name }}</div>
+                                <div class="seat-note mb-0">El checkout usara esta caja para guardar la venta.</div>
+                            </div>
+                        @endif
 
                         <form method="POST" action="{{ route('orders.split', $openOrder) }}" class="mt-3">
                             @csrf

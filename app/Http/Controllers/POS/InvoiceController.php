@@ -34,7 +34,7 @@ class InvoiceController extends Controller
 
     public function printSale(Sale $sale)
     {
-        $sale->load(['user', 'box', 'items.product', 'payments.paymentMethod', 'invoice']);
+        $sale->load(['user', 'box', 'items.product', 'payments.paymentMethod', 'invoice', 'tableOrder.table']);
 
         $invoice = $this->issueInvoice($sale, 'factura');
         $sale->setRelation('invoice', $invoice);
@@ -81,6 +81,7 @@ class InvoiceController extends Controller
     private function sanitizeSaleForDisplay(Sale $sale): void
     {
         $sale->status = $this->sanitizeString($sale->status);
+        $sale->customer_name = $sale->customer_name === null ? null : $this->sanitizeString($sale->customer_name);
         $sale->notes = $sale->notes === null ? null : $this->sanitizeString($sale->notes);
 
         if ($sale->relationLoaded('user') && $sale->user) {
@@ -94,10 +95,20 @@ class InvoiceController extends Controller
 
         if ($sale->relationLoaded('items')) {
             foreach ($sale->items as $item) {
+                $item->product_name = $item->product_name === null ? null : $this->sanitizeString($item->product_name);
+
                 if ($item->relationLoaded('product') && $item->product) {
                     $item->product->name = $this->sanitizeString($item->product->name);
                     $item->product->category = $item->product->category === null ? null : $this->sanitizeString($item->product->category);
                 }
+            }
+        }
+
+        if ($sale->relationLoaded('tableOrder') && $sale->tableOrder) {
+            $sale->tableOrder->order_number = $this->sanitizeString($sale->tableOrder->order_number);
+
+            if ($sale->tableOrder->relationLoaded('table') && $sale->tableOrder->table) {
+                $sale->tableOrder->table->name = $this->sanitizeString($sale->tableOrder->table->name);
             }
         }
 

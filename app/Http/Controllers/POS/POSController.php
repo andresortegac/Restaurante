@@ -65,7 +65,7 @@ class POSController extends Controller
     public function salesHistory()
     {
         $sales = Sale::query()
-            ->with(['user', 'box', 'invoice', 'payments.paymentMethod'])
+            ->with(['user', 'box', 'invoice', 'payments.paymentMethod', 'tableOrder.table'])
             ->withCount('items')
             ->latest()
             ->paginate(15);
@@ -102,8 +102,18 @@ class POSController extends Controller
             $sale->user->name = $this->sanitizeString($sale->user->name);
         }
 
+        $sale->customer_name = $sale->customer_name === null ? null : $this->sanitizeString($sale->customer_name);
+
         if ($sale->relationLoaded('box') && $sale->box) {
             $sale->box->name = $this->sanitizeString($sale->box->name);
+        }
+
+        if ($sale->relationLoaded('tableOrder') && $sale->tableOrder) {
+            $sale->tableOrder->order_number = $this->sanitizeString($sale->tableOrder->order_number);
+
+            if ($sale->tableOrder->relationLoaded('table') && $sale->tableOrder->table) {
+                $sale->tableOrder->table->name = $this->sanitizeString($sale->tableOrder->table->name);
+            }
         }
 
         if ($sale->relationLoaded('invoice') && $sale->invoice) {

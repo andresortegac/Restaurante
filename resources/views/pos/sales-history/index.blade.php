@@ -59,9 +59,9 @@
                             <tr>
                                 <th>Venta</th>
                                 <th>Fecha</th>
-                                <th>Factura</th>
+                                <th>Origen</th>
                                 <th>Vendedor</th>
-                                <th>Metodo de pago</th>
+                                <th>Cobro</th>
                                 <th>Items</th>
                                 <th>Total</th>
                                 <th>Acciones</th>
@@ -69,6 +69,9 @@
                         </thead>
                         <tbody>
                             @foreach($sales as $sale)
+                                @php
+                                    $primaryPayment = $sale->payments->first();
+                                @endphp
                                 <tr>
                                     <td>
                                         <strong>#{{ $sale->id }}</strong>
@@ -76,16 +79,44 @@
                                     </td>
                                     <td>{{ $sale->created_at?->format('d/m/Y H:i') }}</td>
                                     <td>
-                                        @if($sale->invoice)
-                                            <span class="badge bg-success-subtle text-success border">{{ $sale->invoice->invoice_number }}</span>
+                                        @if($sale->tableOrder)
+                                            <strong>{{ $sale->tableOrder->order_number }}</strong>
+                                            <div class="text-muted small">{{ $sale->tableOrder->table?->name ?? 'Mesa sin referencia' }}</div>
+                                            @if($sale->customer_name)
+                                                <div class="text-muted small">{{ $sale->customer_name }}</div>
+                                            @endif
                                         @else
-                                            <span class="badge bg-secondary-subtle text-secondary border">Pendiente</span>
+                                            <span class="badge bg-secondary-subtle text-secondary border">POS directo</span>
+                                            @if($sale->customer_name)
+                                                <div class="text-muted small">{{ $sale->customer_name }}</div>
+                                            @endif
                                         @endif
                                     </td>
                                     <td>{{ $sale->user?->name ?? 'Sin usuario' }}</td>
-                                    <td>{{ $sale->payments->pluck('paymentMethod.name')->filter()->join(', ') ?: 'Sin pago' }}</td>
+                                    <td>
+                                        @if($primaryPayment)
+                                            <strong>{{ $sale->payments->pluck('paymentMethod.name')->filter()->join(', ') ?: 'Sin pago' }}</strong>
+                                            <div class="text-muted small">Recibido: ${{ number_format((float) $primaryPayment->received_amount, 2) }}</div>
+                                            <div class="text-muted small">Cambio: ${{ number_format((float) $primaryPayment->change_amount, 2) }}</div>
+                                            <div class="text-muted small">Propina: ${{ number_format((float) $primaryPayment->tip_amount, 2) }}</div>
+                                        @else
+                                            <span class="text-muted">Sin pago</span>
+                                        @endif
+                                        <div class="mt-1">
+                                            @if($sale->invoice)
+                                                <span class="badge bg-success-subtle text-success border">{{ $sale->invoice->invoice_number }}</span>
+                                            @else
+                                                <span class="badge bg-secondary-subtle text-secondary border">Factura pendiente</span>
+                                            @endif
+                                        </div>
+                                    </td>
                                     <td>{{ $sale->items_count }}</td>
-                                    <td><strong>${{ number_format((float) $sale->total, 2) }}</strong></td>
+                                    <td>
+                                        <strong>${{ number_format((float) $sale->total, 2) }}</strong>
+                                        @if($primaryPayment && (float) $primaryPayment->tip_amount > 0)
+                                            <div class="text-muted small">Con propina: ${{ number_format((float) $sale->total + (float) $primaryPayment->tip_amount, 2) }}</div>
+                                        @endif
+                                    </td>
                                     <td>
                                         <a href="{{ route('pos.sales.print', $sale) }}" target="_blank" class="btn btn-sm btn-outline-primary">
                                             <i class="fas fa-print"></i> Imprimir factura

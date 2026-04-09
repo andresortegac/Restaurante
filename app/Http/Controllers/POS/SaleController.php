@@ -67,7 +67,7 @@ class SaleController extends Controller
                     ]);
                 }
 
-                $sale->addItem($item['product_id'], $item['quantity'], $item['unit_price']);
+                $sale->addItem($item['product_id'], $item['quantity'], $item['unit_price'], $product->name);
                 $product->reduceStock($item['quantity']);
             }
 
@@ -78,6 +78,9 @@ class SaleController extends Controller
                 $sale->payments()->create([
                     'payment_method_id' => $validated['payment_method_id'],
                     'amount' => $sale->total,
+                    'received_amount' => $sale->total,
+                    'change_amount' => 0,
+                    'tip_amount' => 0,
                     'status' => 'completed',
                 ]);
             }

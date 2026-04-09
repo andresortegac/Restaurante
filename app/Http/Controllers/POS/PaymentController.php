@@ -34,6 +34,9 @@ class PaymentController extends Controller
             'sale_id' => 'required|exists:sales,id',
             'payment_method_id' => 'required|exists:payment_methods,id',
             'amount' => 'required|numeric|min:0',
+            'received_amount' => 'nullable|numeric|min:0',
+            'change_amount' => 'nullable|numeric|min:0',
+            'tip_amount' => 'nullable|numeric|min:0',
             'reference' => 'nullable|string',
         ]);
 
@@ -43,7 +46,16 @@ class PaymentController extends Controller
             return response()->json(['error' => 'El monto excede el total de la venta'], 422);
         }
 
-        $payment = Payment::create($validated);
+        $payment = Payment::create([
+            'sale_id' => $validated['sale_id'],
+            'payment_method_id' => $validated['payment_method_id'],
+            'amount' => $validated['amount'],
+            'received_amount' => $validated['received_amount'] ?? $validated['amount'],
+            'change_amount' => $validated['change_amount'] ?? 0,
+            'tip_amount' => $validated['tip_amount'] ?? 0,
+            'reference' => $validated['reference'] ?? null,
+            'status' => 'completed',
+        ]);
         return response()->json($payment, 201);
     }
 
