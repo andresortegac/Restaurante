@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ProductManagementController;
+use App\Http\Controllers\TableManagementController;
 use Illuminate\Support\Facades\Route;
 
 // Rutas publicas
@@ -46,6 +47,22 @@ Route::middleware('auth')->group(function () {
         Route::get('/taxes/{taxRate}/edit', [ProductManagementController::class, 'editTax'])->name('taxes.edit');
         Route::put('/taxes/{taxRate}', [ProductManagementController::class, 'updateTax'])->name('taxes.update');
         Route::delete('/taxes/{taxRate}', [ProductManagementController::class, 'destroyTax'])->name('taxes.destroy');
+    });
+
+    // Gestion de mesas
+    Route::prefix('tables')->name('tables.')->group(function () {
+        Route::get('/', [TableManagementController::class, 'index'])->name('index');
+        Route::get('/create', [TableManagementController::class, 'create'])->name('create');
+        Route::post('/', [TableManagementController::class, 'store'])->name('store');
+        Route::get('/{table}', [TableManagementController::class, 'show'])->name('show');
+        Route::get('/{table}/edit', [TableManagementController::class, 'edit'])->name('edit');
+        Route::put('/{table}', [TableManagementController::class, 'update'])->name('update');
+        Route::delete('/{table}', [TableManagementController::class, 'destroy'])->name('destroy');
+
+        Route::post('/{table}/orders', [TableManagementController::class, 'storeOrder'])->name('orders.store');
+        Route::post('/orders/{order}/transfer', [TableManagementController::class, 'transferOrder'])->name('orders.transfer');
+        Route::put('/orders/{order}/split', [TableManagementController::class, 'updateSplit'])->name('orders.split');
+        Route::post('/orders/{order}/close', [TableManagementController::class, 'closeOrder'])->name('orders.close');
     });
 
     // API para verificar roles y permisos

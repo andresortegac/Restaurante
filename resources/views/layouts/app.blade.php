@@ -20,6 +20,7 @@
     <link rel="stylesheet" href="{{ asset('css/layouts/sidebar.css') }}">
     <link rel="stylesheet" href="{{ asset('css/dashboard/dashboard.css') }}">
     <link rel="stylesheet" href="{{ asset('css/products/management.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/tables/management.css') }}">
 </head>
 <body>
     <!-- Navbar -->
@@ -62,6 +63,7 @@
                 $isDashboardRoute = request()->routeIs('dashboard');
                 $isPosRoute = request()->routeIs('pos.*');
                 $isProductsRoute = request()->routeIs('products.*');
+                $isTablesRoute = request()->routeIs('tables.*');
             @endphp
             
             <ul class="sidebar-menu">
@@ -178,35 +180,21 @@
                 </li>
                 @endif
 
-                @if(Auth::user()->hasAnyPermission(['tables.view', 'tables.manage']))
+                @if(Auth::user()->hasRole('Admin') || Auth::user()->hasAnyPermission(['tables.view', 'tables.create', 'tables.edit', 'tables.delete', 'orders.view', 'orders.create', 'orders.edit']))
                 <li>
-                    <a href="#" data-toggle-menu>
+                    <a href="#" data-toggle-menu class="{{ $isTablesRoute ? 'expanded' : '' }}">
                         <i class="fas fa-chair"></i> Mesas
                         <span class="toggle-icon float-end"><i class="fas fa-chevron-right"></i></span>
                     </a>
-                    <ul class="sidebar-submenu">
-                        @if(Auth::user()->hasPermission('tables.view'))
-                        <li><a href="#"><i class="fas fa-list"></i> Ver Mesas</a></li>
+                    <ul class="sidebar-submenu {{ $isTablesRoute ? 'show' : '' }}">
+                        @if(Auth::user()->hasRole('Admin') || Auth::user()->hasAnyPermission(['tables.view', 'orders.view']))
+                        <li><a href="{{ route('tables.index') }}" class="{{ request()->routeIs('tables.index') ? 'active' : '' }}"><i class="fas fa-list"></i> Vista general</a></li>
                         @endif
-                        @if(Auth::user()->hasPermission('tables.manage'))
-                        <li><a href="#"><i class="fas fa-edit"></i> Gestionar</a></li>
+                        @if(Auth::user()->hasRole('Admin') || Auth::user()->hasAnyPermission(['tables.create']))
+                        <li><a href="{{ route('tables.create') }}" class="{{ request()->routeIs('tables.create') ? 'active' : '' }}"><i class="fas fa-plus"></i> Nueva mesa</a></li>
                         @endif
-                    </ul>
-                </li>
-                @endif
-
-                @if(Auth::user()->hasAnyPermission(['inventory.view', 'inventory.manage']))
-                <li>
-                    <a href="#" data-toggle-menu>
-                        <i class="fas fa-box"></i> Inventario
-                        <span class="toggle-icon float-end"><i class="fas fa-chevron-right"></i></span>
-                    </a>
-                    <ul class="sidebar-submenu">
-                        @if(Auth::user()->hasPermission('inventory.view'))
-                        <li><a href="#"><i class="fas fa-list"></i> Ver Stock</a></li>
-                        @endif
-                        @if(Auth::user()->hasPermission('inventory.manage'))
-                        <li><a href="#"><i class="fas fa-edit"></i> Gestionar</a></li>
+                        @if(Auth::user()->hasRole('Admin') || Auth::user()->hasAnyPermission(['orders.create', 'orders.edit']))
+                        <li><a href="{{ route('tables.index') }}#service-flow"><i class="fas fa-arrow-right-arrow-left"></i> Pedidos y cuentas</a></li>
                         @endif
                     </ul>
                 </li>
