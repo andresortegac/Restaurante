@@ -120,7 +120,7 @@
                         <button type="button" class="btn btn-outline-primary btn-sm" data-add-order-row><i class="fas fa-plus"></i> Agregar fila</button>
                     </div>
                     <div class="card-body">
-                        <form method="POST" action="{{ route('orders.store', $restaurantTable) }}">
+                        <form method="POST" action="{{ route('orders.store', $restaurantTable) }}" id="orderServiceForm">
                             @csrf
                             <div class="form-grid">
                                 <div>
@@ -276,6 +276,92 @@
 document.addEventListener('DOMContentLoaded', function () {
     const rowsContainer = document.getElementById('orderRows');
     const addRowButton = document.querySelector('[data-add-order-row]');
+    const orderServiceForm = document.getElementById('orderServiceForm');
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
+    if (orderServiceForm) {
+        orderServiceForm.addEventListener('submit', async function (event) {
+            event.preventDefault();
+
+            const submitButton = orderServiceForm.querySelector('button[type="submit"]');
+            const originalLabel = submitButton ? submitButton.innerHTML : '';
+
+            if (submitButton) {
+                submitButton.disabled = true;
+                submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
+            }
+
+            try {
+                const response = await fetch(orderServiceForm.action, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': csrfToken,
+                    },
+                    body: new FormData(orderServiceForm),
+                });
+
+                const data = await response.json().catch(() => ({}));
+
+                if (!response.ok) {
+                    const validationMessages = data?.errors
+                        ? Object.values(data.errors).flat().join('\n')
+                        : (data?.message || 'No se pudo guardar el pedido.');
+
+                    if (window.Swal) {
+                        await Swal.fire({
+                            icon: 'error',
+                            title: 'No se pudo guardar',
+                            text: validationMessages,
+                            confirmButtonText: 'Aceptar',
+                            confirmButtonColor: '#dc3545',
+                        });
+                    } else {
+                        alert(validationMessages);
+                    }
+
+                    return;
+                }
+
+                if (data?.printUrl) {
+                    window.open(data.printUrl, '_blank', 'noopener,noreferrer');
+                }
+
+                if (window.Swal) {
+                    await Swal.fire({
+                        icon: 'success',
+                        title: 'Pedido enviado a cocina',
+                        text: data?.message || 'El pedido se guardó correctamente.',
+                        confirmButtonText: 'Aceptar',
+                        confirmButtonColor: '#16a34a',
+                    });
+                } else {
+                    alert(data?.message || 'El pedido se guardó correctamente.');
+                }
+
+                window.location.reload();
+            } catch (error) {
+                if (window.Swal) {
+                    await Swal.fire({
+                        icon: 'error',
+                        title: 'Error inesperado',
+                        text: 'No se pudo guardar el pedido. Intenta nuevamente.',
+                        confirmButtonText: 'Aceptar',
+                        confirmButtonColor: '#dc3545',
+                    });
+                } else {
+                    alert('No se pudo guardar el pedido. Intenta nuevamente.');
+                }
+            } finally {
+                if (submitButton) {
+                    submitButton.disabled = false;
+                    submitButton.innerHTML = originalLabel;
+                }
+            }
+        });
+    }
+
     if (!rowsContainer || !addRowButton) return;
     const products = @json($productCatalog);
     const money = value => '$' + Number(value || 0).toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });

@@ -198,6 +198,17 @@ class OrderManagementController extends Controller
 
         session()->flash('success', 'Pedido guardado correctamente y enviado a cocina.');
 
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => 'Pedido guardado correctamente y enviado a cocina.',
+                'redirectUrl' => route('orders.show', $table),
+                'printUrl' => route('orders.kitchen-ticket', [
+                    'order' => $order,
+                    'items' => implode(',', $createdItemIds),
+                ]),
+            ]);
+        }
+
         return view('orders.print-bridge', [
             'redirectUrl' => route('orders.show', $table),
             'printUrl' => route('orders.kitchen-ticket', [
@@ -450,6 +461,14 @@ class OrderManagementController extends Controller
         });
 
         session()->flash('success', 'Cobro registrado correctamente. La venta y el movimiento de caja quedaron guardados.');
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => 'Cobro registrado correctamente. La mesa fue cerrada y la factura esta lista para imprimir.',
+                'printUrl' => route('pos.sales.print', $sale),
+                'redirectUrl' => route('orders.show', $table ?? $order->table),
+            ]);
+        }
 
         return view('orders.print-bridge', [
             'title' => 'Preparando factura',

@@ -137,7 +137,7 @@
                             <div class="seat-note">Saldo estimado: ${{ number_format($activeBox->currentBalance(), 2) }}</div>
                         </div>
 
-                        <form method="POST" action="{{ route('orders.checkout.store', $order) }}" id="orderCheckoutForm">
+                        <form method="POST" action="{{ route('orders.checkout.store', $order) }}" id="orderCheckoutForm" accept-charset="UTF-8">
                             @csrf
 
                             <div class="mb-3">
@@ -161,12 +161,12 @@
                             <div class="mb-3">
                                 <label class="form-label" for="amount_received">Monto recibido</label>
                                 <input type="number" class="form-control" id="amount_received" name="amount_received" min="0" step="0.01" value="{{ number_format($initialReceived, 2, '.', '') }}" required>
-                                <div class="form-help mt-1" id="amountReceivedHelp">Para pagos en efectivo puedes registrar un valor mayor y el sistema calculara el cambio.</div>
+                                <div class="form-help mt-1" id="amountReceivedHelp">Ingresa el valor recibido y veras de inmediato el cambio a devolver.</div>
                             </div>
 
                             <div class="mb-3">
                                 <label class="form-label" for="reference">Referencia</label>
-                                <input type="text" class="form-control" id="reference" name="reference" value="{{ old('reference') }}" placeholder="Ultimos digitos, comprobante o nota del pago">
+                                <input type="text" class="form-control" id="reference" name="reference" value="{{ old('reference') }}" placeholder="Últimos dígitos, comprobante o nota del pago" lang="es" autocomplete="on" autocapitalize="sentences" inputmode="text" spellcheck="false">
                             </div>
 
                             <div class="meta-box mb-3">
@@ -179,7 +179,7 @@
                                     <strong id="checkoutAmountDue">${{ number_format($initialDue, 2) }}</strong>
                                 </div>
                                 <div class="d-flex justify-content-between gap-3 mt-2">
-                                    <span class="summary-kicker">Cambio</span>
+                                    <span class="summary-kicker">Cambio a devolver</span>
                                     <strong id="checkoutChange">${{ number_format($initialChange, 2) }}</strong>
                                 </div>
                             </div>
@@ -204,8 +204,15 @@ document.addEventListener('DOMContentLoaded', function () {
     const amountDueLabel = document.getElementById('checkoutAmountDue');
     const changeLabel = document.getElementById('checkoutChange');
     const amountReceivedHelp = document.getElementById('amountReceivedHelp');
+    const checkoutForm = document.getElementById('orderCheckoutForm');
+    const referenceInput = document.getElementById('reference');
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
-    if (!methodSelect || !tipInput || !amountReceivedInput || !amountDueLabel || !changeLabel) {
+    if (referenceInput) {
+        referenceInput.placeholder = 'Ultimos digitos, comprobante o nota del pago';
+    }
+
+    if (!methodSelect || !tipInput || !amountReceivedInput || !amountDueLabel || !changeLabel || !checkoutForm) {
         return;
     }
 
@@ -215,14 +222,19 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     const selectedMethod = () => paymentMethods.find(method => String(method.id) === String(methodSelect.value)) || null;
-    const isCashPayment = () => (selectedMethod()?.code || '') === 'CASH';
+    const isCashPayment = () => {
+        const method = selectedMethod();
+        return !method || method.code === 'CASH';
+    };
 
     const syncAmounts = () => {
         const tipAmount = Math.max(0, Number(tipInput.value || 0));
         const amountDue = baseTotal + tipAmount;
+        const method = selectedMethod();
         const cashPayment = isCashPayment();
+        const requiresExactAmount = Boolean(method) && !cashPayment;
 
-        if (!cashPayment) {
+        if (requiresExactAmount) {
             amountReceivedInput.value = amountDue.toFixed(2);
             amountReceivedInput.readOnly = true;
             amountReceivedInput.classList.add('bg-light');
@@ -235,7 +247,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
             amountReceivedInput.readOnly = false;
             amountReceivedInput.classList.remove('bg-light');
-            amountReceivedHelp.textContent = 'Para pagos en efectivo puedes registrar un valor mayor y el sistema calculara el cambio.';
+            amountReceivedHelp.textContent = method
+                ? 'Ingresa el valor recibido y veras de inmediato el cambio a devolver.'
+                : 'Ingresa el valor recibido y el sistema te mostrara el cambio al instante.';
         }
 
         const receivedAmount = Math.max(0, Number(amountReceivedInput.value || 0));
@@ -257,6 +271,83 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         syncAmounts();
+    });
+
+    checkoutForm.addEventListener('submit', async function (event) {
+        event.preventDefault();
+
+        const submitButton = checkoutForm.querySelector('button[type="submit"]');
+        const originalLabel = submitButton ? submitButton.innerHTML : '';
+
+        if (submitButton) {
+            submitButton.disabled = true;
+            submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Cerrando mesa...';
+        }
+
+        try {
+            const response = await fetch(checkoutForm.action, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': csrfToken,
+                },
+                body: new FormData(checkoutForm),
+            });
+
+            const data = await response.json().catch(() => ({}));
+
+            if (!response.ok) {
+                const validationMessages = data?.errors
+                    ? Object.values(data.errors).flat().join('\n')
+                    : (data?.message || 'No se pudo registrar el cobro.');
+
+                if (window.Swal) {
+                    await Swal.fire({
+                        icon: 'error',
+                        title: 'No se pudo cerrar la mesa',
+                        text: validationMessages,
+                        confirmButtonText: 'Aceptar',
+                        confirmButtonColor: '#dc3545',
+                    });
+                } else {
+                    alert(validationMessages);
+                }
+
+                return;
+            }
+
+            if (window.Swal) {
+                await Swal.fire({
+                    icon: 'success',
+                    title: 'Mesa cerrada correctamente',
+                    text: data?.message || 'El cobro fue registrado y la factura esta lista para imprimir.',
+                    confirmButtonText: 'Ir a imprimir factura',
+                    confirmButtonColor: '#16a34a',
+                });
+            } else {
+                alert(data?.message || 'El cobro fue registrado correctamente.');
+            }
+
+            window.location.href = data?.printUrl || checkoutForm.action;
+        } catch (error) {
+            if (window.Swal) {
+                await Swal.fire({
+                    icon: 'error',
+                    title: 'Error inesperado',
+                    text: 'No se pudo registrar el cobro. Intenta nuevamente.',
+                    confirmButtonText: 'Aceptar',
+                    confirmButtonColor: '#dc3545',
+                });
+            } else {
+                alert('No se pudo registrar el cobro. Intenta nuevamente.');
+            }
+        } finally {
+            if (submitButton) {
+                submitButton.disabled = false;
+                submitButton.innerHTML = originalLabel;
+            }
+        }
     });
 
     syncAmounts();

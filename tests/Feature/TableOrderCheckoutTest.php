@@ -87,7 +87,7 @@ class TableOrderCheckoutTest extends TestCase
                 'payment_method_id' => $paymentMethod->id,
                 'amount_received' => 30,
                 'tip_amount' => 1.80,
-                'reference' => 'EF-001',
+                'reference' => 'Pago José Niño ñandú',
             ]);
 
         $response->assertOk();
@@ -118,7 +118,7 @@ class TableOrderCheckoutTest extends TestCase
             'received_amount' => '30.00',
             'change_amount' => '5.00',
             'tip_amount' => '1.80',
-            'reference' => 'EF-001',
+            'reference' => 'Pago José Niño ñandú',
             'status' => 'completed',
         ]);
 
