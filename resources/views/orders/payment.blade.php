@@ -317,18 +317,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
 
-            if (window.Swal) {
-                await Swal.fire({
-                    icon: 'success',
-                    title: 'Mesa cerrada correctamente',
-                    text: data?.message || 'El cobro fue registrado y la factura esta lista para imprimir.',
-                    confirmButtonText: 'Ir a imprimir factura',
-                    confirmButtonColor: '#16a34a',
-                });
-            } else {
-                alert(data?.message || 'El cobro fue registrado correctamente.');
-            }
-
             window.location.href = data?.printUrl || checkoutForm.action;
         } catch (error) {
             if (window.Swal) {

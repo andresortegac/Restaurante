@@ -500,8 +500,6 @@ class OrderManagementController extends Controller
             }
         });
 
-        session()->flash('success', 'Cobro registrado correctamente. La venta y el movimiento de caja quedaron guardados.');
-
         if ($request->expectsJson()) {
             return response()->json([
                 'message' => 'Cobro registrado correctamente. La mesa fue cerrada y la factura esta lista para imprimir.',
@@ -509,6 +507,8 @@ class OrderManagementController extends Controller
                 'redirectUrl' => route('orders.show', $table ?? $order->table),
             ]);
         }
+
+        session()->flash('success', 'Cobro registrado correctamente. La venta y el movimiento de caja quedaron guardados.');
 
         return view('orders.print-bridge', [
             'title' => 'Preparando factura',
