@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Storage;
 
 class Product extends Model
 {
@@ -22,6 +23,7 @@ class Product extends Model
         'tax_rate_id',
         'product_type',
         'sku',
+        'image_path',
         'active',
     ];
 
@@ -32,6 +34,10 @@ class Product extends Model
         'category_id' => 'integer',
         'tax_rate_id' => 'integer',
         'active' => 'boolean',
+    ];
+
+    protected $appends = [
+        'image_url',
     ];
 
     public function saleItems(): HasMany
@@ -86,5 +92,14 @@ class Product extends Model
 
         $this->stock += $quantity;
         $this->save();
+    }
+
+    public function getImageUrlAttribute(): ?string
+    {
+        if (! $this->image_path) {
+            return null;
+        }
+
+        return Storage::disk('public')->url($this->image_path);
     }
 }

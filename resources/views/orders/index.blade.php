@@ -123,7 +123,7 @@
                             </div>
                             <div class="meta-box">
                                 <div class="summary-kicker">Cliente</div>
-                                <div class="fw-bold">{{ $openOrder?->customer_name ?: 'Sin referencia' }}</div>
+                                <div class="fw-bold">{{ $openOrder?->customer?->name ?: $openOrder?->customer_name ?: 'Sin cliente' }}</div>
                                 <div class="seat-note">{{ $openOrder ? 'Pedido en curso' : 'Aun no se ha iniciado servicio' }}</div>
                             </div>
                             <div class="meta-box">

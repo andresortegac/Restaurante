@@ -68,6 +68,11 @@ class User extends Authenticatable
         return $this->hasMany(BoxMovement::class);
     }
 
+    public function reservations(): HasMany
+    {
+        return $this->hasMany(Reservation::class, 'reserved_by');
+    }
+
     /**
      * Check if user has a specific role
      */

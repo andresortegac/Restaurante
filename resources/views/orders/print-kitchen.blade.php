@@ -63,11 +63,35 @@
     </div>
 
     <div class="actions">
-        <button class="btn btn-secondary" type="button" onclick="window.close()">Cerrar</button>
+        <button class="btn btn-secondary" type="button" onclick="handleClose()">Cerrar</button>
         <button class="btn btn-primary" type="button" onclick="window.print()">Imprimir</button>
     </div>
 
     <script>
+        const fallbackCloseUrl = @json(route('orders.history.index'));
+
+        function handleClose() {
+            window.close();
+
+            setTimeout(function () {
+                if (window.closed) {
+                    return;
+                }
+
+                if (window.history.length > 1) {
+                    window.history.back();
+                    return;
+                }
+
+                if (document.referrer) {
+                    window.location.href = document.referrer;
+                    return;
+                }
+
+                window.location.href = fallbackCloseUrl;
+            }, 150);
+        }
+
         window.addEventListener('load', function () {
             setTimeout(function () {
                 window.print();

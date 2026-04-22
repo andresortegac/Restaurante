@@ -74,6 +74,12 @@ class PermissionSeeder extends Seeder
             ['name' => 'customers.edit', 'description' => 'Editar clientes'],
             ['name' => 'customers.delete', 'description' => 'Eliminar clientes'],
 
+            // Reservas
+            ['name' => 'reservations.view', 'description' => 'Ver reservas'],
+            ['name' => 'reservations.create', 'description' => 'Crear reservas'],
+            ['name' => 'reservations.edit', 'description' => 'Editar reservas'],
+            ['name' => 'reservations.delete', 'description' => 'Eliminar reservas'],
+
             // Configuracion
             ['name' => 'settings.view', 'description' => 'Ver configuracion'],
             ['name' => 'settings.edit', 'description' => 'Editar configuracion'],

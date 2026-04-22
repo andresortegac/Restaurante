@@ -15,6 +15,7 @@
         'name' => $product->name,
         'price' => (float) $product->price,
         'type' => $product->product_type ?: 'simple',
+        'imageUrl' => $product->image_url,
     ])->values();
 @endphp
 
@@ -68,8 +69,8 @@
                         <div class="row g-3 mt-1">
                             <div class="col-lg-6">
                                 <div class="meta-box h-100">
-                                    <div class="summary-kicker">Cliente o referencia</div>
-                                    <div class="fw-bold">{{ $openOrder->customer_name ?: 'Sin nombre registrado' }}</div>
+                                    <div class="summary-kicker">Cliente</div>
+                                    <div class="fw-bold">{{ $openOrder->customer?->name ?: $openOrder->customer_name ?: 'Sin cliente' }}</div>
                                     <div class="seat-note">{{ $openOrder->notes ?: 'Sin notas en el pedido.' }}</div>
                                 </div>
                             </div>
@@ -124,8 +125,27 @@
                             @csrf
                             <div class="form-grid">
                                 <div>
-                                    <label class="form-label" for="customer_name">Cliente o referencia</label>
-                                    <input type="text" class="form-control" id="customer_name" name="customer_name" value="{{ old('customer_name', $openOrder?->customer_name) }}">
+                                    <label class="form-label" for="customer_search">Cliente</label>
+                                    <input type="search" class="form-control mb-2" id="customer_search" placeholder="Buscar cliente por nombre, documento, telefono o email">
+                                    <select class="form-select" id="customer_id" name="customer_id">
+                                        <option value="">Sin cliente</option>
+                                        @foreach($availableCustomers as $customer)
+                                            <option
+                                                value="{{ $customer->id }}"
+                                                data-search="{{ \Illuminate\Support\Str::lower(trim($customer->name . ' ' . $customer->document_number . ' ' . $customer->phone . ' ' . $customer->email)) }}"
+                                                @selected((string) old('customer_id', $openOrder?->customer_id) === (string) $customer->id)
+                                            >
+                                                {{ $customer->name }}@if($customer->document_number) - {{ $customer->document_number }}@endif
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    <div class="form-help mt-2" id="customerSelectionHelp">
+                                        @if(old('customer_id', $openOrder?->customer_id))
+                                            Cliente seleccionado: {{ $openOrder?->customer?->name ?: 'Cliente cargado' }}.
+                                        @else
+                                            Se usara la opcion sin cliente a menos que selecciones uno.
+                                        @endif
+                                    </div>
                                 </div>
                                 <div>
                                     <label class="form-label" for="notes">Notas del pedido</label>
@@ -143,12 +163,11 @@
                                         <div class="component-row-grid">
                                             <div class="component-field-large">
                                                 <label class="form-label">Producto</label>
-                                                <select class="form-select" name="items[{{ $index }}][product_id]" data-order-product>
-                                                    <option value="">Selecciona un producto</option>
-                                                    @foreach($availableProducts as $product)
-                                                        <option value="{{ $product->id }}" @selected($selectedId === $product->id)>{{ $product->name }} - ${{ number_format((float) $product->price, 2) }}</option>
-                                                    @endforeach
-                                                </select>
+                                                <input type="hidden" name="items[{{ $index }}][product_id]" value="{{ $selectedId ?: '' }}" data-order-product>
+                                                <button type="button" class="btn btn-outline-primary w-100 text-start d-flex justify-content-between align-items-center" data-open-product-modal>
+                                                    <span data-order-product-label>{{ $selectedProduct ? $selectedProduct->name . ' - $' . number_format((float) $selectedProduct->price, 2) : 'Selecciona un producto' }}</span>
+                                                    <i class="fas fa-search"></i>
+                                                </button>
                                             </div>
                                             <div><label class="form-label">Cantidad</label><input type="number" class="form-control" name="items[{{ $index }}][quantity]" min="1" value="{{ old('items.' . $index . '.quantity', $row['quantity'] ?? 1) }}" required></div>
                                             <div><label class="form-label">Tipo</label><input type="text" class="form-control" value="{{ $selectedProduct ? ($selectedProduct->product_type === 'combo' ? 'Combo' : 'Producto') : 'Producto' }}" readonly data-order-type></div>
@@ -156,6 +175,15 @@
                                         </div>
                                         <div class="form-help mt-2" data-order-price>
                                             @if($selectedProduct) Precio actual: ${{ number_format((float) $selectedProduct->price, 2) }}. @else Selecciona un producto del menu o un combo disponible. @endif
+                                        </div>
+                                        <div class="mt-3" data-order-preview>
+                                            @if($selectedProduct && $selectedProduct->image_url)
+                                                <img src="{{ $selectedProduct->image_url }}" alt="{{ $selectedProduct->name }}" style="width: 96px; height: 96px; object-fit: cover; border-radius: 16px; border: 1px solid #dbe3f1;">
+                                            @elseif($selectedProduct)
+                                                <div style="width: 96px; height: 96px; border-radius: 16px; border: 1px dashed #cbd5e1; display: flex; align-items: center; justify-content: center; color: #94a3b8;">
+                                                    <i class="fas fa-image"></i>
+                                                </div>
+                                            @endif
                                         </div>
                                     </div>
                                 @endforeach
@@ -169,6 +197,24 @@
                     </div>
                 </div>
             @endif
+        </div>
+
+        <div class="modal fade" id="productPickerModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-xl modal-dialog-scrollable">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <div>
+                            <h5 class="modal-title mb-1">Seleccionar producto</h5>
+                            <div class="table-note">Busca por nombre y elige el producto con apoyo visual.</div>
+                        </div>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="search" class="form-control mb-3" id="productPickerSearch" placeholder="Filtrar producto...">
+                        <div id="productPickerResults" class="row g-3"></div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <aside>
@@ -253,6 +299,55 @@ document.addEventListener('DOMContentLoaded', function () {
     const addRowButton = document.querySelector('[data-add-order-row]');
     const orderServiceForm = document.getElementById('orderServiceForm');
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    const productPickerModalElement = document.getElementById('productPickerModal');
+    const productPickerSearch = document.getElementById('productPickerSearch');
+    const productPickerResults = document.getElementById('productPickerResults');
+    const customerSearch = document.getElementById('customer_search');
+    const customerSelect = document.getElementById('customer_id');
+    const customerSelectionHelp = document.getElementById('customerSelectionHelp');
+    const customerOptions = customerSelect ? Array.from(customerSelect.options).slice(1).map(option => ({
+        value: option.value,
+        label: option.textContent,
+        search: option.dataset.search || '',
+    })) : [];
+
+    const updateCustomerHelp = () => {
+        if (!customerSelect || !customerSelectionHelp) {
+            return;
+        }
+
+        const selectedOption = customerSelect.options[customerSelect.selectedIndex];
+
+        if (!selectedOption || selectedOption.value === '') {
+            customerSelectionHelp.textContent = 'Se usara la opcion sin cliente a menos que selecciones uno.';
+            return;
+        }
+
+        customerSelectionHelp.textContent = 'Cliente seleccionado: ' + selectedOption.textContent + '.';
+    };
+
+    const renderCustomerOptions = searchTerm => {
+        if (!customerSelect) {
+            return;
+        }
+
+        const normalizedSearch = (searchTerm || '')
+            .toString()
+            .trim()
+            .toLowerCase();
+        const currentValue = customerSelect.value;
+        const filteredOptions = normalizedSearch === ''
+            ? customerOptions
+            : customerOptions.filter(option => option.search.includes(normalizedSearch));
+
+        customerSelect.innerHTML = '<option value="">Sin cliente</option>' + filteredOptions.map(option => '<option value="' + option.value + '"' + (option.value === currentValue ? ' selected' : '') + '>' + option.label + '</option>').join('');
+
+        if (currentValue && !filteredOptions.some(option => option.value === currentValue)) {
+            customerSelect.value = '';
+        }
+
+        updateCustomerHelp();
+    };
 
     if (orderServiceForm) {
         orderServiceForm.addEventListener('submit', async function (event) {
@@ -337,23 +432,76 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    if (customerSearch && customerSelect) {
+        customerSearch.addEventListener('input', function () {
+            renderCustomerOptions(customerSearch.value);
+        });
+
+        customerSelect.addEventListener('change', updateCustomerHelp);
+        renderCustomerOptions('');
+        updateCustomerHelp();
+    }
+
     if (!rowsContainer || !addRowButton) return;
     const products = @json($productCatalog);
     const money = value => '$' + Number(value || 0).toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     const typeLabel = type => type === 'combo' ? 'Combo' : 'Producto';
-    const options = selectedId => '<option value="">Selecciona un producto</option>' + products.map(product => '<option value="' + product.id + '"' + (String(selectedId || '') === String(product.id) ? ' selected' : '') + '>' + product.name + ' - ' + money(product.price) + '</option>').join('');
+    const productModal = productPickerModalElement && window.bootstrap ? new bootstrap.Modal(productPickerModalElement) : null;
+    let activeProductRow = null;
+    const productPreviewMarkup = product => {
+        if (!product) {
+            return '';
+        }
+
+        if (product.imageUrl) {
+            return '<img src="' + product.imageUrl + '" alt="' + product.name.replace(/"/g, '&quot;') + '" style="width: 96px; height: 96px; object-fit: cover; border-radius: 16px; border: 1px solid #dbe3f1;">';
+        }
+
+        return '<div style="width: 96px; height: 96px; border-radius: 16px; border: 1px dashed #cbd5e1; display: flex; align-items: center; justify-content: center; color: #94a3b8;"><i class="fas fa-image"></i></div>';
+    };
     const refresh = row => {
         const productSelect = row.querySelector('[data-order-product]');
+        const productLabel = row.querySelector('[data-order-product-label]');
         const typeInput = row.querySelector('[data-order-type]');
         const priceLabel = row.querySelector('[data-order-price]');
+        const previewContainer = row.querySelector('[data-order-preview]');
         const selectedProduct = products.find(product => String(product.id) === String(productSelect.value));
         typeInput.value = selectedProduct ? typeLabel(selectedProduct.type) : 'Producto';
+        productLabel.textContent = selectedProduct ? selectedProduct.name + ' - ' + money(selectedProduct.price) : 'Selecciona un producto';
         priceLabel.textContent = selectedProduct ? 'Precio actual: ' + money(selectedProduct.price) + '.' : 'Selecciona un producto del menu o un combo disponible.';
+        previewContainer.innerHTML = selectedProduct ? productPreviewMarkup(selectedProduct) : '';
     };
-    const template = index => '<div class="component-row order-entry-row" data-order-row><div class="component-row-grid"><div class="component-field-large"><label class="form-label">Producto</label><select class="form-select" name="items[' + index + '][product_id]" data-order-product>' + options('') + '</select></div><div><label class="form-label">Cantidad</label><input type="number" class="form-control" name="items[' + index + '][quantity]" min="1" value="1" required></div><div><label class="form-label">Tipo</label><input type="text" class="form-control" value="Producto" readonly data-order-type></div><div class="d-flex align-items-end"><button type="button" class="btn btn-outline-danger w-100" data-remove-order-row>Quitar</button></div></div><div class="form-help mt-2" data-order-price>Selecciona un producto del menu o un combo disponible.</div></div>';
+    const renderProductResults = searchTerm => {
+        if (!productPickerResults) {
+            return;
+        }
+
+        const normalizedSearch = (searchTerm || '').toString().trim().toLowerCase();
+        const filteredProducts = normalizedSearch === ''
+            ? products
+            : products.filter(product => product.name.toLowerCase().includes(normalizedSearch));
+
+        productPickerResults.innerHTML = filteredProducts.length > 0
+            ? filteredProducts.map(product => '<div class="col-md-4 col-lg-3"><button type="button" class="btn btn-light border w-100 h-100 text-start p-3" data-pick-product="' + product.id + '"><div class="mb-3">' + (product.imageUrl ? '<img src="' + product.imageUrl + '" alt="' + product.name.replace(/"/g, '&quot;') + '" style="width: 100%; height: 180px; object-fit: cover; border-radius: 18px;">' : '<div style="width: 100%; height: 180px; border-radius: 18px; background: linear-gradient(135deg, #eff6ff, #dbeafe); display: flex; align-items: center; justify-content: center; color: #2563eb;"><i class="fas fa-image fa-2x"></i></div>') + '</div><div class="fw-bold">' + product.name + '</div><div class="table-note">' + typeLabel(product.type) + '</div><div class="mt-2 text-primary fw-semibold">' + money(product.price) + '</div></button></div>').join('')
+            : '<div class="col-12"><div class="text-center text-muted py-4">No se encontraron productos para ese filtro.</div></div>';
+    };
+    const template = index => '<div class="component-row order-entry-row" data-order-row><div class="component-row-grid"><div class="component-field-large"><label class="form-label">Producto</label><input type="hidden" name="items[' + index + '][product_id]" value="" data-order-product><button type="button" class="btn btn-outline-primary w-100 text-start d-flex justify-content-between align-items-center" data-open-product-modal><span data-order-product-label>Selecciona un producto</span><i class="fas fa-search"></i></button></div><div><label class="form-label">Cantidad</label><input type="number" class="form-control" name="items[' + index + '][quantity]" min="1" value="1" required></div><div><label class="form-label">Tipo</label><input type="text" class="form-control" value="Producto" readonly data-order-type></div><div class="d-flex align-items-end"><button type="button" class="btn btn-outline-danger w-100" data-remove-order-row>Quitar</button></div></div><div class="form-help mt-2" data-order-price>Selecciona un producto del menu o un combo disponible.</div><div class="mt-3" data-order-preview></div></div>';
     addRowButton.addEventListener('click', () => rowsContainer.insertAdjacentHTML('beforeend', template(rowsContainer.querySelectorAll('[data-order-row]').length)));
-    rowsContainer.addEventListener('change', event => { if (event.target.matches('[data-order-product]')) refresh(event.target.closest('[data-order-row]')); });
     rowsContainer.addEventListener('click', event => {
+        const pickerButton = event.target.closest('[data-open-product-modal]');
+
+        if (pickerButton) {
+            activeProductRow = pickerButton.closest('[data-order-row]');
+            renderProductResults(productPickerSearch ? productPickerSearch.value : '');
+            if (productPickerSearch) {
+                productPickerSearch.focus();
+            }
+            if (productModal) {
+                productModal.show();
+            }
+            return;
+        }
+
         if (!event.target.matches('[data-remove-order-row]')) return;
         const row = event.target.closest('[data-order-row]');
         if (rowsContainer.querySelectorAll('[data-order-row]').length === 1) {
@@ -364,7 +512,32 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         row.remove();
     });
+
+    if (productPickerSearch) {
+        productPickerSearch.addEventListener('input', function () {
+            renderProductResults(productPickerSearch.value);
+        });
+    }
+
+    if (productPickerResults) {
+        productPickerResults.addEventListener('click', function (event) {
+            const pickButton = event.target.closest('[data-pick-product]');
+
+            if (!pickButton || !activeProductRow) {
+                return;
+            }
+
+            activeProductRow.querySelector('[data-order-product]').value = pickButton.dataset.pickProduct;
+            refresh(activeProductRow);
+
+            if (productModal) {
+                productModal.hide();
+            }
+        });
+    }
+
     rowsContainer.querySelectorAll('[data-order-row]').forEach(refresh);
+    renderProductResults('');
 });
 </script>
 @endif

@@ -28,6 +28,7 @@ class ProductController extends Controller
                     'tracks_stock' => (bool) $product->tracks_stock,
                     'sku' => $this->sanitizeString((string) $product->sku),
                     'product_type' => $product->product_type ?: 'simple',
+                    'image_url' => $product->image_url,
                 ];
             })
             ->values();

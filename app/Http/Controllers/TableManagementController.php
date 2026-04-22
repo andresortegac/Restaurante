@@ -17,7 +17,7 @@ class TableManagementController extends Controller
         }
 
         $tables = RestaurantTable::query()
-            ->with(['openOrder.items'])
+            ->with(['openOrder.items', 'openOrder.customer'])
             ->orderBy('area')
             ->orderBy('name')
             ->get();
@@ -69,10 +69,11 @@ class TableManagementController extends Controller
         }
 
         $table->load([
+            'openOrder.customer',
             'openOrder.items.product',
             'openOrder.openedBy',
             'orders' => fn ($query) => $query
-                ->with(['items', 'previousTable'])
+                ->with(['items', 'previousTable', 'customer'])
                 ->latest()
                 ->take(10),
         ]);

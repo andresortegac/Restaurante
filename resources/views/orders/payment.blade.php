@@ -40,7 +40,7 @@
                         <h5 class="mb-1">Resumen del pedido</h5>
                         <p class="table-note mb-0">
                             Pedido abierto por {{ $order->openedBy?->name ?? 'el equipo' }}.
-                            {{ $order->customer_name ? 'Cliente o referencia: ' . $order->customer_name . '.' : 'Sin nombre registrado.' }}
+                            {{ $order->customer?->name || $order->customer_name ? 'Cliente: ' . ($order->customer?->name ?: $order->customer_name) . '.' : 'Sin cliente registrado.' }}
                         </p>
                     </div>
                     <a href="{{ route('orders.show', $restaurantTable) }}" class="btn btn-outline-secondary btn-sm">Volver al pedido</a>

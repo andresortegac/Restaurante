@@ -82,13 +82,13 @@
                                         @if($sale->tableOrder)
                                             <strong>{{ $sale->tableOrder->order_number }}</strong>
                                             <div class="text-muted small">{{ $sale->tableOrder->table?->name ?? 'Mesa sin referencia' }}</div>
-                                            @if($sale->customer_name)
-                                                <div class="text-muted small">{{ $sale->customer_name }}</div>
+                                            @if($sale->customer?->name || $sale->customer_name)
+                                                <div class="text-muted small">{{ $sale->customer?->name ?: $sale->customer_name }}</div>
                                             @endif
                                         @else
                                             <span class="badge bg-secondary-subtle text-secondary border">POS directo</span>
-                                            @if($sale->customer_name)
-                                                <div class="text-muted small">{{ $sale->customer_name }}</div>
+                                            @if($sale->customer?->name || $sale->customer_name)
+                                                <div class="text-muted small">{{ $sale->customer?->name ?: $sale->customer_name }}</div>
                                             @endif
                                         @endif
                                     </td>

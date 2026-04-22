@@ -56,8 +56,19 @@
                                     @forelse($products as $product)
                                         <tr>
                                             <td>
-                                                <strong>{{ $product->name }}</strong>
-                                                <div class="table-note">{{ $product->sku }}</div>
+                                                <div class="d-flex align-items-center gap-3">
+                                                    @if($product->image_url)
+                                                        <img src="{{ $product->image_url }}" alt="{{ $product->name }}" style="width: 56px; height: 56px; object-fit: cover; border-radius: 14px; border: 1px solid #dbe3f1;">
+                                                    @else
+                                                        <div style="width: 56px; height: 56px; border-radius: 14px; background: linear-gradient(135deg, #eff6ff, #dbeafe); display: flex; align-items: center; justify-content: center; color: #2563eb;">
+                                                            <i class="fas fa-image"></i>
+                                                        </div>
+                                                    @endif
+                                                    <div>
+                                                        <strong>{{ $product->name }}</strong>
+                                                        <div class="table-note">{{ $product->sku }}</div>
+                                                    </div>
+                                                </div>
                                             </td>
                                             <td>{{ $product->menuCategory->name ?? $product->category }}</td>
                                             <td>${{ number_format($product->price, 2) }}</td>

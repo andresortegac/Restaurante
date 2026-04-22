@@ -38,6 +38,11 @@ class RestaurantTable extends Model
             ->latestOfMany();
     }
 
+    public function reservations(): HasMany
+    {
+        return $this->hasMany(Reservation::class, 'restaurant_table_id');
+    }
+
     public function scopeActive($query)
     {
         return $query->where('is_active', true);

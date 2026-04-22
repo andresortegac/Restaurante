@@ -12,7 +12,7 @@ class InvoiceController extends Controller
     public function show($id)
     {
         $invoice = Invoice::findOrFail($id);
-        $invoice->load('sale.items.product', 'sale.payments.paymentMethod', 'sale.user', 'sale.box');
+        $invoice->load('sale.items.product', 'sale.payments.paymentMethod', 'sale.user', 'sale.box', 'sale.customer');
         $this->sanitizeInvoiceForDisplay($invoice);
 
         return response()->json($invoice);
@@ -34,7 +34,7 @@ class InvoiceController extends Controller
 
     public function printSale(Sale $sale)
     {
-        $sale->load(['user', 'box', 'items.product', 'payments.paymentMethod', 'invoice', 'tableOrder.table']);
+        $sale->load(['user', 'box', 'items.product', 'payments.paymentMethod', 'invoice', 'tableOrder.table', 'customer']);
 
         $invoice = $this->issueInvoice($sale, 'factura');
         $sale->setRelation('invoice', $invoice);
@@ -83,6 +83,10 @@ class InvoiceController extends Controller
         $sale->status = $this->sanitizeString($sale->status);
         $sale->customer_name = $sale->customer_name === null ? null : $this->sanitizeString($sale->customer_name);
         $sale->notes = $sale->notes === null ? null : $this->sanitizeString($sale->notes);
+
+        if ($sale->relationLoaded('customer') && $sale->customer) {
+            $sale->customer->name = $this->sanitizeString($sale->customer->name);
+        }
 
         if ($sale->relationLoaded('user') && $sale->user) {
             $sale->user->name = $this->sanitizeString($sale->user->name);

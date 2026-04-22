@@ -21,7 +21,7 @@
 
         <div class="card module-card">
             <div class="card-body">
-                <form method="POST" action="{{ $formAction }}">
+                <form method="POST" action="{{ $formAction }}" enctype="multipart/form-data">
                     @csrf
                     @if($product->exists)
                         @method('PUT')
@@ -98,6 +98,27 @@
                             <label class="form-label" for="description">Descripcion</label>
                             <textarea class="form-control" id="description" name="description" rows="4">{{ old('description', $product->description) }}</textarea>
                         </div>
+
+                        <div class="full-width">
+                            <label class="form-label" for="image">Imagen del producto</label>
+                            <input type="file" class="form-control" id="image" name="image" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp">
+                            <div class="form-help">Sube una imagen referencial del producto. Formatos permitidos: JPG, PNG o WEBP.</div>
+
+                            @if($product->image_url)
+                                <div class="mt-3 d-flex flex-wrap align-items-start gap-3">
+                                    <img src="{{ $product->image_url }}" alt="{{ $product->name }}" style="width: 160px; height: 160px; object-fit: cover; border-radius: 18px; border: 1px solid #dbe3f1;">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="remove_image" name="remove_image" value="1">
+                                        <label class="form-check-label" for="remove_image">Quitar imagen actual</label>
+                                    </div>
+                                </div>
+                            @endif
+
+                            <div class="mt-3" id="imagePreviewWrapper" style="display: none;">
+                                <div class="table-note mb-2">Vista previa</div>
+                                <img id="imagePreview" alt="Vista previa del producto" style="width: 160px; height: 160px; object-fit: cover; border-radius: 18px; border: 1px solid #dbe3f1;">
+                            </div>
+                        </div>
                     </div>
 
                     <div class="form-actions">
@@ -114,6 +135,9 @@
             const tracksStockToggle = document.getElementById('tracks_stock');
             const stockInput = document.getElementById('stock');
             const stockHelp = document.getElementById('stockHelp');
+            const imageInput = document.getElementById('image');
+            const imagePreview = document.getElementById('imagePreview');
+            const imagePreviewWrapper = document.getElementById('imagePreviewWrapper');
 
             function syncStockField() {
                 const tracksStock = tracksStockToggle.checked;
@@ -127,6 +151,21 @@
 
             tracksStockToggle.addEventListener('change', syncStockField);
             syncStockField();
+
+            if (imageInput && imagePreview && imagePreviewWrapper) {
+                imageInput.addEventListener('change', function () {
+                    const [file] = imageInput.files || [];
+
+                    if (!file) {
+                        imagePreviewWrapper.style.display = 'none';
+                        imagePreview.removeAttribute('src');
+                        return;
+                    }
+
+                    imagePreview.src = URL.createObjectURL(file);
+                    imagePreviewWrapper.style.display = 'block';
+                });
+            }
         });
     </script>
 @endsection

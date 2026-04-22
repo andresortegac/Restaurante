@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -64,6 +65,7 @@ class ProductManagementController extends Controller
         }
 
         $validated = $this->validateProductData($request);
+        $request->attributes->set('current_image_path', null);
 
         Product::create($this->buildProductPayload($validated, $request, 'simple'));
 
@@ -100,6 +102,7 @@ class ProductManagementController extends Controller
         abort_unless($product->product_type === 'simple', 404);
 
         $validated = $this->validateProductData($request, $product);
+        $request->attributes->set('current_image_path', $product->image_path);
 
         $product->update($this->buildProductPayload($validated, $request, 'simple'));
 
@@ -163,6 +166,7 @@ class ProductManagementController extends Controller
         }
 
         $validated = $this->validateComboData($request);
+        $request->attributes->set('current_image_path', null);
 
         DB::transaction(function () use ($request, $validated): void {
             $combo = Product::create($this->buildProductPayload($validated, $request, 'combo'));
@@ -206,6 +210,7 @@ class ProductManagementController extends Controller
         abort_unless($product->product_type === 'combo', 404);
 
         $validated = $this->validateComboData($request, $product);
+        $request->attributes->set('current_image_path', $product->image_path);
 
         DB::transaction(function () use ($request, $validated, $product): void {
             $product->update($this->buildProductPayload($validated, $request, 'combo'));
@@ -375,6 +380,8 @@ class ProductManagementController extends Controller
             'stock' => ['nullable', Rule::requiredIf($request->boolean('tracks_stock')), 'integer', 'min:0'],
             'tracks_stock' => ['nullable', 'boolean'],
             'tax_rate_id' => ['nullable', 'exists:tax_rates,id'],
+            'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+            'remove_image' => ['nullable', 'boolean'],
             'active' => ['nullable', 'boolean'],
         ]);
     }
@@ -390,6 +397,8 @@ class ProductManagementController extends Controller
             'stock' => ['nullable', Rule::requiredIf($request->boolean('tracks_stock')), 'integer', 'min:0'],
             'tracks_stock' => ['nullable', 'boolean'],
             'tax_rate_id' => ['nullable', 'exists:tax_rates,id'],
+            'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+            'remove_image' => ['nullable', 'boolean'],
             'active' => ['nullable', 'boolean'],
             'components' => ['required', 'array', 'min:1'],
             'components.*.component_product_id' => [
@@ -455,6 +464,21 @@ class ProductManagementController extends Controller
     {
         $category = $this->resolveCategory($validated['category_name']);
         $tracksStock = $request->boolean('tracks_stock');
+        $currentImagePath = $request->attributes->get('current_image_path');
+        $imagePath = $currentImagePath;
+
+        if ($request->boolean('remove_image') && $currentImagePath) {
+            Storage::disk('public')->delete($currentImagePath);
+            $imagePath = null;
+        }
+
+        if ($request->hasFile('image')) {
+            if ($currentImagePath) {
+                Storage::disk('public')->delete($currentImagePath);
+            }
+
+            $imagePath = $request->file('image')->store('products', 'public');
+        }
 
         return [
             'name' => $validated['name'],
@@ -467,6 +491,7 @@ class ProductManagementController extends Controller
             'tax_rate_id' => $validated['tax_rate_id'] ?? null,
             'product_type' => $type,
             'sku' => $validated['sku'],
+            'image_path' => $imagePath,
             'active' => $request->boolean('active'),
         ];
     }
@@ -561,6 +586,10 @@ class ProductManagementController extends Controller
             return redirect()
                 ->route($routeName)
                 ->with('warning', 'El producto tiene ventas registradas. Se desactivo para proteger el historico.');
+        }
+
+        if ($product->image_path) {
+            Storage::disk('public')->delete($product->image_path);
         }
 
         $product->delete();

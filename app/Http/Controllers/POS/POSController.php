@@ -32,6 +32,7 @@ class POSController extends Controller
                     'tracks_stock' => (bool) $product->tracks_stock,
                     'sku' => $this->sanitizeNullableString($product->sku),
                     'product_type' => $product->product_type ?: 'simple',
+                    'image_url' => $product->image_url,
                 ];
             })
             ->values();
@@ -65,7 +66,7 @@ class POSController extends Controller
     public function salesHistory()
     {
         $sales = Sale::query()
-            ->with(['user', 'box', 'invoice', 'payments.paymentMethod', 'tableOrder.table'])
+            ->with(['user', 'box', 'invoice', 'payments.paymentMethod', 'tableOrder.table', 'customer'])
             ->withCount('items')
             ->latest()
             ->paginate(15);
@@ -103,6 +104,10 @@ class POSController extends Controller
         }
 
         $sale->customer_name = $sale->customer_name === null ? null : $this->sanitizeString($sale->customer_name);
+
+        if ($sale->relationLoaded('customer') && $sale->customer) {
+            $sale->customer->name = $this->sanitizeString($sale->customer->name);
+        }
 
         if ($sale->relationLoaded('box') && $sale->box) {
             $sale->box->name = $this->sanitizeString($sale->box->name);

@@ -17,6 +17,7 @@ class TableOrder extends Model
         'restaurant_table_id',
         'transferred_from_table_id',
         'order_number',
+        'customer_id',
         'customer_name',
         'status',
         'opened_by_user_id',
@@ -47,6 +48,11 @@ class TableOrder extends Model
     public function openedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'opened_by_user_id');
+    }
+
+    public function customer(): BelongsTo
+    {
+        return $this->belongsTo(Customer::class);
     }
 
     public function items(): HasMany

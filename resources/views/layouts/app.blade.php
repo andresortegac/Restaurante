@@ -61,11 +61,16 @@
         <aside class="sidebar" id="sidebar">
             @php
                 $isDashboardRoute = request()->routeIs('dashboard');
-                $isPosRoute = request()->routeIs('pos.*');
+                $isPosIndexRoute = request()->routeIs('pos.index');
+                $isPosSalesHistoryRoute = request()->routeIs('pos.sales-history.*');
+                $isPosPromoCodesRoute = request()->routeIs('pos.promo-codes.*');
                 $isProductsRoute = request()->routeIs('products.*');
                 $isTablesRoute = request()->routeIs('tables.*');
+                $isCustomersRoute = request()->routeIs('customers.*');
+                $isReservationsRoute = request()->routeIs('reservations.*');
                 $isOrdersHistoryRoute = request()->routeIs('orders.history.*');
                 $isOrdersRoute = request()->routeIs('orders.*') && ! $isOrdersHistoryRoute;
+                $isOrdersMenuExpanded = $isOrdersRoute || $isOrdersHistoryRoute || $isPosSalesHistoryRoute || $isPosPromoCodesRoute;
             @endphp
             
             <ul class="sidebar-menu">
@@ -76,27 +81,9 @@
                 </li>
 
                 <li>
-                    <a href="#" data-toggle-menu class="{{ $isPosRoute ? 'expanded' : '' }}">
-                        <i class="fas fa-cash-register"></i> Punto de Venta
-                        <span class="toggle-icon"><i class="fas fa-chevron-right"></i></span>
+                    <a href="{{ route('pos.index') }}" class="{{ $isPosIndexRoute ? 'active' : '' }}">
+                        <i class="fas fa-cash-register"></i> Punto de venta
                     </a>
-                    <ul class="sidebar-submenu {{ $isPosRoute ? 'show' : '' }}">
-                        <li>
-                            <a href="{{ route('pos.index') }}" class="{{ request()->routeIs('pos.index') ? 'active' : '' }}">
-                                <i class="fas fa-store"></i> Abrir POS
-                            </a>
-                        </li>
-                        <li>
-                            <a href="{{ route('pos.sales-history.index') }}" class="{{ request()->routeIs('pos.sales-history.*') ? 'active' : '' }}">
-                                <i class="fas fa-clock-rotate-left"></i> Historial de ventas
-                            </a>
-                        </li>
-                        <li>
-                            <a href="{{ route('pos.promo-codes.create') }}" class="{{ request()->routeIs('pos.promo-codes.*') ? 'active' : '' }}">
-                                <i class="fas fa-ticket-alt"></i> Codigos promocionales
-                            </a>
-                        </li>
-                    </ul>
                 </li>
 
                 @if(Auth::user()->hasRole('Admin') || Auth::user()->hasAnyPermission(['products.view', 'products.create', 'products.edit', 'products.delete', 'combos.view', 'combos.create', 'combos.edit', 'combos.delete', 'taxes.view', 'taxes.create', 'taxes.edit', 'taxes.delete']))
@@ -167,11 +154,11 @@
 
                 @if(Auth::user()->hasRole('Admin') || Auth::user()->hasAnyPermission(['orders.view', 'orders.create', 'orders.edit']))
                 <li>
-                    <a href="#" data-toggle-menu class="{{ $isOrdersRoute || $isOrdersHistoryRoute ? 'expanded' : '' }}">
+                    <a href="#" data-toggle-menu class="{{ $isOrdersMenuExpanded ? 'expanded' : '' }}">
                         <i class="fas fa-receipt"></i> Pedidos
                         <span class="toggle-icon float-end"><i class="fas fa-chevron-right"></i></span>
                     </a>
-                    <ul class="sidebar-submenu {{ $isOrdersRoute || $isOrdersHistoryRoute ? 'show' : '' }}">
+                    <ul class="sidebar-submenu {{ $isOrdersMenuExpanded ? 'show' : '' }}">
                         @if(Auth::user()->hasRole('Admin') || Auth::user()->hasAnyPermission(['orders.view', 'orders.create']))
                         <li><a href="{{ route('orders.index') }}" class="{{ $isOrdersRoute ? 'active' : '' }}"><i class="fas fa-clipboard-list"></i> Pedidos por mesa</a></li>
                         @endif
@@ -180,6 +167,25 @@
                         @endif
                         @if(Auth::user()->hasRole('Admin') || Auth::user()->hasPermission('orders.view'))
                         <li><a href="{{ route('orders.history.index') }}" class="{{ $isOrdersHistoryRoute ? 'active' : '' }}"><i class="fas fa-clock-rotate-left"></i> Historial de pedidos</a></li>
+                        <li><a href="{{ route('pos.sales-history.index') }}" class="{{ $isPosSalesHistoryRoute ? 'active' : '' }}"><i class="fas fa-clock-rotate-left"></i> Historial de ventas</a></li>
+                        <li><a href="{{ route('pos.promo-codes.create') }}" class="{{ $isPosPromoCodesRoute ? 'active' : '' }}"><i class="fas fa-ticket-alt"></i> Codigos promocionales</a></li>
+                        @endif
+                    </ul>
+                </li>
+                @endif
+
+                @if(Auth::user()->hasRole('Admin') || Auth::user()->hasAnyPermission(['reservations.view', 'reservations.create', 'reservations.edit', 'reservations.delete']))
+                <li>
+                    <a href="#" data-toggle-menu class="{{ $isReservationsRoute ? 'expanded' : '' }}">
+                        <i class="fas fa-calendar-check"></i> Reservas
+                        <span class="toggle-icon float-end"><i class="fas fa-chevron-right"></i></span>
+                    </a>
+                    <ul class="sidebar-submenu {{ $isReservationsRoute ? 'show' : '' }}">
+                        @if(Auth::user()->hasRole('Admin') || Auth::user()->hasPermission('reservations.view'))
+                        <li><a href="{{ route('reservations.index') }}" class="{{ request()->routeIs('reservations.index') || request()->routeIs('reservations.edit') ? 'active' : '' }}"><i class="fas fa-list"></i> Ver reservas</a></li>
+                        @endif
+                        @if(Auth::user()->hasRole('Admin') || Auth::user()->hasPermission('reservations.create'))
+                        <li><a href="{{ route('reservations.create') }}" class="{{ request()->routeIs('reservations.create') ? 'active' : '' }}"><i class="fas fa-plus"></i> Nueva reserva</a></li>
                         @endif
                     </ul>
                 </li>
@@ -217,13 +223,15 @@
 
                 @if(Auth::user()->hasAnyPermission(['customers.view']))
                 <li>
-                    <a href="#" data-toggle-menu>
+                    <a href="#" data-toggle-menu class="{{ $isCustomersRoute ? 'expanded' : '' }}">
                         <i class="fas fa-users"></i> Clientes
                         <span class="toggle-icon float-end"><i class="fas fa-chevron-right"></i></span>
                     </a>
-                    <ul class="sidebar-submenu">
-                        <li><a href="#"><i class="fas fa-list"></i> Listar</a></li>
-                        <li><a href="#"><i class="fas fa-plus"></i> Nuevo</a></li>
+                    <ul class="sidebar-submenu {{ $isCustomersRoute ? 'show' : '' }}">
+                        <li><a href="{{ route('customers.index') }}" class="{{ request()->routeIs('customers.index') ? 'active' : '' }}"><i class="fas fa-list"></i> Listar</a></li>
+                        @if(Auth::user()->hasRole('Admin') || Auth::user()->hasPermission('customers.create'))
+                        <li><a href="{{ route('customers.create') }}" class="{{ request()->routeIs('customers.create') ? 'active' : '' }}"><i class="fas fa-plus"></i> Nuevo</a></li>
+                        @endif
                     </ul>
                 </li>
                 @endif
@@ -248,4 +256,3 @@
     @include('components.alerts')
 </body>
 </html>
-

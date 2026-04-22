@@ -1,8 +1,10 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\CustomerManagementController;
 use App\Http\Controllers\OrderManagementController;
 use App\Http\Controllers\ProductManagementController;
+use App\Http\Controllers\ReservationManagementController;
 use App\Http\Controllers\TableManagementController;
 use Illuminate\Support\Facades\Route;
 
@@ -48,6 +50,27 @@ Route::middleware('auth')->group(function () {
         Route::get('/taxes/{taxRate}/edit', [ProductManagementController::class, 'editTax'])->name('taxes.edit');
         Route::put('/taxes/{taxRate}', [ProductManagementController::class, 'updateTax'])->name('taxes.update');
         Route::delete('/taxes/{taxRate}', [ProductManagementController::class, 'destroyTax'])->name('taxes.destroy');
+    });
+
+    // Gestion de clientes
+    Route::prefix('customers')->name('customers.')->group(function () {
+        Route::get('/', [CustomerManagementController::class, 'index'])->name('index');
+        Route::get('/create', [CustomerManagementController::class, 'create'])->name('create');
+        Route::post('/', [CustomerManagementController::class, 'store'])->name('store');
+        Route::get('/{customer}/edit', [CustomerManagementController::class, 'edit'])->name('edit');
+        Route::put('/{customer}', [CustomerManagementController::class, 'update'])->name('update');
+        Route::delete('/{customer}', [CustomerManagementController::class, 'destroy'])->name('destroy');
+        Route::get('/api/search', [CustomerManagementController::class, 'search'])->name('search');
+    });
+
+    // Gestion de reservas
+    Route::prefix('reservations')->name('reservations.')->group(function () {
+        Route::get('/', [ReservationManagementController::class, 'index'])->name('index');
+        Route::get('/create', [ReservationManagementController::class, 'create'])->name('create');
+        Route::post('/', [ReservationManagementController::class, 'store'])->name('store');
+        Route::get('/{reservation}/edit', [ReservationManagementController::class, 'edit'])->name('edit');
+        Route::put('/{reservation}', [ReservationManagementController::class, 'update'])->name('update');
+        Route::delete('/{reservation}', [ReservationManagementController::class, 'destroy'])->name('destroy');
     });
 
     // Gestion de mesas
@@ -115,5 +138,3 @@ Route::middleware('auth')->group(function () {
         Route::post('/api/validate-coupon', [\App\Http\Controllers\POS\DiscountController::class, 'validateCoupon']);
     });
 });
-
-

@@ -48,6 +48,10 @@ class RoleSeeder extends Seeder
                 'orders.create',
                 'customers.view',
                 'customers.create',
+                'reservations.view',
+                'reservations.create',
+                'reservations.edit',
+                'reservations.delete',
                 'reports.view',
             ])->pluck('id')->toArray();
             $cashierRole->permissions()->sync($cashierPermissions);
@@ -62,6 +66,10 @@ class RoleSeeder extends Seeder
                 'orders.create',
                 'orders.edit',
                 'customers.view',
+                'reservations.view',
+                'reservations.create',
+                'reservations.edit',
+                'reservations.delete',
             ])->pluck('id')->toArray();
             $waiterRole->permissions()->sync($waiterPermissions);
         }

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Box;
 use App\Models\BoxMovement;
+use App\Models\Customer;
 use App\Models\PaymentMethod;
 use App\Models\Product;
 use App\Models\RestaurantTable;
@@ -28,7 +29,7 @@ class OrderManagementController extends Controller
 
         $tables = RestaurantTable::query()
             ->active()
-            ->with(['openOrder.items'])
+            ->with(['openOrder.items', 'openOrder.customer'])
             ->orderBy('area')
             ->orderBy('name')
             ->get();
@@ -58,7 +59,7 @@ class OrderManagementController extends Controller
         ]);
 
         $orders = TableOrder::query()
-            ->with(['table', 'previousTable', 'openedBy', 'sale'])
+            ->with(['table', 'previousTable', 'openedBy', 'sale', 'customer'])
             ->withCount('items')
             ->when($filters['search'] ?? null, function ($query, string $search) {
                 $query->where(function ($nestedQuery) use ($search) {
@@ -101,6 +102,7 @@ class OrderManagementController extends Controller
         }
 
         $table->load([
+            'openOrder.customer',
             'openOrder.items.product',
             'openOrder.openedBy',
         ]);
@@ -113,6 +115,7 @@ class OrderManagementController extends Controller
             'openOrder' => $openOrder,
             'splitSummary' => $splitSummary,
             'availableProducts' => $this->availableProducts(),
+            'availableCustomers' => $this->availableCustomers(),
             'orderRows' => $this->orderRows(),
             'transferTargets' => $this->transferTargets($table),
             'activeBox' => $this->activeBox(),
@@ -126,6 +129,7 @@ class OrderManagementController extends Controller
         }
 
         $order->load([
+            'customer',
             'table',
             'items.product',
             'openedBy',
@@ -158,7 +162,7 @@ class OrderManagementController extends Controller
         }
 
         $validated = $request->validate([
-            'customer_name' => ['nullable', 'string', 'max:255'],
+            'customer_id' => ['nullable', 'exists:customers,id'],
             'notes' => ['nullable', 'string'],
             'items' => ['required', 'array', 'min:1'],
             'items.*.product_id' => ['nullable', 'exists:products,id'],
@@ -185,6 +189,16 @@ class OrderManagementController extends Controller
         $createdItemIds = [];
 
         DB::transaction(function () use ($validated, $rows, $table, &$order, &$createdItemIds): void {
+            $customer = ! empty($validated['customer_id'])
+                ? Customer::query()->whereKey($validated['customer_id'])->where('is_active', true)->first()
+                : null;
+
+            if (! empty($validated['customer_id']) && ! $customer) {
+                throw ValidationException::withMessages([
+                    'customer_id' => 'Selecciona un cliente activo o usa la opcion sin cliente.',
+                ]);
+            }
+
             $order = $table->orders()
                 ->where('status', 'open')
                 ->first();
@@ -192,14 +206,16 @@ class OrderManagementController extends Controller
             if (! $order) {
                 $order = $table->orders()->create([
                     'order_number' => TableOrder::generateOrderNumber(),
-                    'customer_name' => $validated['customer_name'] ?? null,
+                    'customer_id' => $customer?->id,
+                    'customer_name' => $customer?->name,
                     'status' => 'open',
                     'opened_by_user_id' => Auth::id(),
                     'notes' => $validated['notes'] ?? null,
                 ]);
             } else {
                 $order->update([
-                    'customer_name' => $validated['customer_name'] ?? $order->customer_name,
+                    'customer_id' => $customer?->id,
+                    'customer_name' => $customer?->name,
                     'notes' => $validated['notes'] ?? $order->notes,
                 ]);
             }
@@ -388,7 +404,7 @@ class OrderManagementController extends Controller
 
         DB::transaction(function () use ($order, $paymentMethod, $validated, $tipAmount, $amountReceived, &$sale, &$table): void {
             $currentOrder = TableOrder::query()
-                ->with(['items.product', 'table', 'sale'])
+                ->with(['items.product', 'table', 'sale', 'customer'])
                 ->lockForUpdate()
                 ->findOrFail($order->id);
 
@@ -446,6 +462,7 @@ class OrderManagementController extends Controller
                 'user_id' => Auth::id(),
                 'box_id' => $box->id,
                 'table_order_id' => $currentOrder->id,
+                'customer_id' => $currentOrder->customer_id,
                 'customer_name' => $currentOrder->customer_name,
                 'status' => 'completed',
                 'notes' => $saleNotes !== '' ? $saleNotes : null,
@@ -557,7 +574,15 @@ class OrderManagementController extends Controller
                     ->orWhereNull('product_type');
             })
             ->orderBy('name')
-            ->get(['id', 'name', 'price', 'product_type']);
+            ->get(['id', 'name', 'price', 'product_type', 'image_path']);
+    }
+
+    private function availableCustomers(): Collection
+    {
+        return Customer::query()
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'name', 'document_number', 'phone', 'email']);
     }
 
     private function transferTargets(RestaurantTable $currentTable): Collection

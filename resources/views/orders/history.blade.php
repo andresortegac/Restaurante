@@ -159,7 +159,7 @@
                                             @endif
                                         </td>
                                         <td>
-                                            <strong>{{ $order->customer_name ?: 'Sin referencia' }}</strong>
+                                            <strong>{{ $order->customer?->name ?: $order->customer_name ?: 'Sin cliente' }}</strong>
                                             <div class="table-note">{{ $order->notes ?: 'Sin notas registradas.' }}</div>
                                         </td>
                                         <td>{{ number_format($order->items_count) }}</td>

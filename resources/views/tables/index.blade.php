@@ -135,7 +135,7 @@
                             <div class="meta-box">
                                 <div class="summary-kicker">Cuenta actual</div>
                                 <div class="fw-bold">${{ number_format((float) ($openOrder?->total ?? 0), 2) }}</div>
-                                <div class="seat-note">{{ $openOrder?->customer_name ?: 'Sin cliente asociado' }}</div>
+                                <div class="seat-note">{{ $openOrder?->customer?->name ?: $openOrder?->customer_name ?: 'Sin cliente asociado' }}</div>
                             </div>
                         </div>
 

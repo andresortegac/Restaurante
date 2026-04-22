@@ -205,7 +205,7 @@
                 </div>
                 <div class="meta-card">
                     <strong>Cliente</strong>
-                    <span>{{ $sale->customer_name ?: 'Consumidor final' }}</span>
+                    <span>{{ $sale->customer?->name ?: $sale->customer_name ?: 'Consumidor final' }}</span>
                 </div>
             </div>
 
@@ -269,11 +269,17 @@
     </div>
 
     <div class="actions">
-        <button class="btn btn-secondary" type="button" onclick="window.close()">Cerrar</button>
+        <button class="btn btn-secondary" type="button" onclick="handleClose()">Cerrar</button>
         <button class="btn btn-primary" type="button" onclick="window.print()">Imprimir</button>
     </div>
 
     <script>
+        const fallbackCloseUrl = @json(route('orders.index'));
+
+        function handleClose() {
+            window.location.href = fallbackCloseUrl;
+        }
+
         window.addEventListener('load', function () {
             setTimeout(function () {
                 window.print();

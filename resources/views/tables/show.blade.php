@@ -81,7 +81,7 @@
                                     @if($openOrder)
                                         <div class="fw-bold">{{ $openOrder->order_number }}</div>
                                         <div class="seat-note">{{ $openOrder->items->sum('quantity') }} items registrados</div>
-                                        <div class="table-note mt-2">Cliente: {{ $openOrder->customer_name ?: 'Sin nombre registrado' }}</div>
+                                        <div class="table-note mt-2">Cliente: {{ $openOrder->customer?->name ?: $openOrder->customer_name ?: 'Sin cliente' }}</div>
                                     @else
                                         <div class="fw-bold">Sin pedido en curso</div>
                                         <div class="seat-note">La mesa esta disponible para iniciar servicio.</div>
@@ -147,7 +147,7 @@
 
                                     <div class="mt-3">
                                         <div class="summary-kicker">Cliente</div>
-                                        <div class="seat-note">{{ $recentOrder->customer_name ?: 'Sin nombre registrado' }}</div>
+                                        <div class="seat-note">{{ $recentOrder->customer?->name ?: $recentOrder->customer_name ?: 'Sin cliente' }}</div>
                                     </div>
 
                                     <div class="mt-3 d-flex justify-content-between gap-3">

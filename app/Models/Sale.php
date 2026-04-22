@@ -13,6 +13,7 @@ class Sale extends Model
         'user_id',
         'box_id',
         'table_order_id',
+        'customer_id',
         'customer_name',
         'subtotal',
         'discount_amount',
@@ -42,6 +43,11 @@ class Sale extends Model
     public function tableOrder()
     {
         return $this->belongsTo(TableOrder::class);
+    }
+
+    public function customer()
+    {
+        return $this->belongsTo(Customer::class);
     }
 
     public function items()
