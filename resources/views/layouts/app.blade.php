@@ -67,10 +67,12 @@
                 $isTablesRoute = request()->routeIs('tables.*');
                 $isCustomersRoute = request()->routeIs('customers.*');
                 $isDeliveriesRoute = request()->routeIs('deliveries.*');
+                $isElectronicInvoicesRoute = request()->routeIs('electronic-invoices.*');
                 $isReservationsRoute = request()->routeIs('reservations.*');
                 $isOrdersHistoryRoute = request()->routeIs('orders.history.*');
                 $isOrdersRoute = request()->routeIs('orders.*') && ! $isOrdersHistoryRoute;
                 $isCashRoute = request()->routeIs('cash-management.*');
+                $isReportsRoute = request()->routeIs('reports.*');
                 $isAdminUsersRoute = request()->routeIs('admin.users.*');
                 $isAdminRolesRoute = request()->routeIs('admin.roles.*');
                 $isAdminPermissionsRoute = request()->routeIs('admin.permissions.*');
@@ -215,13 +217,13 @@
 
                 @if(Auth::user()->hasAnyPermission(['reports.view']))
                 <li>
-                    <a href="#" data-toggle-menu>
+                    <a href="#" data-toggle-menu class="{{ $isReportsRoute ? 'expanded' : '' }}">
                         <i class="fas fa-chart-bar"></i> Reportes
                         <span class="toggle-icon float-end"><i class="fas fa-chevron-right"></i></span>
                     </a>
-                    <ul class="sidebar-submenu">
-                        <li><a href="#"><i class="fas fa-money-bill-wave"></i> Ventas</a></li>
-                        <li><a href="#"><i class="fas fa-chart-pie"></i> Anlisis</a></li>
+                    <ul class="sidebar-submenu {{ $isReportsRoute ? 'show' : '' }}">
+                        <li><a href="{{ route('reports.index') }}" class="{{ request()->routeIs('reports.index') ? 'active' : '' }}"><i class="fas fa-money-bill-wave"></i> Ventas</a></li>
+                        <li><a href="{{ route('reports.analytics') }}" class="{{ request()->routeIs('reports.analytics') ? 'active' : '' }}"><i class="fas fa-chart-pie"></i> Analisis</a></li>
                     </ul>
                 </li>
                 @endif
@@ -251,6 +253,21 @@
                         <li><a href="{{ route('deliveries.index') }}" class="{{ request()->routeIs('deliveries.index') || request()->routeIs('deliveries.edit') ? 'active' : '' }}"><i class="fas fa-list"></i> Listar</a></li>
                         @if(Auth::user()->hasRole('Admin') || Auth::user()->hasPermission('deliveries.create'))
                         <li><a href="{{ route('deliveries.create') }}" class="{{ request()->routeIs('deliveries.create') ? 'active' : '' }}"><i class="fas fa-plus"></i> Nuevo</a></li>
+                        @endif
+                    </ul>
+                </li>
+                @endif
+
+                @if(Auth::user()->hasRole('Admin') || Auth::user()->hasAnyPermission(['electronic_invoices.view', 'electronic_invoices.manage', 'electronic_invoices.retry', 'electronic_invoices.settings']))
+                <li>
+                    <a href="#" data-toggle-menu class="{{ $isElectronicInvoicesRoute ? 'expanded' : '' }}">
+                        <i class="fas fa-file-invoice-dollar"></i> Facturación Electrónica
+                        <span class="toggle-icon float-end"><i class="fas fa-chevron-right"></i></span>
+                    </a>
+                    <ul class="sidebar-submenu {{ $isElectronicInvoicesRoute ? 'show' : '' }}">
+                        <li><a href="{{ route('electronic-invoices.index') }}" class="{{ request()->routeIs('electronic-invoices.index') || request()->routeIs('electronic-invoices.show') ? 'active' : '' }}"><i class="fas fa-list"></i> Facturas</a></li>
+                        @if(Auth::user()->hasRole('Admin') || Auth::user()->hasPermission('electronic_invoices.settings'))
+                        <li><a href="{{ route('electronic-invoices.settings') }}" class="{{ request()->routeIs('electronic-invoices.settings') ? 'active' : '' }}"><i class="fas fa-sliders"></i> Configuración</a></li>
                         @endif
                     </ul>
                 </li>

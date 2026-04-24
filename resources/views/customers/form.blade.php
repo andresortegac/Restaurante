@@ -32,12 +32,40 @@
                             <input type="text" class="form-control" id="document_number" name="document_number" value="{{ old('document_number', $customer->document_number) }}">
                         </div>
                         <div class="col-md-6">
+                            <label class="form-label" for="billing_identification">Identificación para factura electrónica</label>
+                            <input type="text" class="form-control" id="billing_identification" name="billing_identification" value="{{ old('billing_identification', $customer->billing_identification) }}">
+                        </div>
+                        <div class="col-md-6">
                             <label class="form-label" for="phone">Telefono</label>
                             <input type="text" class="form-control" id="phone" name="phone" value="{{ old('phone', $customer->phone) }}">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label" for="email">Email</label>
                             <input type="email" class="form-control" id="email" name="email" value="{{ old('email', $customer->email) }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="billing_address">Dirección fiscal</label>
+                            <input type="text" class="form-control" id="billing_address" name="billing_address" value="{{ old('billing_address', $customer->billing_address) }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="trade_name">Nombre comercial</label>
+                            <input type="text" class="form-control" id="trade_name" name="trade_name" value="{{ old('trade_name', $customer->trade_name) }}">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label" for="identification_document_code">Tipo documento DIAN</label>
+                            <input type="text" class="form-control" id="identification_document_code" name="identification_document_code" value="{{ old('identification_document_code', $customer->identification_document_code) }}" placeholder="13, 31...">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label" for="legal_organization_code">Organización legal</label>
+                            <input type="text" class="form-control" id="legal_organization_code" name="legal_organization_code" value="{{ old('legal_organization_code', $customer->legal_organization_code) }}">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label" for="tribute_code">Tributo</label>
+                            <input type="text" class="form-control" id="tribute_code" name="tribute_code" value="{{ old('tribute_code', $customer->tribute_code) }}" placeholder="ZZ">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label" for="municipality_code">Código municipio</label>
+                            <input type="text" class="form-control" id="municipality_code" name="municipality_code" value="{{ old('municipality_code', $customer->municipality_code) }}">
                         </div>
                         <div class="col-12">
                             <label class="form-label" for="notes">Notas</label>

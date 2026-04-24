@@ -8,6 +8,8 @@ use App\Http\Controllers\ReservationManagementController;
 use App\Http\Controllers\TableManagementController;
 use App\Http\Controllers\CashManagementController;
 use App\Http\Controllers\DeliveryManagementController;
+use App\Http\Controllers\ElectronicInvoiceManagementController;
+use App\Http\Controllers\ReportManagementController;
 use App\Http\Controllers\UserManagementController;
 use App\Http\Controllers\RoleManagementController;
 use App\Http\Controllers\PermissionManagementController;
@@ -41,6 +43,23 @@ Route::middleware('auth')->group(function () {
         Route::post('/{box}/open', [CashManagementController::class, 'open'])->name('open');
         Route::post('/{box}/movements', [CashManagementController::class, 'storeMovement'])->name('movements.store');
         Route::post('/{box}/close', [CashManagementController::class, 'close'])->name('close');
+    });
+
+    Route::prefix('electronic-invoices')->name('electronic-invoices.')->group(function () {
+        Route::get('/', [ElectronicInvoiceManagementController::class, 'index'])->name('index');
+        Route::get('/settings', [ElectronicInvoiceManagementController::class, 'settings'])->name('settings');
+        Route::put('/settings', [ElectronicInvoiceManagementController::class, 'updateSettings'])->name('settings.update');
+        Route::get('/{invoice}', [ElectronicInvoiceManagementController::class, 'show'])->name('show');
+        Route::post('/{invoice}/retry', [ElectronicInvoiceManagementController::class, 'retry'])->name('retry');
+        Route::post('/{invoice}/sync', [ElectronicInvoiceManagementController::class, 'sync'])->name('sync');
+        Route::get('/{invoice}/download-pdf', [ElectronicInvoiceManagementController::class, 'downloadPdf'])->name('pdf');
+        Route::get('/{invoice}/download-xml', [ElectronicInvoiceManagementController::class, 'downloadXml'])->name('xml');
+    });
+
+    Route::prefix('reports')->name('reports.')->group(function () {
+        Route::get('/', [ReportManagementController::class, 'index'])->name('index');
+        Route::get('/analytics', [ReportManagementController::class, 'analytics'])->name('analytics');
+        Route::get('/export', [ReportManagementController::class, 'export'])->name('export');
     });
 
     // Administracion de acceso

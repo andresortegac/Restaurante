@@ -13,6 +13,7 @@ use App\Models\RestaurantTable;
 use App\Models\Sale;
 use App\Models\TableOrder;
 use App\Models\TableOrderItem;
+use App\Services\Factus\ElectronicInvoiceService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -23,6 +24,11 @@ use Illuminate\Validation\ValidationException;
 
 class OrderManagementController extends Controller
 {
+    public function __construct(
+        private readonly ElectronicInvoiceService $electronicInvoiceService
+    ) {
+    }
+
     public function index()
     {
         if ($response = $this->denyIfUnauthorized($this->orderModulePermissions())) {
@@ -558,6 +564,9 @@ class OrderManagementController extends Controller
             if ($table) {
                 $table->update(['status' => 'free']);
             }
+
+            $sale->load('items', 'payments', 'customer');
+            $this->electronicInvoiceService->issueForSale($sale);
         });
 
         if ($request->expectsJson()) {

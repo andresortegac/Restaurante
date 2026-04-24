@@ -10,6 +10,7 @@ use App\Models\BoxSession;
 use App\Models\PaymentMethod;
 use App\Models\Product;
 use App\Models\Sale;
+use App\Services\Factus\ElectronicInvoiceService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -17,6 +18,11 @@ use Illuminate\Validation\ValidationException;
 
 class SaleController extends Controller
 {
+    public function __construct(
+        private readonly ElectronicInvoiceService $electronicInvoiceService
+    ) {
+    }
+
     public function index()
     {
         $sales = Sale::with('items', 'payments')->latest()->paginate(20);
@@ -142,7 +148,10 @@ class SaleController extends Controller
                 ]);
             }
 
-            return response()->json($sale->load('items', 'payments'), 201);
+            $sale->load('items', 'payments', 'customer');
+            $this->electronicInvoiceService->issueForSale($sale);
+
+            return response()->json($sale->load('items', 'payments', 'invoice'), 201);
         });
     }
 

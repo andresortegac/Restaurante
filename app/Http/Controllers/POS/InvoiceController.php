@@ -6,9 +6,15 @@ use App\Http\Controllers\Controller;
 use App\Models\Invoice;
 use App\Models\Sale;
 use Illuminate\Http\Request;
+use App\Services\Factus\ElectronicInvoiceService;
 
 class InvoiceController extends Controller
 {
+    public function __construct(
+        private readonly ElectronicInvoiceService $electronicInvoiceService
+    ) {
+    }
+
     public function show($id)
     {
         $invoice = Invoice::findOrFail($id);
@@ -49,22 +55,9 @@ class InvoiceController extends Controller
 
     private function issueInvoice(Sale $sale, string $invoiceType): Invoice
     {
-        $sale->loadMissing('invoice');
+        $sale->loadMissing(['invoice', 'customer', 'items.product.taxRate', 'payments.paymentMethod']);
 
-        if ($sale->invoice) {
-            return $sale->invoice;
-        }
-
-        $invoice = new Invoice([
-            'sale_id' => $sale->id,
-            'invoice_type' => $invoiceType,
-        ]);
-        $invoice->invoice_number = $invoice->generateInvoiceNumber();
-        $invoice->status = 'issued';
-        $invoice->issued_at = now();
-        $invoice->save();
-
-        return $invoice;
+        return $this->electronicInvoiceService->issueForSale($sale);
     }
 
     private function sanitizeInvoiceForDisplay(Invoice $invoice): void
