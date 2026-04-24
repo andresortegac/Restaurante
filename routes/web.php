@@ -6,6 +6,11 @@ use App\Http\Controllers\OrderManagementController;
 use App\Http\Controllers\ProductManagementController;
 use App\Http\Controllers\ReservationManagementController;
 use App\Http\Controllers\TableManagementController;
+use App\Http\Controllers\CashManagementController;
+use App\Http\Controllers\DeliveryManagementController;
+use App\Http\Controllers\UserManagementController;
+use App\Http\Controllers\RoleManagementController;
+use App\Http\Controllers\PermissionManagementController;
 use Illuminate\Support\Facades\Route;
 
 // Rutas publicas
@@ -27,6 +32,39 @@ Route::middleware('auth')->group(function () {
     Route::get('/dashboard', function () {
         return view('dashboard');
     })->name('dashboard');
+
+    Route::prefix('cash-management')->name('cash-management.')->group(function () {
+        Route::get('/', [CashManagementController::class, 'index'])->name('index');
+        Route::get('/history', [CashManagementController::class, 'history'])->name('history');
+        Route::get('/monthly', [CashManagementController::class, 'monthlyReport'])->name('monthly');
+        Route::get('/{box}', [CashManagementController::class, 'show'])->name('show');
+        Route::post('/{box}/open', [CashManagementController::class, 'open'])->name('open');
+        Route::post('/{box}/movements', [CashManagementController::class, 'storeMovement'])->name('movements.store');
+        Route::post('/{box}/close', [CashManagementController::class, 'close'])->name('close');
+    });
+
+    // Administracion de acceso
+    Route::middleware('role:Admin')->prefix('admin')->name('admin.')->group(function () {
+        Route::prefix('users')->name('users.')->group(function () {
+            Route::get('/', [UserManagementController::class, 'index'])->name('index');
+            Route::get('/create', [UserManagementController::class, 'create'])->name('create');
+            Route::post('/', [UserManagementController::class, 'store'])->name('store');
+            Route::get('/{user}/edit', [UserManagementController::class, 'edit'])->name('edit');
+            Route::put('/{user}', [UserManagementController::class, 'update'])->name('update');
+            Route::delete('/{user}', [UserManagementController::class, 'destroy'])->name('destroy');
+        });
+
+        Route::prefix('roles')->name('roles.')->group(function () {
+            Route::get('/', [RoleManagementController::class, 'index'])->name('index');
+            Route::get('/create', [RoleManagementController::class, 'create'])->name('create');
+            Route::post('/', [RoleManagementController::class, 'store'])->name('store');
+            Route::get('/{role}/edit', [RoleManagementController::class, 'edit'])->name('edit');
+            Route::put('/{role}', [RoleManagementController::class, 'update'])->name('update');
+            Route::delete('/{role}', [RoleManagementController::class, 'destroy'])->name('destroy');
+        });
+
+        Route::get('/permissions', [PermissionManagementController::class, 'index'])->name('permissions.index');
+    });
 
     // Gestion de productos
     Route::prefix('products')->name('products.')->group(function () {
@@ -61,6 +99,16 @@ Route::middleware('auth')->group(function () {
         Route::put('/{customer}', [CustomerManagementController::class, 'update'])->name('update');
         Route::delete('/{customer}', [CustomerManagementController::class, 'destroy'])->name('destroy');
         Route::get('/api/search', [CustomerManagementController::class, 'search'])->name('search');
+    });
+
+    // Gestion de domicilios
+    Route::prefix('deliveries')->name('deliveries.')->group(function () {
+        Route::get('/', [DeliveryManagementController::class, 'index'])->name('index');
+        Route::get('/create', [DeliveryManagementController::class, 'create'])->name('create');
+        Route::post('/', [DeliveryManagementController::class, 'store'])->name('store');
+        Route::get('/{delivery}/edit', [DeliveryManagementController::class, 'edit'])->name('edit');
+        Route::put('/{delivery}', [DeliveryManagementController::class, 'update'])->name('update');
+        Route::delete('/{delivery}', [DeliveryManagementController::class, 'destroy'])->name('destroy');
     });
 
     // Gestion de reservas
@@ -105,7 +153,7 @@ Route::middleware('auth')->group(function () {
 
     // Rutas POS
     Route::prefix('pos')->name('pos.')->group(function () {
-        Route::get('/', [\App\Http\Controllers\POS\POSController::class, 'index'])->name('index');
+        Route::redirect('/', '/orders')->name('index');
         Route::get('/sales-history', [\App\Http\Controllers\POS\POSController::class, 'salesHistory'])->name('sales-history.index');
         Route::get('/sales/{sale}/print', [\App\Http\Controllers\POS\InvoiceController::class, 'printSale'])->name('sales.print');
         Route::get('/promo-codes/create', [\App\Http\Controllers\POS\DiscountController::class, 'create'])->name('promo-codes.create');

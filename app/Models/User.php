@@ -73,6 +73,11 @@ class User extends Authenticatable
         return $this->hasMany(Reservation::class, 'reserved_by');
     }
 
+    public function assignedDeliveries(): HasMany
+    {
+        return $this->hasMany(Delivery::class, 'assigned_user_id');
+    }
+
     /**
      * Check if user has a specific role
      */

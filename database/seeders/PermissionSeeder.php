@@ -25,6 +25,13 @@ class PermissionSeeder extends Seeder
             ['name' => 'roles.edit', 'description' => 'Editar roles'],
             ['name' => 'roles.delete', 'description' => 'Eliminar roles'],
 
+            // Caja
+            ['name' => 'boxes.view', 'description' => 'Ver gestion de caja'],
+            ['name' => 'boxes.open', 'description' => 'Abrir cajas'],
+            ['name' => 'boxes.close', 'description' => 'Cerrar cajas'],
+            ['name' => 'boxes.movements', 'description' => 'Registrar ingresos y egresos manuales de caja'],
+            ['name' => 'boxes.reports', 'description' => 'Ver historial y cierres mensuales de caja'],
+
             // Pedidos
             ['name' => 'orders.view', 'description' => 'Ver pedidos'],
             ['name' => 'orders.create', 'description' => 'Crear pedidos'],
@@ -73,6 +80,12 @@ class PermissionSeeder extends Seeder
             ['name' => 'customers.create', 'description' => 'Crear clientes'],
             ['name' => 'customers.edit', 'description' => 'Editar clientes'],
             ['name' => 'customers.delete', 'description' => 'Eliminar clientes'],
+
+            // Domicilios
+            ['name' => 'deliveries.view', 'description' => 'Ver domicilios'],
+            ['name' => 'deliveries.create', 'description' => 'Crear domicilios'],
+            ['name' => 'deliveries.edit', 'description' => 'Editar domicilios'],
+            ['name' => 'deliveries.delete', 'description' => 'Eliminar domicilios'],
 
             // Reservas
             ['name' => 'reservations.view', 'description' => 'Ver reservas'],

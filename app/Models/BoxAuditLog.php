@@ -6,28 +6,22 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class BoxMovement extends Model
+class BoxAuditLog extends Model
 {
     use HasFactory;
 
     protected $fillable = [
         'box_id',
         'box_session_id',
-        'sale_id',
-        'payment_id',
         'user_id',
-        'movement_type',
-        'amount',
-        'balance_before',
-        'balance_after',
+        'action',
         'description',
+        'metadata',
         'occurred_at',
     ];
 
     protected $casts = [
-        'amount' => 'decimal:2',
-        'balance_before' => 'decimal:2',
-        'balance_after' => 'decimal:2',
+        'metadata' => 'array',
         'occurred_at' => 'datetime',
     ];
 
@@ -39,16 +33,6 @@ class BoxMovement extends Model
     public function session(): BelongsTo
     {
         return $this->belongsTo(BoxSession::class, 'box_session_id');
-    }
-
-    public function sale(): BelongsTo
-    {
-        return $this->belongsTo(Sale::class);
-    }
-
-    public function payment(): BelongsTo
-    {
-        return $this->belongsTo(Payment::class);
     }
 
     public function user(): BelongsTo

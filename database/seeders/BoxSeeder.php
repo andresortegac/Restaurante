@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Box;
+use App\Models\BoxSession;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
@@ -17,7 +18,17 @@ class BoxSeeder extends Seeder
         ];
 
         foreach ($boxes as $box) {
-            Box::create($box);
+            $createdBox = Box::create($box);
+
+            if (($box['status'] ?? 'closed') === 'open') {
+                BoxSession::create([
+                    'box_id' => $createdBox->id,
+                    'user_id' => $box['user_id'] ?? null,
+                    'opening_balance' => $box['opening_balance'] ?? 0,
+                    'status' => 'open',
+                    'opened_at' => $box['opened_at'] ?? now(),
+                ]);
+            }
         }
     }
 }

@@ -36,7 +36,7 @@
         </div>
 
         <div class="row g-4">
-            <div class="col-xl-8">
+            <div class="col-12">
                 <div class="card module-card h-100">
                     <div class="card-body p-0">
                         <div class="table-responsive">
@@ -104,29 +104,6 @@
                                     @endforelse
                                 </tbody>
                             </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-xl-4">
-                <div class="card module-card h-100">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0"><i class="fas fa-layer-group"></i> Categorias</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="module-list">
-                            @forelse($categories as $category)
-                                <div class="module-list-item">
-                                    <div>
-                                        <strong>{{ $category->name }}</strong>
-                                        <div class="table-note">{{ $category->description ?: 'Categoria disponible para el menu.' }}</div>
-                                    </div>
-                                    <span class="summary-chip">{{ $category->simple_products_count }}</span>
-                                </div>
-                            @empty
-                                <p class="text-muted mb-0">Aun no hay categorias definidas.</p>
-                            @endforelse
                         </div>
                     </div>
                 </div>

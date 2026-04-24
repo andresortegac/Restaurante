@@ -4,6 +4,10 @@ namespace App\Http\Controllers\POS;
 
 use App\Http\Controllers\Controller;
 use App\Models\Box;
+use App\Models\BoxAuditLog;
+use App\Models\BoxMovement;
+use App\Models\BoxSession;
+use App\Models\PaymentMethod;
 use App\Models\Product;
 use App\Models\Sale;
 use Illuminate\Http\Request;
@@ -31,14 +35,27 @@ class SaleController extends Controller
         ]);
 
         return DB::transaction(function () use ($validated) {
-            $boxIsOpen = Box::query()
-                ->whereKey($validated['box_id'])
+            $box = Box::query()->lockForUpdate()->findOrFail($validated['box_id']);
+            $session = BoxSession::query()
+                ->where('box_id', $box->id)
                 ->where('status', 'open')
-                ->exists();
+                ->orderByDesc('opened_at')
+                ->lockForUpdate()
+                ->first();
 
-            if (! $boxIsOpen) {
+            if (! $box->isOpen()) {
                 throw ValidationException::withMessages([
                     'box_id' => 'La caja seleccionada no esta abierta.',
+                ]);
+            }
+
+            if (! $session) {
+                $session = BoxSession::query()->create([
+                    'box_id' => $box->id,
+                    'user_id' => $box->user_id ?? Auth::id(),
+                    'opening_balance' => (float) $box->opening_balance,
+                    'status' => 'open',
+                    'opened_at' => $box->opened_at ?? now(),
                 ]);
             }
 
@@ -75,13 +92,53 @@ class SaleController extends Controller
             $sale->calculateTotal();
 
             if (! empty($validated['payment_method_id'])) {
-                $sale->payments()->create([
+                $paymentMethod = PaymentMethod::query()->findOrFail($validated['payment_method_id']);
+
+                $payment = $sale->payments()->create([
                     'payment_method_id' => $validated['payment_method_id'],
                     'amount' => $sale->total,
                     'received_amount' => $sale->total,
                     'change_amount' => 0,
                     'tip_amount' => 0,
                     'status' => 'completed',
+                ]);
+
+                $boxImpact = strtoupper((string) $paymentMethod->code) === 'CASH'
+                    ? round((float) $sale->total, 2)
+                    : 0.0;
+                $movementTotal = (float) BoxMovement::query()
+                    ->where('box_session_id', $session->id)
+                    ->lockForUpdate()
+                    ->sum('amount');
+                $balanceBefore = round((float) $session->opening_balance + $movementTotal, 2);
+                $balanceAfter = round($balanceBefore + $boxImpact, 2);
+
+                $movement = $session->movements()->create([
+                    'box_id' => $box->id,
+                    'box_session_id' => $session->id,
+                    'sale_id' => $sale->id,
+                    'payment_id' => $payment->id,
+                    'user_id' => Auth::id(),
+                    'movement_type' => 'sale_income',
+                    'amount' => $boxImpact,
+                    'balance_before' => $balanceBefore,
+                    'balance_after' => $balanceAfter,
+                    'description' => 'Venta POS #' . $sale->id . ' | Metodo ' . $paymentMethod->name,
+                    'occurred_at' => now(),
+                ]);
+
+                BoxAuditLog::query()->create([
+                    'box_id' => $box->id,
+                    'box_session_id' => $session->id,
+                    'user_id' => Auth::id(),
+                    'action' => 'sale_income',
+                    'description' => 'Ingreso automatico por venta POS #' . $sale->id,
+                    'metadata' => [
+                        'movement_id' => $movement->id,
+                        'payment_method' => $paymentMethod->code,
+                        'amount' => $boxImpact,
+                    ],
+                    'occurred_at' => now(),
                 ]);
             }
 
@@ -95,3 +152,4 @@ class SaleController extends Controller
         return response()->json($sale);
     }
 }
+

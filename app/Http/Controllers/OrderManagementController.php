@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Box;
+use App\Models\BoxAuditLog;
 use App\Models\BoxMovement;
+use App\Models\BoxSession;
 use App\Models\Customer;
 use App\Models\PaymentMethod;
 use App\Models\Product;
@@ -423,13 +425,39 @@ class OrderManagementController extends Controller
             $table = $currentOrder->table;
             $box = Box::query()
                 ->where('status', 'open')
+                ->where('user_id', Auth::id())
                 ->orderByDesc('opened_at')
                 ->lockForUpdate()
                 ->first();
 
             if (! $box) {
+                $box = Box::query()
+                    ->where('status', 'open')
+                    ->orderByDesc('opened_at')
+                    ->lockForUpdate()
+                    ->first();
+            }
+
+            if (! $box) {
                 throw ValidationException::withMessages([
                     'payment_method_id' => 'No hay una caja abierta para registrar este cobro.',
+                ]);
+            }
+
+            $boxSession = BoxSession::query()
+                ->where('box_id', $box->id)
+                ->where('status', 'open')
+                ->orderByDesc('opened_at')
+                ->lockForUpdate()
+                ->first();
+
+            if (! $boxSession) {
+                $boxSession = BoxSession::query()->create([
+                    'box_id' => $box->id,
+                    'user_id' => $box->user_id ?? Auth::id(),
+                    'opening_balance' => (float) $box->opening_balance,
+                    'status' => 'open',
+                    'opened_at' => $box->opened_at ?? now(),
                 ]);
             }
 
@@ -491,7 +519,7 @@ class OrderManagementController extends Controller
             ]);
 
             $movementTotal = (float) BoxMovement::query()
-                ->where('box_id', $box->id)
+                ->where('box_session_id', $boxSession->id)
                 ->lockForUpdate()
                 ->sum('amount');
             $balanceBefore = round((float) $box->opening_balance + $movementTotal, 2);
@@ -499,6 +527,7 @@ class OrderManagementController extends Controller
             $balanceAfter = round($balanceBefore + $boxImpact, 2);
 
             $box->movements()->create([
+                'box_session_id' => $boxSession->id,
                 'sale_id' => $sale->id,
                 'payment_id' => $payment->id,
                 'user_id' => Auth::id(),
@@ -507,6 +536,20 @@ class OrderManagementController extends Controller
                 'balance_before' => $balanceBefore,
                 'balance_after' => $balanceAfter,
                 'description' => $this->movementDescription($currentOrder, $table, $paymentMethod, $boxImpact),
+                'occurred_at' => now(),
+            ]);
+
+            BoxAuditLog::query()->create([
+                'box_id' => $box->id,
+                'box_session_id' => $boxSession->id,
+                'user_id' => Auth::id(),
+                'action' => 'table_order_payment',
+                'description' => $this->movementDescription($currentOrder, $table, $paymentMethod, $boxImpact),
+                'metadata' => [
+                    'sale_id' => $sale->id,
+                    'payment_id' => $payment->id,
+                    'amount' => $boxImpact,
+                ],
                 'occurred_at' => now(),
             ]);
 
@@ -623,10 +666,19 @@ class OrderManagementController extends Controller
 
     private function activeBox(): ?Box
     {
-        return Box::query()
+        $session = BoxSession::query()
+            ->with('box')
             ->where('status', 'open')
-            ->orderByDesc('opened_at')
+            ->where('user_id', Auth::id())
+            ->latest('opened_at')
             ->first();
+
+        return $session?->box
+            ?? Box::query()
+                ->where('status', 'open')
+                ->whereHas('activeSession')
+                ->orderByDesc('opened_at')
+                ->first();
     }
 
     private function paymentMethods(): Collection
@@ -678,3 +730,4 @@ class OrderManagementController extends Controller
         return response()->view('errors.403', [], 403);
     }
 }
+

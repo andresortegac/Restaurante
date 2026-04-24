@@ -4,6 +4,7 @@ namespace App\Http\Controllers\POS;
 
 use App\Http\Controllers\Controller;
 use App\Models\Box;
+use App\Models\BoxSession;
 use App\Models\PaymentMethod;
 use App\Models\Product;
 use App\Models\Sale;
@@ -50,8 +51,16 @@ class POSController extends Controller
             })
             ->values();
 
-        $boxes = Box::all();
-        $activeBox = Box::where('status', 'open')->first();
+        $boxes = Box::query()->with('activeSession')->orderBy('name')->get();
+        $activeSession = BoxSession::query()
+            ->with('box')
+            ->where('status', 'open')
+            ->where('user_id', auth()->id())
+            ->latest('opened_at')
+            ->first();
+
+        $activeBox = $activeSession?->box
+            ?? Box::query()->where('status', 'open')->orderByDesc('opened_at')->first();
 
         return view('pos.index', [
             'products' => $products,
@@ -151,3 +160,4 @@ class POSController extends Controller
         return $value === null ? null : $this->sanitizeString($value);
     }
 }
+

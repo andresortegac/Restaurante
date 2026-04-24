@@ -61,15 +61,20 @@
         <aside class="sidebar" id="sidebar">
             @php
                 $isDashboardRoute = request()->routeIs('dashboard');
-                $isPosIndexRoute = request()->routeIs('pos.index');
                 $isPosSalesHistoryRoute = request()->routeIs('pos.sales-history.*');
                 $isPosPromoCodesRoute = request()->routeIs('pos.promo-codes.*');
                 $isProductsRoute = request()->routeIs('products.*');
                 $isTablesRoute = request()->routeIs('tables.*');
                 $isCustomersRoute = request()->routeIs('customers.*');
+                $isDeliveriesRoute = request()->routeIs('deliveries.*');
                 $isReservationsRoute = request()->routeIs('reservations.*');
                 $isOrdersHistoryRoute = request()->routeIs('orders.history.*');
                 $isOrdersRoute = request()->routeIs('orders.*') && ! $isOrdersHistoryRoute;
+                $isCashRoute = request()->routeIs('cash-management.*');
+                $isAdminUsersRoute = request()->routeIs('admin.users.*');
+                $isAdminRolesRoute = request()->routeIs('admin.roles.*');
+                $isAdminPermissionsRoute = request()->routeIs('admin.permissions.*');
+                $isAdminAccessRoute = $isAdminRolesRoute || $isAdminPermissionsRoute;
                 $isOrdersMenuExpanded = $isOrdersRoute || $isOrdersHistoryRoute || $isPosSalesHistoryRoute || $isPosPromoCodesRoute;
             @endphp
             
@@ -77,12 +82,6 @@
                 <li>
                     <a href="{{ route('dashboard') }}" class="{{ $isDashboardRoute ? 'active' : '' }}">
                         <i class="fas fa-dashboard"></i> Dashboard
-                    </a>
-                </li>
-
-                <li>
-                    <a href="{{ route('pos.index') }}" class="{{ $isPosIndexRoute ? 'active' : '' }}">
-                        <i class="fas fa-cash-register"></i> Punto de venta
                     </a>
                 </li>
 
@@ -118,36 +117,42 @@
                 </li>
                 @endif
 
-                @if(Auth::user()->hasAnyPermission(['users.view', 'users.create', 'users.edit', 'users.delete']))
+                @if(Auth::user()->hasRole('Admin'))
                 <li>
-                    <a href="#" data-toggle-menu>
+                    <a href="#" data-toggle-menu class="{{ $isAdminUsersRoute ? 'expanded' : '' }}">
                         <i class="fas fa-users"></i> Usuarios
                         <span class="toggle-icon float-end"><i class="fas fa-chevron-right"></i></span>
                     </a>
-                    <ul class="sidebar-submenu">
-                        @if(Auth::user()->hasPermission('users.view'))
-                        <li><a href="#"><i class="fas fa-list"></i> Listar</a></li>
-                        @endif
-                        @if(Auth::user()->hasPermission('users.create'))
-                        <li><a href="#"><i class="fas fa-plus"></i> Crear</a></li>
-                        @endif
+                    <ul class="sidebar-submenu {{ $isAdminUsersRoute ? 'show' : '' }}">
+                        <li><a href="{{ route('admin.users.index') }}" class="{{ request()->routeIs('admin.users.index') || request()->routeIs('admin.users.edit') ? 'active' : '' }}"><i class="fas fa-list"></i> Listar</a></li>
+                        <li><a href="{{ route('admin.users.create') }}" class="{{ request()->routeIs('admin.users.create') ? 'active' : '' }}"><i class="fas fa-plus"></i> Crear</a></li>
                     </ul>
                 </li>
                 @endif
 
-                @if(Auth::user()->hasAnyPermission(['roles.view', 'permissions.view']))
+                @if(Auth::user()->hasRole('Admin'))
                 <li>
-                    <a href="#" data-toggle-menu>
+                    <a href="#" data-toggle-menu class="{{ $isAdminAccessRoute ? 'expanded' : '' }}">
                         <i class="fas fa-shield-alt"></i> Roles y Permisos
                         <span class="toggle-icon float-end"><i class="fas fa-chevron-right"></i></span>
                     </a>
-                    <ul class="sidebar-submenu">
-                        @if(Auth::user()->hasPermission('roles.view'))
-                        <li><a href="#"><i class="fas fa-lock"></i> Roles</a></li>
-                        @endif
-                        @if(Auth::user()->hasPermission('permissions.view'))
-                        <li><a href="#"><i class="fas fa-key"></i> Permisos</a></li>
-                        @endif
+                    <ul class="sidebar-submenu {{ $isAdminAccessRoute ? 'show' : '' }}">
+                        <li><a href="{{ route('admin.roles.index') }}" class="{{ $isAdminRolesRoute ? 'active' : '' }}"><i class="fas fa-lock"></i> Roles</a></li>
+                        <li><a href="{{ route('admin.permissions.index') }}" class="{{ $isAdminPermissionsRoute ? 'active' : '' }}"><i class="fas fa-key"></i> Permisos</a></li>
+                    </ul>
+                </li>
+                @endif
+
+                @if(Auth::user()->hasRole('Admin') || Auth::user()->hasRole('Cajero') || Auth::user()->hasAnyPermission(['boxes.view', 'boxes.open', 'boxes.close', 'boxes.movements', 'boxes.reports']))
+                <li>
+                    <a href="#" data-toggle-menu class="{{ $isCashRoute ? 'expanded' : '' }}">
+                        <i class="fas fa-cash-register"></i> Gestion de Caja
+                        <span class="toggle-icon float-end"><i class="fas fa-chevron-right"></i></span>
+                    </a>
+                    <ul class="sidebar-submenu {{ $isCashRoute ? 'show' : '' }}">
+                        <li><a href="{{ route('cash-management.index') }}" class="{{ request()->routeIs('cash-management.index') || request()->routeIs('cash-management.show') ? 'active' : '' }}"><i class="fas fa-wallet"></i> Cajas</a></li>
+                        <li><a href="{{ route('cash-management.history') }}" class="{{ request()->routeIs('cash-management.history') ? 'active' : '' }}"><i class="fas fa-clock-rotate-left"></i> Historial</a></li>
+                        <li><a href="{{ route('cash-management.monthly') }}" class="{{ request()->routeIs('cash-management.monthly') ? 'active' : '' }}"><i class="fas fa-calendar-days"></i> Cierre mensual</a></li>
                     </ul>
                 </li>
                 @endif
@@ -231,6 +236,21 @@
                         <li><a href="{{ route('customers.index') }}" class="{{ request()->routeIs('customers.index') ? 'active' : '' }}"><i class="fas fa-list"></i> Listar</a></li>
                         @if(Auth::user()->hasRole('Admin') || Auth::user()->hasPermission('customers.create'))
                         <li><a href="{{ route('customers.create') }}" class="{{ request()->routeIs('customers.create') ? 'active' : '' }}"><i class="fas fa-plus"></i> Nuevo</a></li>
+                        @endif
+                    </ul>
+                </li>
+                @endif
+
+                @if(Auth::user()->hasRole('Admin') || Auth::user()->hasAnyPermission(['deliveries.view', 'deliveries.create', 'deliveries.edit', 'deliveries.delete']))
+                <li>
+                    <a href="#" data-toggle-menu class="{{ $isDeliveriesRoute ? 'expanded' : '' }}">
+                        <i class="fas fa-motorcycle"></i> Domicilios
+                        <span class="toggle-icon float-end"><i class="fas fa-chevron-right"></i></span>
+                    </a>
+                    <ul class="sidebar-submenu {{ $isDeliveriesRoute ? 'show' : '' }}">
+                        <li><a href="{{ route('deliveries.index') }}" class="{{ request()->routeIs('deliveries.index') || request()->routeIs('deliveries.edit') ? 'active' : '' }}"><i class="fas fa-list"></i> Listar</a></li>
+                        @if(Auth::user()->hasRole('Admin') || Auth::user()->hasPermission('deliveries.create'))
+                        <li><a href="{{ route('deliveries.create') }}" class="{{ request()->routeIs('deliveries.create') ? 'active' : '' }}"><i class="fas fa-plus"></i> Nuevo</a></li>
                         @endif
                     </ul>
                 </li>

@@ -43,7 +43,12 @@
                             <article class="combo-card">
                                 <div class="combo-card-header">
                                     <div>
-                                        <h6 class="mb-1">{{ $combo->name }}</h6>
+                                        <div class="d-flex align-items-center gap-2 flex-wrap mb-1">
+                                            <h6 class="mb-0">{{ $combo->name }}</h6>
+                                            <span class="badge rounded-pill {{ $combo->active ? 'bg-success' : 'bg-secondary' }}">
+                                                {{ $combo->active ? 'Activo' : 'Inactivo' }}
+                                            </span>
+                                        </div>
                                         <div class="table-note">{{ $combo->sku }} | {{ $combo->menuCategory->name ?? 'Sin categoria' }} | {{ $combo->taxRate->name ?? 'Sin impuesto' }} | {{ $combo->tracks_stock ? 'Controla stock' : 'Sin control de stock' }}</div>
                                     </div>
                                     <div class="combo-actions">
