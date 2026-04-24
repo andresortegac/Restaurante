@@ -12,10 +12,13 @@ use Illuminate\Validation\Rule;
 
 class RoleManagementController extends Controller
 {
+    private const ALLOWED_ROLE_NAMES = ['Admin', 'Cajero', 'Mesero'];
+
     public function index()
     {
         $roles = Role::query()
             ->withCount(['users', 'permissions'])
+            ->whereIn('name', self::ALLOWED_ROLE_NAMES)
             ->orderBy('name')
             ->get();
 
@@ -31,34 +34,22 @@ class RoleManagementController extends Controller
 
     public function create()
     {
-        return view('admin.roles.form', [
-            'pageTitle' => 'Nuevo rol',
-            'roleModel' => new Role(),
-            'permissionGroups' => $this->permissionGroups(),
-            'selectedPermissions' => old('permissions', []),
-            'formAction' => route('admin.roles.store'),
-            'submitLabel' => 'Guardar rol',
-        ]);
+        return redirect()
+            ->route('admin.roles.index')
+            ->with('info', 'Solo se permiten los roles base Admin, Cajero y Mesero.');
     }
 
     public function store(Request $request): RedirectResponse
     {
-        $validated = $this->validateRoleData($request);
-
-        $role = Role::create([
-            'name' => $validated['name'],
-            'description' => $validated['description'] ?? null,
-        ]);
-
-        $role->permissions()->sync($validated['permissions'] ?? []);
-
         return redirect()
             ->route('admin.roles.index')
-            ->with('success', 'Rol creado correctamente.');
+            ->with('info', 'La creacion de roles adicionales esta deshabilitada.');
     }
 
     public function edit(Role $role)
     {
+        abort_unless(in_array($role->name, self::ALLOWED_ROLE_NAMES, true), 404);
+
         $role->load('permissions');
 
         return view('admin.roles.form', [
@@ -73,6 +64,8 @@ class RoleManagementController extends Controller
 
     public function update(Request $request, Role $role): RedirectResponse
     {
+        abort_unless(in_array($role->name, self::ALLOWED_ROLE_NAMES, true), 404);
+
         $validated = $this->validateRoleData($request, $role);
 
         if ($role->name === 'Admin' && $validated['name'] !== 'Admin') {
@@ -96,32 +89,15 @@ class RoleManagementController extends Controller
 
     public function destroy(Role $role): RedirectResponse
     {
-        $role->loadCount('users');
-
-        if ($role->name === 'Admin') {
-            return redirect()
-                ->route('admin.roles.index')
-                ->with('error', 'El rol Admin no puede eliminarse.');
-        }
-
-        if ($role->users_count > 0) {
-            return redirect()
-                ->route('admin.roles.index')
-                ->with('warning', 'No puedes eliminar un rol que todavia tiene usuarios asignados.');
-        }
-
-        $role->permissions()->detach();
-        $role->delete();
-
         return redirect()
             ->route('admin.roles.index')
-            ->with('success', 'Rol eliminado correctamente.');
+            ->with('info', 'La eliminacion de roles base esta deshabilitada.');
     }
 
     private function validateRoleData(Request $request, ?Role $role = null): array
     {
         return $request->validate([
-            'name' => ['required', 'string', 'max:255', Rule::unique('roles', 'name')->ignore($role?->id)],
+            'name' => ['required', 'string', 'max:255', Rule::in(self::ALLOWED_ROLE_NAMES), Rule::unique('roles', 'name')->ignore($role?->id)],
             'description' => ['nullable', 'string'],
             'permissions' => ['nullable', 'array'],
             'permissions.*' => ['integer', 'exists:permissions,id'],

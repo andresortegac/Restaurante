@@ -13,13 +13,23 @@ class RoleSeeder extends Seeder
      */
     public function run(): void
     {
+        $allowedRoles = ['Admin', 'Cajero', 'Mesero'];
+
         $roles = [
             ['name' => 'Admin', 'description' => 'Administrador del sistema'],
             ['name' => 'Cajero', 'description' => 'Responsable de caja y pagos'],
             ['name' => 'Mesero', 'description' => 'Personal de servicio al cliente'],
-            ['name' => 'Cocina', 'description' => 'Personal de cocina'],
-            ['name' => 'Cliente', 'description' => 'Cliente del restaurante'],
         ];
+
+        $rolesToRemove = Role::query()
+            ->whereNotIn('name', $allowedRoles)
+            ->pluck('id');
+
+        if ($rolesToRemove->isNotEmpty()) {
+            \DB::table('user_role')->whereIn('role_id', $rolesToRemove)->delete();
+            \DB::table('role_permission')->whereIn('role_id', $rolesToRemove)->delete();
+            Role::query()->whereIn('id', $rolesToRemove)->delete();
+        }
 
         foreach ($roles as $role) {
             Role::firstOrCreate(['name' => $role['name']], $role);
@@ -84,25 +94,5 @@ class RoleSeeder extends Seeder
             $waiterRole->permissions()->sync($waiterPermissions);
         }
 
-        // Cocina
-        $kitchenRole = Role::where('name', 'Cocina')->first();
-        if ($kitchenRole) {
-            $kitchenPermissions = Permission::whereIn('name', [
-                'orders.view',
-                'orders.edit',
-                'inventory.view',
-            ])->pluck('id')->toArray();
-            $kitchenRole->permissions()->sync($kitchenPermissions);
-        }
-
-        // Cliente
-        $clientRole = Role::where('name', 'Cliente')->first();
-        if ($clientRole) {
-            $clientPermissions = Permission::whereIn('name', [
-                'orders.view',
-                'customers.view',
-            ])->pluck('id')->toArray();
-            $clientRole->permissions()->sync($clientPermissions);
-        }
     }
 }

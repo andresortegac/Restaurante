@@ -73,7 +73,6 @@
                 <li><strong>Admin:</strong> admin@restaurante.com / password123</li>
                 <li><strong>Cajero:</strong> cajero@restaurante.com / password123</li>
                 <li><strong>Mesero:</strong> mesero@restaurante.com / password123</li>
-                <li><strong>Cocina:</strong> cocina@restaurante.com / password123</li>
             </ul>
         </div>
     </div>

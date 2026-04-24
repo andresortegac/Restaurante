@@ -20,11 +20,8 @@
         <div class="module-toolbar">
             <div>
                 <h5 class="mb-1">Configuracion de roles</h5>
-                <p class="table-note mb-0">Puedes crear nuevos roles, editar su descripcion y ajustar sus permisos.</p>
+                <p class="table-note mb-0">El sistema maneja solo tres roles base: Admin, Cajero y Mesero. Aqui puedes ajustar sus permisos.</p>
             </div>
-            <a href="{{ route('admin.roles.create') }}" class="btn btn-primary">
-                <i class="fas fa-plus"></i> Nuevo rol
-            </a>
         </div>
 
         <div class="card module-card">
@@ -51,13 +48,6 @@
                                     <td>
                                         <div class="table-actions justify-content-end">
                                             <a href="{{ route('admin.roles.edit', $role) }}" class="btn btn-outline-primary btn-sm">Editar</a>
-                                            @if($role->name !== 'Admin')
-                                                <form method="POST" action="{{ route('admin.roles.destroy', $role) }}" onsubmit="return confirm('Deseas eliminar este rol?');">
-                                                    @csrf
-                                                    @method('DELETE')
-                                                    <button type="submit" class="btn btn-outline-danger btn-sm">Eliminar</button>
-                                                </form>
-                                            @endif
                                         </div>
                                     </td>
                                 </tr>

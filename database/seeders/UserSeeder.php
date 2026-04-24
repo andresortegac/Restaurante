@@ -33,12 +33,6 @@ class UserSeeder extends Seeder
                 'password' => Hash::make('password123'),
                 'role' => 'Mesero',
             ],
-            [
-                'name' => 'Cocina Default',
-                'email' => 'cocina@restaurante.com',
-                'password' => Hash::make('password123'),
-                'role' => 'Cocina',
-            ],
         ];
 
         foreach ($users as $userData) {

@@ -11,6 +11,8 @@ use Illuminate\Validation\Rule;
 
 class UserManagementController extends Controller
 {
+    private const ALLOWED_ROLE_NAMES = ['Admin', 'Cajero', 'Mesero'];
+
     public function index(Request $request)
     {
         $filters = $request->validate([
@@ -153,7 +155,7 @@ class UserManagementController extends Controller
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user?->id)],
             'password' => [$user ? 'nullable' : 'required', 'string', 'min:8', 'confirmed'],
             'roles' => ['required', 'array', 'min:1'],
-            'roles.*' => ['integer', 'exists:roles,id'],
+            'roles.*' => ['integer', Rule::exists('roles', 'id')->where(fn ($query) => $query->whereIn('name', self::ALLOWED_ROLE_NAMES))],
         ]);
 
         $validated['roles'] = array_values(array_unique(array_map('intval', $validated['roles'])));
@@ -163,6 +165,9 @@ class UserManagementController extends Controller
 
     private function availableRoles()
     {
-        return Role::orderBy('name')->get(['id', 'name', 'description']);
+        return Role::query()
+            ->whereIn('name', self::ALLOWED_ROLE_NAMES)
+            ->orderBy('name')
+            ->get(['id', 'name', 'description']);
     }
 }
