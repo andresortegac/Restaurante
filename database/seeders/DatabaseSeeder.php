@@ -21,7 +21,6 @@ class DatabaseSeeder extends Seeder
             ProductCatalogSeeder::class,
             ProductSeeder::class,
             PaymentMethodSeeder::class,
-            BoxSeeder::class,
         ]);
     }
 }
