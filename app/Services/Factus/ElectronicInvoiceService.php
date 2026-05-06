@@ -18,13 +18,13 @@ class ElectronicInvoiceService
     ) {
     }
 
-    public function issueForSale(Sale $sale, bool $forceRetry = false): Invoice
+    public function issueForSale(Sale $sale, bool $forceRetry = false, bool $dispatchToQueue = true): Invoice
     {
         $settings = $this->settings();
 
         $invoice = $sale->invoice ?: new Invoice([
             'sale_id' => $sale->id,
-            'invoice_type' => 'factura',
+            'invoice_type' => Invoice::TYPE_ELECTRONIC,
         ]);
 
         if (!$invoice->exists) {
@@ -49,7 +49,7 @@ class ElectronicInvoiceService
         $invoice->factus_payload = $this->payloadBuilder->build($sale, $settings, $invoice->reference_code);
         $invoice->save();
 
-        if ($forceRetry || !$invoice->isSuccessful()) {
+        if ($dispatchToQueue && ($forceRetry || !$invoice->isSuccessful())) {
             SendElectronicInvoiceJob::dispatch($invoice->id)->afterCommit();
         }
 

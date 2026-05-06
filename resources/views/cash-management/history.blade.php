@@ -10,6 +10,12 @@
                 <h1>Historial y auditoria</h1>
                 <p>Consulta aperturas, cierres y movimientos de caja con filtros por fecha, usuario y tipo de accion.</p>
             </div>
+            <div class="summary-group">
+                <span class="summary-chip">{{ number_format($summary['total']) }} registros</span>
+                <span class="summary-chip">{{ number_format($summary['openings']) }} aperturas</span>
+                <span class="summary-chip">{{ number_format($summary['closings']) }} cierres</span>
+                <span class="summary-chip">{{ number_format($summary['adjustments']) }} ajustes</span>
+            </div>
         </section>
 
         <div class="module-toolbar">
@@ -36,7 +42,7 @@
                     <select class="form-select" id="action" name="action">
                         <option value="">Todas</option>
                         @foreach($actions as $action)
-                            <option value="{{ $action }}" @selected(($filters['action'] ?? '') === $action)>{{ $action }}</option>
+                            <option value="{{ $action }}" @selected(($filters['action'] ?? '') === $action)>{{ $actionLabels[$action] ?? $action }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -64,7 +70,7 @@
                             @forelse($logs as $log)
                                 <tr>
                                     <td>{{ $log->occurred_at?->format('d/m/Y H:i') ?? '-' }}</td>
-                                    <td>{{ str_replace('_', ' ', $log->action) }}</td>
+                                    <td>{{ $actionLabels[$log->action] ?? str_replace('_', ' ', $log->action) }}</td>
                                     <td>{{ $log->box?->name ?? 'Sin caja' }}</td>
                                     <td>{{ $log->user?->name ?? 'Sistema' }}</td>
                                     <td>

@@ -8,7 +8,7 @@
         <div>
             <span class="module-kicker">Punto de Venta</span>
             <h1>Historial de ventas</h1>
-            <p>Consulta las ventas registradas, revisa su total y vuelve a imprimir la factura cuando lo necesites.</p>
+            <p>Consulta las ventas registradas, revisa su total y vuelve a imprimir el documento cuando lo necesites.</p>
         </div>
         <div class="summary-group">
             <a href="{{ route('pos.index') }}" class="btn btn-primary">
@@ -50,7 +50,7 @@
                 <div class="empty-state">
                     <i class="fas fa-receipt"></i>
                     <h3>No hay ventas registradas</h3>
-                    <p>Cuando completes ventas en el POS apareceran aqui con opcion para reimprimir la factura.</p>
+                    <p>Cuando completes ventas en el POS apareceran aqui con opcion para reimprimir el documento.</p>
                 </div>
             @else
                 <div class="table-responsive">
@@ -119,7 +119,7 @@
                                     </td>
                                     <td>
                                         <a href="{{ route('pos.sales.print', $sale) }}" target="_blank" class="btn btn-sm btn-outline-primary">
-                                            <i class="fas fa-print"></i> Imprimir factura
+                                            <i class="fas fa-print"></i> Imprimir documento
                                         </a>
                                     </td>
                                 </tr>

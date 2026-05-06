@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Factura {{ $invoice->invoice_number }}</title>
+    <title>Documento {{ $invoice->invoice_number }}</title>
     <style>
         body {
             margin: 0;
@@ -171,12 +171,19 @@
 <body>
     <div class="invoice-shell">
         <div class="invoice-header">
-            <h1>{{ $invoice->invoice_type === 'boleta' ? 'Boleta' : 'Factura' }} {{ $invoice->invoice_number }}</h1>
+            <h1>
+                {{ $invoice->isElectronic() ? 'Factura electronica' : 'Ticket' }}
+                {{ $invoice->invoice_number }}
+            </h1>
             <p>Venta #{{ $sale->id }} registrada el {{ $sale->created_at?->format('d/m/Y H:i') }}</p>
         </div>
 
         <div class="invoice-body">
             <div class="meta-grid">
+                <div class="meta-card">
+                    <strong>Documento</strong>
+                    <span>{{ $invoice->isElectronic() ? 'Factura electronica' : 'Ticket normal' }}</span>
+                </div>
                 <div class="meta-card">
                     <strong>Vendedor</strong>
                     <span>{{ $sale->user?->name ?? 'Sin usuario' }}</span>
@@ -193,6 +200,16 @@
                     <strong>Estado</strong>
                     <span>{{ ucfirst($invoice->status) }}</span>
                 </div>
+                @if($invoice->isElectronic())
+                    <div class="meta-card">
+                        <strong>CUFE</strong>
+                        <span>{{ $invoice->cufe ?: 'Sin CUFE todavia' }}</span>
+                    </div>
+                    <div class="meta-card">
+                        <strong>Numero Factus</strong>
+                        <span>{{ $invoice->electronic_number ?: 'Sin numero electronico' }}</span>
+                    </div>
+                @endif
                 <div class="meta-card">
                     <strong>Origen</strong>
                     <span>
@@ -265,6 +282,19 @@
                     </div>
                 </div>
             @endif
+
+            @if($invoice->isElectronic())
+                <div class="meta-grid" style="margin-top: 16px;">
+                    <div class="meta-card">
+                        <strong>Estado Factus</strong>
+                        <span>{{ $invoice->status_message ?: 'Sin mensaje adicional' }}</span>
+                    </div>
+                    <div class="meta-card">
+                        <strong>Consulta</strong>
+                        <span>{{ $invoice->public_url ?: 'Sin enlace publico disponible' }}</span>
+                    </div>
+                </div>
+            @endif
         </div>
     </div>
 
@@ -274,7 +304,7 @@
     </div>
 
     <script>
-        const fallbackCloseUrl = @json(route('orders.index'));
+        const fallbackCloseUrl = @json($sale->tableOrder ? route('billing.history') : route('orders.index'));
 
         function handleClose() {
             window.location.href = fallbackCloseUrl;

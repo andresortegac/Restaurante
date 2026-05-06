@@ -6,12 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Models\Invoice;
 use App\Models\Sale;
 use Illuminate\Http\Request;
-use App\Services\Factus\ElectronicInvoiceService;
+use App\Services\SaleDocumentService;
 
 class InvoiceController extends Controller
 {
     public function __construct(
-        private readonly ElectronicInvoiceService $electronicInvoiceService
+        private readonly SaleDocumentService $saleDocumentService
     ) {
     }
 
@@ -28,7 +28,7 @@ class InvoiceController extends Controller
     {
         $validated = $request->validate([
             'sale_id' => 'required|exists:sales,id',
-            'invoice_type' => 'required|in:factura,boleta',
+            'invoice_type' => 'required|in:factura,boleta,ticket,electronic',
         ]);
 
         $sale = Sale::findOrFail($validated['sale_id']);
@@ -42,7 +42,7 @@ class InvoiceController extends Controller
     {
         $sale->load(['user', 'box', 'items.product', 'payments.paymentMethod', 'invoice', 'tableOrder.table', 'customer']);
 
-        $invoice = $this->issueInvoice($sale, 'factura');
+        $invoice = $sale->invoice ?: $this->saleDocumentService->issueTicketForSale($sale);
         $sale->setRelation('invoice', $invoice);
         $this->sanitizeSaleForDisplay($sale);
         $this->sanitizeInvoiceForDisplay($invoice);
@@ -57,7 +57,12 @@ class InvoiceController extends Controller
     {
         $sale->loadMissing(['invoice', 'customer', 'items.product.taxRate', 'payments.paymentMethod']);
 
-        return $this->electronicInvoiceService->issueForSale($sale);
+        $normalizedType = match ($invoiceType) {
+            'factura', 'electronic' => Invoice::TYPE_ELECTRONIC,
+            default => Invoice::TYPE_TICKET,
+        };
+
+        return $this->saleDocumentService->issueDocumentForSale($sale, $normalizedType);
     }
 
     private function sanitizeInvoiceForDisplay(Invoice $invoice): void

@@ -10,6 +10,9 @@ class Invoice extends Model
 {
     use HasFactory;
 
+    public const TYPE_TICKET = 'ticket';
+    public const TYPE_ELECTRONIC = 'electronic';
+
     protected $fillable = [
         'sale_id',
         'invoice_number',
@@ -58,15 +61,26 @@ class Invoice extends Model
         return $this->hasMany(ElectronicInvoiceLog::class);
     }
 
-    public function generateInvoiceNumber()
+    public function generateInvoiceNumber(string $prefix = 'INV')
     {
         $latestInvoice = static::latest('id')->first();
         $nextNumber = ($latestInvoice?->id ?? 0) + 1;
-        return 'INV-' . date('Ym') . '-' . str_pad($nextNumber, 6, '0', STR_PAD_LEFT);
+
+        return strtoupper($prefix) . '-' . date('Ym') . '-' . str_pad($nextNumber, 6, '0', STR_PAD_LEFT);
     }
 
     public function isSuccessful(): bool
     {
         return in_array($this->status, ['validated', 'submitted'], true);
+    }
+
+    public function isElectronic(): bool
+    {
+        return $this->invoice_type === self::TYPE_ELECTRONIC;
+    }
+
+    public function isTicket(): bool
+    {
+        return $this->invoice_type === self::TYPE_TICKET;
     }
 }

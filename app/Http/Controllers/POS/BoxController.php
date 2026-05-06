@@ -30,21 +30,37 @@ class BoxController extends Controller
         return DB::transaction(function () use ($box, $validated) {
             $lockedBox = Box::query()->lockForUpdate()->findOrFail($box->id);
 
-            if ($lockedBox->activeSession()->exists()) {
+            $boxActiveSession = BoxSession::query()
+                ->with('user')
+                ->where('box_id', $lockedBox->id)
+                ->where('status', 'open')
+                ->latest('opened_at')
+                ->lockForUpdate()
+                ->first();
+
+            if ($boxActiveSession) {
+                $responsibleUser = $boxActiveSession->user?->name
+                    ? ' a cargo de ' . $boxActiveSession->user->name
+                    : '';
+
                 throw ValidationException::withMessages([
-                    'opening_balance' => 'La caja ya esta abierta.',
+                    'opening_balance' => 'La caja "' . $lockedBox->name . '" ya tiene una sesion abierta' . $responsibleUser . '.',
                 ]);
             }
 
-            $userHasOpenSession = BoxSession::query()
+            $userOpenSession = BoxSession::query()
+                ->with('box')
                 ->where('user_id', Auth::id())
                 ->where('status', 'open')
+                ->latest('opened_at')
                 ->lockForUpdate()
-                ->exists();
+                ->first();
 
-            if ($userHasOpenSession) {
+            if ($userOpenSession) {
+                $openBoxName = $userOpenSession->box?->name ?? 'otra caja';
+
                 throw ValidationException::withMessages([
-                    'opening_balance' => 'Ya tienes una caja abierta.',
+                    'opening_balance' => 'Ya tienes una sesion abierta en "' . $openBoxName . '" y debes cerrarla antes de abrir "' . $lockedBox->name . '".',
                 ]);
             }
 
@@ -144,4 +160,3 @@ class BoxController extends Controller
         });
     }
 }
-

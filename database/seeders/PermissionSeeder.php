@@ -32,6 +32,11 @@ class PermissionSeeder extends Seeder
             ['name' => 'boxes.movements', 'description' => 'Registrar ingresos y egresos manuales de caja'],
             ['name' => 'boxes.reports', 'description' => 'Ver historial y cierres mensuales de caja'],
 
+            // Facturacion
+            ['name' => 'billing.view', 'description' => 'Ver modulo de facturacion'],
+            ['name' => 'billing.charge', 'description' => 'Cobrar cuentas de mesas'],
+            ['name' => 'billing.history', 'description' => 'Ver historial de cobros'],
+
             // Pedidos
             ['name' => 'orders.view', 'description' => 'Ver pedidos'],
             ['name' => 'orders.create', 'description' => 'Crear pedidos'],

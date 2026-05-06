@@ -140,5 +140,15 @@ class TableOrderCheckoutTest extends TestCase
             'id' => $table->id,
             'status' => 'free',
         ]);
+
+        $saleId = \App\Models\Sale::query()->value('id');
+
+        $this->assertNotNull($saleId);
+        $this->assertDatabaseHas('invoices', [
+            'sale_id' => $saleId,
+            'invoice_type' => 'ticket',
+            'provider' => 'local',
+            'status' => 'issued',
+        ]);
     }
 }

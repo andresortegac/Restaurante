@@ -21,7 +21,7 @@
             <div>
                 <span class="module-kicker">Pedidos por Mesa / RF-08 al RF-10</span>
                 <h1>Historial de pedidos</h1>
-                <p>Consulta los pedidos ya registrados, filtra por mesa o estado y vuelve rapido al servicio o a la factura cuando haga falta.</p>
+                <p>Consulta los pedidos ya registrados, filtra por mesa o estado y vuelve rapido al servicio o al documento cuando haga falta.</p>
             </div>
             <div class="summary-group">
                 <a href="{{ route('orders.index') }}" class="btn btn-primary">
@@ -186,7 +186,7 @@
 
                                                 @if($order->sale)
                                                     <a href="{{ route('pos.sales.print', $order->sale) }}" target="_blank" class="btn btn-sm btn-outline-primary">
-                                                        <i class="fas fa-print"></i> Imprimir factura
+                                                        <i class="fas fa-print"></i> Imprimir documento
                                                     </a>
                                                 @endif
                                             </div>

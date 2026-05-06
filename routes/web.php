@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\BillingManagementController;
 use App\Http\Controllers\CustomerManagementController;
 use App\Http\Controllers\DeliveryDriverManagementController;
 use App\Http\Controllers\OrderManagementController;
@@ -48,8 +49,12 @@ Route::middleware('auth')->group(function () {
 
     Route::prefix('cash-management')->name('cash-management.')->group(function () {
         Route::get('/', [CashManagementController::class, 'index'])->name('index');
+        Route::get('/create', [CashManagementController::class, 'create'])->name('create');
+        Route::post('/', [CashManagementController::class, 'store'])->name('store');
         Route::get('/history', [CashManagementController::class, 'history'])->name('history');
         Route::get('/monthly', [CashManagementController::class, 'monthlyReport'])->name('monthly');
+        Route::get('/{box}/edit', [CashManagementController::class, 'edit'])->name('edit');
+        Route::put('/{box}', [CashManagementController::class, 'update'])->name('update');
         Route::get('/{box}', [CashManagementController::class, 'show'])->name('show');
         Route::post('/{box}/open', [CashManagementController::class, 'open'])->name('open');
         Route::post('/{box}/movements', [CashManagementController::class, 'storeMovement'])->name('movements.store');
@@ -65,6 +70,13 @@ Route::middleware('auth')->group(function () {
         Route::post('/{invoice}/sync', [ElectronicInvoiceManagementController::class, 'sync'])->name('sync');
         Route::get('/{invoice}/download-pdf', [ElectronicInvoiceManagementController::class, 'downloadPdf'])->name('pdf');
         Route::get('/{invoice}/download-xml', [ElectronicInvoiceManagementController::class, 'downloadXml'])->name('xml');
+    });
+
+    Route::prefix('billing')->name('billing.')->group(function () {
+        Route::get('/', [BillingManagementController::class, 'index'])->name('index');
+        Route::get('/history', [BillingManagementController::class, 'history'])->name('history');
+        Route::get('/{order}/checkout', [BillingManagementController::class, 'showCheckout'])->name('checkout');
+        Route::post('/{order}/checkout', [BillingManagementController::class, 'processCheckout'])->name('checkout.store');
     });
 
     Route::prefix('reports')->name('reports.')->group(function () {

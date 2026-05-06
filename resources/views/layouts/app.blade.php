@@ -63,6 +63,7 @@
                 $isDashboardRoute = request()->routeIs('dashboard');
                 $isPosSalesHistoryRoute = request()->routeIs('pos.sales-history.*');
                 $isPosPromoCodesRoute = request()->routeIs('pos.promo-codes.*');
+                $isBillingRoute = request()->routeIs('billing.*');
                 $isProductsRoute = request()->routeIs('products.*');
                 $isTablesRoute = request()->routeIs('tables.*');
                 $isCustomersRoute = request()->routeIs('customers.*');
@@ -77,7 +78,8 @@
                 $isAdminRolesRoute = request()->routeIs('admin.roles.*');
                 $isAdminPermissionsRoute = request()->routeIs('admin.permissions.*');
                 $isAdminAccessRoute = $isAdminRolesRoute || $isAdminPermissionsRoute;
-                $isOrdersMenuExpanded = $isOrdersRoute || $isOrdersHistoryRoute || $isPosSalesHistoryRoute || $isPosPromoCodesRoute;
+                $isOrdersMenuExpanded = $isOrdersRoute || $isOrdersHistoryRoute || $isPosPromoCodesRoute;
+                $isBillingMenuExpanded = $isBillingRoute || $isElectronicInvoicesRoute || $isPosSalesHistoryRoute;
             @endphp
             
             <ul class="sidebar-menu">
@@ -152,7 +154,10 @@
                         <span class="toggle-icon float-end"><i class="fas fa-chevron-right"></i></span>
                     </a>
                     <ul class="sidebar-submenu {{ $isCashRoute ? 'show' : '' }}">
-                        <li><a href="{{ route('cash-management.index') }}" class="{{ request()->routeIs('cash-management.index') || request()->routeIs('cash-management.show') ? 'active' : '' }}"><i class="fas fa-wallet"></i> Cajas</a></li>
+                        <li><a href="{{ route('cash-management.index') }}" class="{{ request()->routeIs('cash-management.index') || request()->routeIs('cash-management.show') || request()->routeIs('cash-management.edit') ? 'active' : '' }}"><i class="fas fa-wallet"></i> Cajas</a></li>
+                        @if(Auth::user()->hasRole('Admin'))
+                        <li><a href="{{ route('cash-management.create') }}" class="{{ request()->routeIs('cash-management.create') ? 'active' : '' }}"><i class="fas fa-plus"></i> Nueva caja</a></li>
+                        @endif
                         <li><a href="{{ route('cash-management.history') }}" class="{{ request()->routeIs('cash-management.history') ? 'active' : '' }}"><i class="fas fa-clock-rotate-left"></i> Historial</a></li>
                         <li><a href="{{ route('cash-management.monthly') }}" class="{{ request()->routeIs('cash-management.monthly') ? 'active' : '' }}"><i class="fas fa-calendar-days"></i> Cierre mensual</a></li>
                     </ul>
@@ -174,8 +179,31 @@
                         @endif
                         @if(Auth::user()->hasRole('Admin') || Auth::user()->hasPermission('orders.view'))
                         <li><a href="{{ route('orders.history.index') }}" class="{{ $isOrdersHistoryRoute ? 'active' : '' }}"><i class="fas fa-clock-rotate-left"></i> Historial de pedidos</a></li>
-                        <li><a href="{{ route('pos.sales-history.index') }}" class="{{ $isPosSalesHistoryRoute ? 'active' : '' }}"><i class="fas fa-clock-rotate-left"></i> Historial de ventas</a></li>
                         <li><a href="{{ route('pos.promo-codes.create') }}" class="{{ $isPosPromoCodesRoute ? 'active' : '' }}"><i class="fas fa-ticket-alt"></i> Codigos promocionales</a></li>
+                        @endif
+                    </ul>
+                </li>
+                @endif
+
+                @if(Auth::user()->hasRole('Admin') || Auth::user()->hasRole('Cajero') || Auth::user()->hasAnyPermission(['billing.view', 'billing.charge', 'billing.history', 'electronic_invoices.view', 'electronic_invoices.manage', 'electronic_invoices.retry', 'electronic_invoices.settings']))
+                <li>
+                    <a href="#" data-toggle-menu class="{{ $isBillingMenuExpanded ? 'expanded' : '' }}">
+                        <i class="fas fa-file-invoice-dollar"></i> Facturación
+                        <span class="toggle-icon float-end"><i class="fas fa-chevron-right"></i></span>
+                    </a>
+                    <ul class="sidebar-submenu {{ $isBillingMenuExpanded ? 'show' : '' }}">
+                        @if(Auth::user()->hasRole('Admin') || Auth::user()->hasAnyPermission(['billing.view', 'billing.charge']))
+                        <li><a href="{{ route('billing.index') }}" class="{{ request()->routeIs('billing.index') || request()->routeIs('billing.checkout') ? 'active' : '' }}"><i class="fas fa-cash-register"></i> Cuentas por cobrar</a></li>
+                        @endif
+                        @if(Auth::user()->hasRole('Admin') || Auth::user()->hasAnyPermission(['billing.view', 'billing.history']))
+                        <li><a href="{{ route('billing.history') }}" class="{{ request()->routeIs('billing.history') ? 'active' : '' }}"><i class="fas fa-clock-rotate-left"></i> Historial de cobros</a></li>
+                        <li><a href="{{ route('pos.sales-history.index') }}" class="{{ $isPosSalesHistoryRoute ? 'active' : '' }}"><i class="fas fa-receipt"></i> Ventas generales</a></li>
+                        @endif
+                        @if(Auth::user()->hasRole('Admin') || Auth::user()->hasAnyPermission(['electronic_invoices.view', 'electronic_invoices.manage']))
+                        <li><a href="{{ route('electronic-invoices.index') }}" class="{{ request()->routeIs('electronic-invoices.index') || request()->routeIs('electronic-invoices.show') ? 'active' : '' }}"><i class="fas fa-list"></i> Facturas electrónicas</a></li>
+                        @endif
+                        @if(Auth::user()->hasRole('Admin') || Auth::user()->hasPermission('electronic_invoices.settings'))
+                        <li><a href="{{ route('electronic-invoices.settings') }}" class="{{ request()->routeIs('electronic-invoices.settings') ? 'active' : '' }}"><i class="fas fa-sliders"></i> Configuración Factus</a></li>
                         @endif
                     </ul>
                 </li>
@@ -261,20 +289,6 @@
                 </li>
                 @endif
 
-                @if(Auth::user()->hasRole('Admin') || Auth::user()->hasAnyPermission(['electronic_invoices.view', 'electronic_invoices.manage', 'electronic_invoices.retry', 'electronic_invoices.settings']))
-                <li>
-                    <a href="#" data-toggle-menu class="{{ $isElectronicInvoicesRoute ? 'expanded' : '' }}">
-                        <i class="fas fa-file-invoice-dollar"></i> Facturación Electrónica
-                        <span class="toggle-icon float-end"><i class="fas fa-chevron-right"></i></span>
-                    </a>
-                    <ul class="sidebar-submenu {{ $isElectronicInvoicesRoute ? 'show' : '' }}">
-                        <li><a href="{{ route('electronic-invoices.index') }}" class="{{ request()->routeIs('electronic-invoices.index') || request()->routeIs('electronic-invoices.show') ? 'active' : '' }}"><i class="fas fa-list"></i> Facturas</a></li>
-                        @if(Auth::user()->hasRole('Admin') || Auth::user()->hasPermission('electronic_invoices.settings'))
-                        <li><a href="{{ route('electronic-invoices.settings') }}" class="{{ request()->routeIs('electronic-invoices.settings') ? 'active' : '' }}"><i class="fas fa-sliders"></i> Configuración</a></li>
-                        @endif
-                    </ul>
-                </li>
-                @endif
             </ul>
         </aside>
 

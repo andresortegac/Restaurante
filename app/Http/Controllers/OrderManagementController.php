@@ -3,17 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\Box;
-use App\Models\BoxAuditLog;
-use App\Models\BoxMovement;
 use App\Models\BoxSession;
 use App\Models\Customer;
 use App\Models\PaymentMethod;
 use App\Models\Product;
 use App\Models\RestaurantTable;
-use App\Models\Sale;
 use App\Models\TableOrder;
 use App\Models\TableOrderItem;
-use App\Services\Factus\ElectronicInvoiceService;
+use App\Services\TableOrderBillingService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -25,7 +22,7 @@ use Illuminate\Validation\ValidationException;
 class OrderManagementController extends Controller
 {
     public function __construct(
-        private readonly ElectronicInvoiceService $electronicInvoiceService
+        private readonly TableOrderBillingService $billingService
     ) {
     }
 
@@ -132,31 +129,7 @@ class OrderManagementController extends Controller
 
     public function showCheckout(TableOrder $order)
     {
-        if ($response = $this->denyIfUnauthorized($this->orderManagementPermissions())) {
-            return $response;
-        }
-
-        $order->load([
-            'customer',
-            'table',
-            'items.product',
-            'openedBy',
-            'sale',
-        ]);
-
-        if ($order->status !== 'open') {
-            return redirect()
-                ->route('orders.show', $order->table)
-                ->with('info', 'Este pedido ya fue cerrado y no requiere cobro adicional.');
-        }
-
-        return view('orders.payment', [
-            'order' => $order,
-            'restaurantTable' => $order->table,
-            'splitSummary' => $order->splitSummary(),
-            'activeBox' => $this->activeBox(),
-            'paymentMethods' => $this->paymentMethods(),
-        ]);
+        return redirect()->route('billing.checkout', $order);
     }
 
     public function storeOrder(Request $request, RestaurantTable $table)
@@ -377,13 +350,13 @@ class OrderManagementController extends Controller
         }
 
         return redirect()
-            ->route('orders.checkout', $order)
-            ->with('info', 'Registra el cobro para cerrar la cuenta y liberar la mesa.');
+            ->route('billing.checkout', $order)
+            ->with('info', 'Registra el cobro desde facturación para cerrar la cuenta y liberar la mesa.');
     }
 
     public function processCheckout(Request $request, TableOrder $order)
     {
-        if ($response = $this->denyIfUnauthorized($this->orderManagementPermissions())) {
+        if ($response = $this->denyIfUnauthorized(['billing.charge'])) {
             return $response;
         }
 
@@ -392,199 +365,41 @@ class OrderManagementController extends Controller
             'amount_received' => ['required', 'numeric', 'min:0'],
             'tip_amount' => ['nullable', 'numeric', 'min:0'],
             'reference' => ['nullable', 'string', 'max:255'],
+            'document_type' => ['nullable', 'in:ticket,electronic'],
         ]);
-
-        $paymentMethod = PaymentMethod::query()
-            ->whereKey($validated['payment_method_id'])
-            ->where('active', true)
-            ->first();
-
-        if (! $paymentMethod) {
-            throw ValidationException::withMessages([
-                'payment_method_id' => 'Selecciona un metodo de pago activo.',
-            ]);
-        }
-
-        $tipAmount = round((float) ($validated['tip_amount'] ?? 0), 2);
-        $amountReceived = round((float) $validated['amount_received'], 2);
-        $sale = null;
-        $table = null;
-
-        DB::transaction(function () use ($order, $paymentMethod, $validated, $tipAmount, $amountReceived, &$sale, &$table): void {
-            $currentOrder = TableOrder::query()
-                ->with(['items.product', 'table', 'sale', 'customer'])
-                ->lockForUpdate()
-                ->findOrFail($order->id);
-
-            if ($currentOrder->status !== 'open') {
-                throw ValidationException::withMessages([
-                    'payment_method_id' => 'Este pedido ya fue cerrado.',
-                ]);
-            }
-
-            if ($currentOrder->sale) {
-                throw ValidationException::withMessages([
-                    'payment_method_id' => 'Este pedido ya tiene una venta registrada.',
-                ]);
-            }
-
-            $table = $currentOrder->table;
-            $box = Box::query()
-                ->where('status', 'open')
-                ->where('user_id', Auth::id())
-                ->orderByDesc('opened_at')
-                ->lockForUpdate()
-                ->first();
-
-            if (! $box) {
-                $box = Box::query()
-                    ->where('status', 'open')
-                    ->orderByDesc('opened_at')
-                    ->lockForUpdate()
-                    ->first();
-            }
-
-            if (! $box) {
-                throw ValidationException::withMessages([
-                    'payment_method_id' => 'No hay una caja abierta para registrar este cobro.',
-                ]);
-            }
-
-            $boxSession = BoxSession::query()
-                ->where('box_id', $box->id)
-                ->where('status', 'open')
-                ->orderByDesc('opened_at')
-                ->lockForUpdate()
-                ->first();
-
-            if (! $boxSession) {
-                $boxSession = BoxSession::query()->create([
-                    'box_id' => $box->id,
-                    'user_id' => $box->user_id ?? Auth::id(),
-                    'opening_balance' => (float) $box->opening_balance,
-                    'status' => 'open',
-                    'opened_at' => $box->opened_at ?? now(),
-                ]);
-            }
-
-            $amountDue = round((float) $currentOrder->total + $tipAmount, 2);
-            $isCashPayment = $this->isCashPaymentMethod($paymentMethod);
-
-            if ($amountReceived < $amountDue) {
-                throw ValidationException::withMessages([
-                    'amount_received' => 'El monto recibido no cubre el total mas la propina.',
-                ]);
-            }
-
-            if (! $isCashPayment && abs($amountReceived - $amountDue) > 0.009) {
-                throw ValidationException::withMessages([
-                    'amount_received' => 'Para pagos distintos a efectivo, el monto recibido debe ser igual al total mas la propina.',
-                ]);
-            }
-
-            $changeAmount = $isCashPayment
-                ? round(max(0, $amountReceived - $amountDue), 2)
-                : 0.0;
-
-            $saleNotes = collect([
-                'Pedido ' . $currentOrder->order_number,
-                $table ? 'Mesa ' . $table->name : null,
-                $currentOrder->notes ? 'Notas: ' . $currentOrder->notes : null,
-            ])->filter()->implode(' | ');
-
-            $sale = Sale::query()->create([
-                'user_id' => Auth::id(),
-                'box_id' => $box->id,
-                'table_order_id' => $currentOrder->id,
-                'customer_id' => $currentOrder->customer_id,
-                'customer_name' => $currentOrder->customer_name,
-                'status' => 'completed',
-                'notes' => $saleNotes !== '' ? $saleNotes : null,
-            ]);
-
-            foreach ($currentOrder->items as $item) {
-                $sale->items()->create([
-                    'product_id' => $item->product_id,
-                    'product_name' => $item->product_name,
-                    'quantity' => $item->quantity,
-                    'unit_price' => $item->unit_price,
-                    'subtotal' => $item->subtotal,
-                ]);
-            }
-
-            $sale->calculateTotal();
-
-            $payment = $sale->payments()->create([
-                'payment_method_id' => $paymentMethod->id,
-                'amount' => $sale->total,
-                'received_amount' => $amountReceived,
-                'change_amount' => $changeAmount,
-                'tip_amount' => $tipAmount,
-                'reference' => $validated['reference'] ?? null,
-                'status' => 'completed',
-            ]);
-
-            $movementTotal = (float) BoxMovement::query()
-                ->where('box_session_id', $boxSession->id)
-                ->lockForUpdate()
-                ->sum('amount');
-            $balanceBefore = round((float) $box->opening_balance + $movementTotal, 2);
-            $boxImpact = $this->boxImpactAmount((float) $sale->total, $tipAmount, $paymentMethod);
-            $balanceAfter = round($balanceBefore + $boxImpact, 2);
-
-            $box->movements()->create([
-                'box_session_id' => $boxSession->id,
-                'sale_id' => $sale->id,
-                'payment_id' => $payment->id,
-                'user_id' => Auth::id(),
-                'movement_type' => 'table_order_payment',
-                'amount' => $boxImpact,
-                'balance_before' => $balanceBefore,
-                'balance_after' => $balanceAfter,
-                'description' => $this->movementDescription($currentOrder, $table, $paymentMethod, $boxImpact),
-                'occurred_at' => now(),
-            ]);
-
-            BoxAuditLog::query()->create([
-                'box_id' => $box->id,
-                'box_session_id' => $boxSession->id,
-                'user_id' => Auth::id(),
-                'action' => 'table_order_payment',
-                'description' => $this->movementDescription($currentOrder, $table, $paymentMethod, $boxImpact),
-                'metadata' => [
-                    'sale_id' => $sale->id,
-                    'payment_id' => $payment->id,
-                    'amount' => $boxImpact,
-                ],
-                'occurred_at' => now(),
-            ]);
-
-            $currentOrder->update(['status' => 'paid']);
-
-            if ($table) {
-                $table->update(['status' => 'free']);
-            }
-
-            $sale->load('items', 'payments', 'customer');
-            $this->electronicInvoiceService->issueForSale($sale);
-        });
+        $result = $this->billingService->checkout($order, $validated, Auth::id());
+        $sale = $result['sale'];
+        $table = $result['table'];
+        $invoice = $result['invoice'];
+        $documentWarning = $result['document_warning'];
 
         if ($request->expectsJson()) {
             return response()->json([
-                'message' => 'Cobro registrado correctamente. La mesa fue cerrada y la factura esta lista para imprimir.',
+                'message' => $documentWarning
+                    ? 'Cobro registrado correctamente, pero el documento quedó con novedad: ' . $documentWarning
+                    : 'Cobro registrado correctamente. La mesa fue cerrada y el documento quedó listo para imprimir.',
                 'printUrl' => route('pos.sales.print', $sale),
-                'redirectUrl' => route('orders.show', $table ?? $order->table),
+                'redirectUrl' => route('billing.history'),
+                'invoiceStatus' => $invoice?->status,
+                'cufe' => $invoice?->cufe,
             ]);
         }
 
-        session()->flash('success', 'Cobro registrado correctamente. La venta y el movimiento de caja quedaron guardados.');
+        session()->flash(
+            $documentWarning ? 'warning' : 'success',
+            $documentWarning
+                ? 'Cobro registrado correctamente, pero el documento quedó con novedad: ' . $documentWarning
+                : 'Cobro registrado correctamente. La venta y el movimiento de caja quedaron guardados.'
+        );
 
         return view('orders.print-bridge', [
-            'title' => 'Preparando factura',
-            'message' => 'Estamos abriendo la factura y en unos segundos volveras al detalle de la mesa.',
-            'primaryActionLabel' => 'Abrir factura',
-            'secondaryActionLabel' => 'Volver al pedido',
-            'redirectUrl' => route('orders.show', $table ?? $order->table),
+            'title' => 'Preparando documento',
+            'message' => $documentWarning
+                ? 'El cobro quedó guardado. Estamos abriendo el documento y podrás revisar la novedad en historial.'
+                : 'Estamos abriendo el documento y en unos segundos volverás al historial de facturación.',
+            'primaryActionLabel' => 'Abrir documento',
+            'secondaryActionLabel' => 'Ir a facturación',
+            'redirectUrl' => route('billing.history'),
             'printUrl' => route('pos.sales.print', $sale),
         ]);
     }
@@ -702,36 +517,6 @@ class OrderManagementController extends Controller
             ->where('active', true)
             ->orderBy('name')
             ->get(['id', 'name', 'code']);
-    }
-
-    private function isCashPaymentMethod(PaymentMethod $paymentMethod): bool
-    {
-        return strtoupper((string) $paymentMethod->code) === 'CASH';
-    }
-
-    private function boxImpactAmount(float $saleTotal, float $tipAmount, PaymentMethod $paymentMethod): float
-    {
-        if (! $this->isCashPaymentMethod($paymentMethod)) {
-            return 0.0;
-        }
-
-        return round($saleTotal + $tipAmount, 2);
-    }
-
-    private function movementDescription(TableOrder $order, ?RestaurantTable $table, PaymentMethod $paymentMethod, float $boxImpact): string
-    {
-        $parts = [
-            'Cobro del pedido ' . $order->order_number,
-            $table ? 'Mesa ' . $table->name : null,
-            'Metodo ' . $paymentMethod->name,
-            $boxImpact > 0
-                ? 'Impacto en caja $' . number_format($boxImpact, 2, '.', '')
-                : 'Sin impacto en caja',
-        ];
-
-        return collect($parts)
-            ->filter()
-            ->implode(' | ');
     }
 
     private function denyIfUnauthorized(array $permissions): ?Response
