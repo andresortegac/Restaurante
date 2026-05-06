@@ -68,6 +68,41 @@
     color: #9a3412;
 }
 
+.service-card .card-header .btn-outline-primary {
+    background: rgba(255, 255, 255, 0.96);
+    border-color: rgba(255, 255, 255, 0.96);
+    color: #24324a;
+    font-weight: 700;
+}
+
+.service-card .card-header .btn-outline-primary:hover,
+.service-card .card-header .btn-outline-primary:focus {
+    background: #ffffff;
+    border-color: #ffffff;
+    color: #172033;
+    box-shadow: 0 0 0 0.2rem rgba(255, 255, 255, 0.18);
+}
+
+.service-card .card-header .status-pill {
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.12);
+}
+
+.service-card .card-header .status-free {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.service-card .card-header .status-occupied {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.service-card .card-header .status-reserved {
+    background: #ffedd5;
+    color: #9a3412;
+}
+
 .table-card-meta {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
