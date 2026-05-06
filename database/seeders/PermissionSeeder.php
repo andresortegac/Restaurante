@@ -87,11 +87,17 @@ class PermissionSeeder extends Seeder
             ['name' => 'deliveries.edit', 'description' => 'Editar domicilios'],
             ['name' => 'deliveries.delete', 'description' => 'Eliminar domicilios'],
 
-            // Facturación electrónica
-            ['name' => 'electronic_invoices.view', 'description' => 'Ver facturas electrónicas'],
-            ['name' => 'electronic_invoices.manage', 'description' => 'Gestionar envío y consulta de facturas electrónicas'],
-            ['name' => 'electronic_invoices.retry', 'description' => 'Reintentar facturas electrónicas fallidas'],
-            ['name' => 'electronic_invoices.settings', 'description' => 'Configurar integración con Factus'],
+            // Domiciliarios
+            ['name' => 'delivery_drivers.view', 'description' => 'Ver domiciliarios'],
+            ['name' => 'delivery_drivers.create', 'description' => 'Crear domiciliarios'],
+            ['name' => 'delivery_drivers.edit', 'description' => 'Editar domiciliarios'],
+            ['name' => 'delivery_drivers.delete', 'description' => 'Eliminar domiciliarios'],
+
+            // Facturacion electronica
+            ['name' => 'electronic_invoices.view', 'description' => 'Ver facturas electronicas'],
+            ['name' => 'electronic_invoices.manage', 'description' => 'Gestionar envio y consulta de facturas electronicas'],
+            ['name' => 'electronic_invoices.retry', 'description' => 'Reintentar facturas electronicas fallidas'],
+            ['name' => 'electronic_invoices.settings', 'description' => 'Configurar integracion con Factus'],
 
             // Reservas
             ['name' => 'reservations.view', 'description' => 'Ver reservas'],

@@ -7,7 +7,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Facades\Storage;
 
 class Product extends Model
 {
@@ -134,6 +133,6 @@ class Product extends Model
             return null;
         }
 
-        return Storage::disk('public')->url($this->image_path);
+        return route('media.public', ['path' => $this->image_path], false);
     }
 }

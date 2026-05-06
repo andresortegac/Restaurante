@@ -243,7 +243,7 @@
                 </li>
                 @endif
 
-                @if(Auth::user()->hasRole('Admin') || Auth::user()->hasAnyPermission(['deliveries.view', 'deliveries.create', 'deliveries.edit', 'deliveries.delete']))
+                @if(Auth::user()->hasRole('Admin') || Auth::user()->hasAnyPermission(['deliveries.view', 'deliveries.create', 'deliveries.edit', 'deliveries.delete', 'delivery_drivers.view', 'delivery_drivers.create', 'delivery_drivers.edit', 'delivery_drivers.delete']))
                 <li>
                     <a href="#" data-toggle-menu class="{{ $isDeliveriesRoute ? 'expanded' : '' }}">
                         <i class="fas fa-motorcycle"></i> Domicilios
@@ -253,6 +253,9 @@
                         <li><a href="{{ route('deliveries.index') }}" class="{{ request()->routeIs('deliveries.index') || request()->routeIs('deliveries.edit') ? 'active' : '' }}"><i class="fas fa-list"></i> Listar</a></li>
                         @if(Auth::user()->hasRole('Admin') || Auth::user()->hasPermission('deliveries.create'))
                         <li><a href="{{ route('deliveries.create') }}" class="{{ request()->routeIs('deliveries.create') ? 'active' : '' }}"><i class="fas fa-plus"></i> Nuevo</a></li>
+                        @endif
+                        @if(Auth::user()->hasRole('Admin') || Auth::user()->hasAnyPermission(['delivery_drivers.view', 'delivery_drivers.create', 'delivery_drivers.edit', 'delivery_drivers.delete']))
+                        <li><a href="{{ route('deliveries.drivers.index') }}" class="{{ request()->routeIs('deliveries.drivers.*') ? 'active' : '' }}"><i class="fas fa-id-card"></i> Domiciliarios</a></li>
                         @endif
                     </ul>
                 </li>
@@ -288,6 +291,8 @@
     
     <!-- Custom JS para layout -->
     <script src="{{ asset('js/layouts/sidebar.js') }}"></script>
+
+    @yield('scripts')
 
     <!-- Alertas del sistema -->
     @include('components.alerts')

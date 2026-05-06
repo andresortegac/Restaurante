@@ -2,8 +2,8 @@
 
 namespace Database\Seeders;
 
-use App\Models\Role;
 use App\Models\Permission;
+use App\Models\Role;
 use Illuminate\Database\Seeder;
 
 class RoleSeeder extends Seeder
@@ -35,13 +35,11 @@ class RoleSeeder extends Seeder
             Role::firstOrCreate(['name' => $role['name']], $role);
         }
 
-        // Asignar permisos a roles
         $this->assignPermissionsToRoles();
     }
 
     private function assignPermissionsToRoles(): void
     {
-        // Admin tiene todos los permisos
         $adminRole = Role::where('name', 'Admin')->first();
         if ($adminRole) {
             $adminRole->permissions()->sync(
@@ -49,7 +47,6 @@ class RoleSeeder extends Seeder
             );
         }
 
-        // Cajero
         $cashierRole = Role::where('name', 'Cajero')->first();
         if ($cashierRole) {
             $cashierPermissions = Permission::whereIn('name', [
@@ -66,6 +63,9 @@ class RoleSeeder extends Seeder
                 'deliveries.view',
                 'deliveries.create',
                 'deliveries.edit',
+                'delivery_drivers.view',
+                'delivery_drivers.create',
+                'delivery_drivers.edit',
                 'electronic_invoices.view',
                 'electronic_invoices.manage',
                 'reservations.view',
@@ -77,7 +77,6 @@ class RoleSeeder extends Seeder
             $cashierRole->permissions()->sync($cashierPermissions);
         }
 
-        // Mesero
         $waiterRole = Role::where('name', 'Mesero')->first();
         if ($waiterRole) {
             $waiterPermissions = Permission::whereIn('name', [
@@ -88,6 +87,7 @@ class RoleSeeder extends Seeder
                 'customers.view',
                 'deliveries.view',
                 'deliveries.edit',
+                'delivery_drivers.view',
                 'electronic_invoices.view',
                 'reservations.view',
                 'reservations.create',
@@ -96,6 +96,5 @@ class RoleSeeder extends Seeder
             ])->pluck('id')->toArray();
             $waiterRole->permissions()->sync($waiterPermissions);
         }
-
     }
 }

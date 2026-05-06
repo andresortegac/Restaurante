@@ -13,6 +13,7 @@ class Delivery extends Model
     protected $fillable = [
         'customer_id',
         'assigned_user_id',
+        'delivery_driver_id',
         'delivery_number',
         'customer_name',
         'customer_phone',
@@ -21,9 +22,12 @@ class Delivery extends Model
         'order_total',
         'delivery_fee',
         'total_charge',
+        'customer_payment_amount',
+        'change_required',
         'status',
         'scheduled_at',
         'delivered_at',
+        'delivery_proof_image_path',
         'notes',
     ];
 
@@ -31,8 +35,14 @@ class Delivery extends Model
         'order_total' => 'decimal:2',
         'delivery_fee' => 'decimal:2',
         'total_charge' => 'decimal:2',
+        'customer_payment_amount' => 'decimal:2',
+        'change_required' => 'decimal:2',
         'scheduled_at' => 'datetime',
         'delivered_at' => 'datetime',
+    ];
+
+    protected $appends = [
+        'delivery_proof_image_url',
     ];
 
     public function customer(): BelongsTo
@@ -43,6 +53,20 @@ class Delivery extends Model
     public function assignedUser(): BelongsTo
     {
         return $this->belongsTo(User::class, 'assigned_user_id');
+    }
+
+    public function deliveryDriver(): BelongsTo
+    {
+        return $this->belongsTo(DeliveryDriver::class, 'delivery_driver_id');
+    }
+
+    public function getDeliveryProofImageUrlAttribute(): ?string
+    {
+        if (! $this->delivery_proof_image_path) {
+            return null;
+        }
+
+        return route('media.public', ['path' => $this->delivery_proof_image_path], false);
     }
 
     public static function generateDeliveryNumber(): string

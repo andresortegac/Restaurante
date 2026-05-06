@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CustomerManagementController;
+use App\Http\Controllers\DeliveryDriverManagementController;
 use App\Http\Controllers\OrderManagementController;
 use App\Http\Controllers\ProductManagementController;
 use App\Http\Controllers\ReservationManagementController;
@@ -14,6 +15,7 @@ use App\Http\Controllers\UserManagementController;
 use App\Http\Controllers\RoleManagementController;
 use App\Http\Controllers\PermissionManagementController;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Storage;
 
 // Rutas publicas
 Route::get('/', function () {
@@ -29,6 +31,15 @@ Route::middleware('guest')->group(function () {
 // Rutas protegidas
 Route::middleware('auth')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+
+    Route::get('/media/public', function () {
+        $path = (string) request()->query('path', '');
+
+        abort_if($path === '', 404);
+        abort_unless(Storage::disk('public')->exists($path), 404);
+
+        return Storage::disk('public')->response($path);
+    })->name('media.public');
 
     // Dashboard
     Route::get('/dashboard', function () {
@@ -125,9 +136,18 @@ Route::middleware('auth')->group(function () {
 
     // Gestion de domicilios
     Route::prefix('deliveries')->name('deliveries.')->group(function () {
+        Route::prefix('drivers')->name('drivers.')->group(function () {
+            Route::get('/', [DeliveryDriverManagementController::class, 'index'])->name('index');
+            Route::get('/create', [DeliveryDriverManagementController::class, 'create'])->name('create');
+            Route::post('/', [DeliveryDriverManagementController::class, 'store'])->name('store');
+            Route::get('/{driver}/edit', [DeliveryDriverManagementController::class, 'edit'])->name('edit');
+            Route::put('/{driver}', [DeliveryDriverManagementController::class, 'update'])->name('update');
+            Route::delete('/{driver}', [DeliveryDriverManagementController::class, 'destroy'])->name('destroy');
+        });
         Route::get('/', [DeliveryManagementController::class, 'index'])->name('index');
         Route::get('/create', [DeliveryManagementController::class, 'create'])->name('create');
         Route::post('/', [DeliveryManagementController::class, 'store'])->name('store');
+        Route::put('/{delivery}/complete', [DeliveryManagementController::class, 'complete'])->name('complete');
         Route::get('/{delivery}/edit', [DeliveryManagementController::class, 'edit'])->name('edit');
         Route::put('/{delivery}', [DeliveryManagementController::class, 'update'])->name('update');
         Route::delete('/{delivery}', [DeliveryManagementController::class, 'destroy'])->name('destroy');
