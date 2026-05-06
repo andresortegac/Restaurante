@@ -8,7 +8,7 @@
             <div>
                 <span class="module-kicker">Reservas / CRUD</span>
                 <h1>{{ $pageTitle }}</h1>
-                <p>Registra la fecha, el tamano del grupo, la mesa sugerida y las observaciones clave para coordinar la llegada del cliente.</p>
+                <p>Registra la fecha, el tamano del grupo, una mesa libre, las observaciones de la reserva y el valor del abono si aplica.</p>
             </div>
             <div class="summary-group">
                 <a href="{{ route('reservations.index') }}" class="btn btn-outline-secondary">
@@ -48,7 +48,7 @@
                         </div>
 
                         <div class="col-md-6">
-                            <label class="form-label" for="restaurant_table_id">Mesa sugerida</label>
+                            <label class="form-label" for="restaurant_table_id">Mesa disponible</label>
                             <select class="form-select" id="restaurant_table_id" name="restaurant_table_id">
                                 <option value="">Asignar luego</option>
                                 @foreach($tables as $table)
@@ -57,6 +57,7 @@
                                     </option>
                                 @endforeach
                             </select>
+                            <div class="form-help">Solo se muestran mesas libres. Al editar, tambien veras la mesa ya asignada a esta reserva.</div>
                         </div>
 
                         <div class="col-md-4">
@@ -74,7 +75,7 @@
                             <input type="email" class="form-control" id="customer_email" name="customer_email" value="{{ old('customer_email', $reservation->customer_email) }}">
                         </div>
 
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <label class="form-label" for="reservation_at">Fecha y hora</label>
                             <input type="datetime-local" class="form-control" id="reservation_at" name="reservation_at" value="{{ old('reservation_at', $reservation->reservation_at ? $reservation->reservation_at->format('Y-m-d\TH:i') : '') }}" required>
                         </div>
@@ -94,18 +95,14 @@
                         </div>
 
                         <div class="col-md-3">
-                            <label class="form-label" for="source">Canal</label>
-                            <input type="text" class="form-control" id="source" name="source" value="{{ old('source', $reservation->source) }}" placeholder="Telefono, WhatsApp, web...">
+                            <label class="form-label" for="deposit_amount">Abono de reserva</label>
+                            <input type="number" class="form-control" id="deposit_amount" name="deposit_amount" min="0" step="0.01" value="{{ old('deposit_amount', $reservation->deposit_amount ?? 0) }}" placeholder="0.00">
+                            <div class="form-help">Opcional. Registra el dinero entregado para apartar la mesa.</div>
                         </div>
 
                         <div class="col-12">
-                            <label class="form-label" for="special_requests">Solicitudes especiales</label>
-                            <textarea class="form-control" id="special_requests" name="special_requests" rows="3" placeholder="Silla para nino, aniversario, zona tranquila...">{{ old('special_requests', $reservation->special_requests) }}</textarea>
-                        </div>
-
-                        <div class="col-12">
-                            <label class="form-label" for="notes">Notas internas</label>
-                            <textarea class="form-control" id="notes" name="notes" rows="4" placeholder="Detalles operativos para el equipo.">{{ old('notes', $reservation->notes) }}</textarea>
+                            <label class="form-label" for="notes">Observaciones de la reserva</label>
+                            <textarea class="form-control" id="notes" name="notes" rows="4" placeholder="Ej: aniversario, silla para nino, zona tranquila, confirmar 30 min antes...">{{ old('notes', $reservation->notes) }}</textarea>
                         </div>
                     </div>
 

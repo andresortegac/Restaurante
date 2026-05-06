@@ -9,6 +9,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class ReservationManagementController extends Controller
 {
@@ -32,8 +33,7 @@ class ReservationManagementController extends Controller
                         ->where('customer_name', 'like', '%' . $search . '%')
                         ->orWhere('customer_phone', 'like', '%' . $search . '%')
                         ->orWhere('customer_email', 'like', '%' . $search . '%')
-                        ->orWhere('notes', 'like', '%' . $search . '%')
-                        ->orWhere('special_requests', 'like', '%' . $search . '%');
+                        ->orWhere('notes', 'like', '%' . $search . '%');
                 });
             })
             ->when($filters['status'] ?? null, fn ($query, string $status) => $query->where('status', $status))
@@ -70,7 +70,7 @@ class ReservationManagementController extends Controller
                 'status' => 'pending',
                 'party_size' => 2,
                 'reservation_at' => now()->addHour()->format('Y-m-d\TH:i'),
-                'source' => 'Telefono',
+                'deposit_amount' => 0,
             ]),
             'formAction' => route('reservations.store'),
             'submitLabel' => 'Guardar reserva',
@@ -109,7 +109,7 @@ class ReservationManagementController extends Controller
             'formAction' => route('reservations.update', $reservation),
             'submitLabel' => 'Actualizar reserva',
             'customers' => $this->availableCustomers(),
-            'tables' => $this->availableTables(),
+            'tables' => $this->availableTables($reservation),
             'statusLabels' => $this->statusLabels(),
         ]);
     }
@@ -120,7 +120,7 @@ class ReservationManagementController extends Controller
             return $response;
         }
 
-        $validated = $this->validateReservationData($request);
+        $validated = $this->validateReservationData($request, $reservation);
         $reservation->update($this->buildReservationPayload($validated));
 
         return redirect()
@@ -149,9 +149,9 @@ class ReservationManagementController extends Controller
             ->with('success', 'Reserva eliminada correctamente.');
     }
 
-    private function validateReservationData(Request $request): array
+    private function validateReservationData(Request $request, ?Reservation $reservation = null): array
     {
-        return $request->validate([
+        $validated = $request->validate([
             'customer_id' => ['nullable', 'integer', 'exists:customers,id'],
             'restaurant_table_id' => ['nullable', 'integer', 'exists:restaurant_tables,id'],
             'customer_name' => ['required', 'string', 'max:255'],
@@ -160,10 +160,21 @@ class ReservationManagementController extends Controller
             'reservation_at' => ['required', 'date'],
             'party_size' => ['required', 'integer', 'min:1', 'max:30'],
             'status' => ['required', Rule::in($this->availableStatuses())],
-            'source' => ['nullable', 'string', 'max:100'],
-            'special_requests' => ['nullable', 'string'],
             'notes' => ['nullable', 'string'],
+            'deposit_amount' => ['nullable', 'numeric', 'min:0', 'max:99999999.99'],
         ]);
+
+        if (
+            isset($validated['restaurant_table_id'])
+            && $validated['restaurant_table_id'] !== null
+            && ! $this->tableIsReservable((int) $validated['restaurant_table_id'], $reservation)
+        ) {
+            throw ValidationException::withMessages([
+                'restaurant_table_id' => 'Solo puedes asignar mesas libres para la reserva.',
+            ]);
+        }
+
+        return $validated;
     }
 
     private function buildReservationPayload(array $validated): array
@@ -177,9 +188,8 @@ class ReservationManagementController extends Controller
             'reservation_at' => $validated['reservation_at'],
             'party_size' => $validated['party_size'],
             'status' => $validated['status'],
-            'source' => $validated['source'] ?? null,
-            'special_requests' => $validated['special_requests'] ?? null,
             'notes' => $validated['notes'] ?? null,
+            'deposit_amount' => $validated['deposit_amount'] ?? 0,
         ];
     }
 
@@ -191,13 +201,35 @@ class ReservationManagementController extends Controller
             ->get(['id', 'name', 'phone', 'email']);
     }
 
-    private function availableTables()
+    private function availableTables(?Reservation $reservation = null)
     {
         return RestaurantTable::query()
             ->active()
+            ->where(function ($query) use ($reservation) {
+                $query->where('status', 'free');
+
+                if ($reservation?->restaurant_table_id) {
+                    $query->orWhere('id', $reservation->restaurant_table_id);
+                }
+            })
             ->orderBy('area')
             ->orderBy('name')
             ->get(['id', 'name', 'code', 'area', 'capacity']);
+    }
+
+    private function tableIsReservable(int $tableId, ?Reservation $reservation = null): bool
+    {
+        return RestaurantTable::query()
+            ->active()
+            ->whereKey($tableId)
+            ->where(function ($query) use ($reservation) {
+                $query->where('status', 'free');
+
+                if ($reservation?->restaurant_table_id) {
+                    $query->orWhere('id', $reservation->restaurant_table_id);
+                }
+            })
+            ->exists();
     }
 
     private function availableStatuses(): array

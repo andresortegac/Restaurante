@@ -20,14 +20,14 @@ class Reservation extends Model
         'reservation_at',
         'party_size',
         'status',
-        'source',
-        'special_requests',
         'notes',
+        'deposit_amount',
     ];
 
     protected $casts = [
         'reservation_at' => 'datetime',
         'party_size' => 'integer',
+        'deposit_amount' => 'decimal:2',
     ];
 
     public function customer(): BelongsTo

@@ -63,7 +63,7 @@
             <form method="GET" action="{{ route('reservations.index') }}" class="row g-2 align-items-end flex-grow-1">
                 <div class="col-md-5">
                     <label class="form-label" for="search">Buscar</label>
-                    <input type="text" class="form-control" id="search" name="search" value="{{ $filters['search'] ?? '' }}" placeholder="Cliente, telefono, email o notas">
+                    <input type="text" class="form-control" id="search" name="search" value="{{ $filters['search'] ?? '' }}" placeholder="Cliente, telefono, email u observaciones">
                 </div>
                 <div class="col-md-3">
                     <label class="form-label" for="status">Estado</label>
@@ -100,7 +100,7 @@
                                 <th>Cliente</th>
                                 <th>Reserva</th>
                                 <th>Mesa</th>
-                                <th>Canal</th>
+                                <th>Observaciones</th>
                                 <th>Estado</th>
                                 <th class="text-end">Acciones</th>
                             </tr>
@@ -116,6 +116,7 @@
                                     <td>
                                         <div>{{ optional($reservation->reservation_at)->format('d/m/Y h:i A') }}</div>
                                         <div class="table-note">{{ $reservation->party_size }} personas</div>
+                                        <div class="table-note">Abono ${{ number_format((float) ($reservation->deposit_amount ?? 0), 2) }}</div>
                                     </td>
                                     <td>
                                         @if($reservation->table)
@@ -126,8 +127,8 @@
                                         @endif
                                     </td>
                                     <td>
-                                        <div>{{ $reservation->source ?: 'Sin canal' }}</div>
-                                        <div class="table-note">{{ $reservation->reservedBy?->name ?: 'Sin usuario' }}</div>
+                                        <div>{{ $reservation->notes ?: 'Sin observaciones' }}</div>
+                                        <div class="table-note">Registrada por {{ $reservation->reservedBy?->name ?: 'Sin usuario' }}</div>
                                     </td>
                                     <td>
                                         <span class="badge rounded-pill {{ $statusClasses[$reservation->status] ?? 'bg-secondary' }}">
