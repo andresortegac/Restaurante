@@ -93,6 +93,9 @@ Route::middleware('auth')->group(function () {
         Route::get('/menu/{product}/edit', [ProductManagementController::class, 'editMenuProduct'])->name('menu.edit');
         Route::put('/menu/{product}', [ProductManagementController::class, 'updateMenuProduct'])->name('menu.update');
         Route::delete('/menu/{product}', [ProductManagementController::class, 'destroyMenuProduct'])->name('menu.destroy');
+        Route::post('/categories', [ProductManagementController::class, 'storeCategory'])->name('categories.store');
+        Route::put('/categories/{category}', [ProductManagementController::class, 'updateCategory'])->name('categories.update');
+        Route::delete('/categories/{category}', [ProductManagementController::class, 'destroyCategory'])->name('categories.destroy');
 
         Route::get('/combos', [ProductManagementController::class, 'combos'])->name('combos.index');
         Route::get('/combos/create', [ProductManagementController::class, 'createCombo'])->name('combos.create');

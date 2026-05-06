@@ -65,6 +65,12 @@
                             <input type="number" class="form-control" id="price" name="price" min="0" step="0.01" value="{{ old('price', $combo->price) }}" required>
                         </div>
 
+                        <div>
+                            <label class="form-label" for="sort_order">Orden visual</label>
+                            <input type="number" class="form-control" id="sort_order" name="sort_order" min="0" step="1" value="{{ old('sort_order', $combo->sort_order ?? 0) }}" required>
+                            <div class="form-help">Usa este valor para ordenar el combo dentro de su categoria en las vistas del menu.</div>
+                        </div>
+
                         <div class="form-switch-row full-width">
                             <div>
                                 <label class="form-label d-block mb-1" for="tracks_stock">Control de stock</label>

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -22,6 +23,7 @@ class Product extends Model
         'category_id',
         'tax_rate_id',
         'product_type',
+        'sort_order',
         'sku',
         'image_path',
         'active',
@@ -33,6 +35,7 @@ class Product extends Model
         'tracks_stock' => 'boolean',
         'category_id' => 'integer',
         'tax_rate_id' => 'integer',
+        'sort_order' => 'integer',
         'active' => 'boolean',
     ];
 
@@ -63,6 +66,37 @@ class Product extends Model
     public function usedInCombos(): HasMany
     {
         return $this->hasMany(ProductComponent::class, 'component_product_id');
+    }
+
+    public function scopeSellable(Builder $query): Builder
+    {
+        return $query
+            ->where('products.active', true)
+            ->where(function (Builder $nestedQuery) {
+                $nestedQuery->whereIn('products.product_type', ['simple', 'combo'])
+                    ->orWhereNull('products.product_type');
+            });
+    }
+
+    public function scopeVisibleInMenu(Builder $query): Builder
+    {
+        return $query
+            ->sellable()
+            ->where(function (Builder $nestedQuery) {
+                $nestedQuery->whereNull('products.category_id')
+                    ->orWhereHas('menuCategory', fn (Builder $categoryQuery) => $categoryQuery->where('is_active', true));
+            });
+    }
+
+    public function scopeOrderedForMenu(Builder $query): Builder
+    {
+        return $query
+            ->leftJoin('product_categories as menu_categories', 'products.category_id', '=', 'menu_categories.id')
+            ->select('products.*')
+            ->orderByRaw('CASE WHEN menu_categories.sort_order IS NULL THEN 1 ELSE 0 END')
+            ->orderBy('menu_categories.sort_order')
+            ->orderBy('products.sort_order')
+            ->orderBy('products.name');
     }
 
     public function isInStock($quantity = 1)

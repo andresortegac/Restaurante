@@ -47,7 +47,7 @@
                                             </div>
                                         </div>
                                         <div class="cash-box-actions">
-                                            <a href="{{ route('cash-management.show', $box) }}" class="btn cash-box-manage-btn">
+                                            <a href="{{ route('cash-management.show', $box) }}" class="btn btn-primary">
                                                 <i class="fas fa-wallet"></i> Gestionar
                                             </a>
                                             @if($box->activeSession)

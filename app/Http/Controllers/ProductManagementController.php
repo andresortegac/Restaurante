@@ -23,13 +23,15 @@ class ProductManagementController extends Controller
             return $response;
         }
 
-        $products = Product::with(['menuCategory', 'taxRate'])
+        $products = Product::query()
+            ->with(['menuCategory', 'taxRate'])
             ->where('product_type', 'simple')
-            ->orderBy('name')
+            ->orderedForMenu()
             ->get();
 
         $categories = ProductCategory::withCount([
             'products as simple_products_count' => fn ($query) => $query->where('product_type', 'simple'),
+            'products as active_products_count' => fn ($query) => $query->where('product_type', 'simple')->where('active', true),
         ])
             ->orderBy('sort_order')
             ->orderBy('name')
@@ -38,6 +40,10 @@ class ProductManagementController extends Controller
         return view('products.menu.index', [
             'products' => $products,
             'categories' => $categories,
+            'uncategorizedProductsCount' => Product::query()
+                ->where('product_type', 'simple')
+                ->whereNull('category_id')
+                ->count(),
         ]);
     }
 
@@ -49,7 +55,11 @@ class ProductManagementController extends Controller
 
         return view('products.menu.form', [
             'pageTitle' => 'Crear producto',
-            'product' => new Product(['active' => true, 'tracks_stock' => false]),
+            'product' => new Product([
+                'active' => true,
+                'tracks_stock' => false,
+                'sort_order' => $this->nextProductSortOrder(),
+            ]),
             'categoryName' => old('category_name'),
             'taxRates' => $this->taxRates(),
             'categoryOptions' => $this->categoryOptions(),
@@ -122,16 +132,86 @@ class ProductManagementController extends Controller
         return $this->deleteProductSafely($product, 'products.menu.index');
     }
 
+    public function storeCategory(Request $request): RedirectResponse|Response
+    {
+        if ($response = $this->denyIfUnauthorized(['products.create'])) {
+            return $response;
+        }
+
+        $validated = $this->validateCategoryData($request);
+
+        ProductCategory::create([
+            'name' => $validated['name'],
+            'slug' => $validated['slug'],
+            'description' => $validated['description'] ?? null,
+            'sort_order' => $validated['sort_order'],
+            'is_active' => $request->boolean('is_active'),
+        ]);
+
+        return redirect()
+            ->route('products.menu.index')
+            ->with('success', 'Categoria creada correctamente.');
+    }
+
+    public function updateCategory(Request $request, ProductCategory $category): RedirectResponse|Response
+    {
+        if ($response = $this->denyIfUnauthorized(['products.edit'])) {
+            return $response;
+        }
+
+        $validated = $this->validateCategoryData($request, $category);
+
+        DB::transaction(function () use ($request, $validated, $category): void {
+            $category->update([
+                'name' => $validated['name'],
+                'slug' => $validated['slug'],
+                'description' => $validated['description'] ?? null,
+                'sort_order' => $validated['sort_order'],
+                'is_active' => $request->boolean('is_active'),
+            ]);
+
+            Product::query()
+                ->where('category_id', $category->id)
+                ->update(['category' => $validated['name']]);
+        });
+
+        return redirect()
+            ->route('products.menu.index')
+            ->with('success', 'Categoria actualizada correctamente.');
+    }
+
+    public function destroyCategory(ProductCategory $category): RedirectResponse|Response
+    {
+        if ($response = $this->denyIfUnauthorized(['products.delete'])) {
+            return $response;
+        }
+
+        $linkedProducts = $category->products()->count();
+
+        if ($linkedProducts > 0) {
+            return redirect()
+                ->route('products.menu.index')
+                ->with('error', 'No se puede eliminar la categoria porque aun tiene productos asociados.');
+        }
+
+        $category->delete();
+
+        return redirect()
+            ->route('products.menu.index')
+            ->with('success', 'Categoria eliminada correctamente.');
+    }
+
     public function combos()
     {
         if ($response = $this->denyIfUnauthorized($this->comboPermissions())) {
             return $response;
         }
 
-        $combos = Product::with(['menuCategory', 'taxRate', 'components.componentProduct'])
+        $combos = Product::query()
+            ->with(['menuCategory', 'taxRate', 'components.componentProduct'])
             ->withCount('components')
             ->where('product_type', 'combo')
-            ->orderBy('name')
+            ->orderedForMenu()
             ->get();
 
         return view('products.combos.index', [
@@ -148,7 +228,12 @@ class ProductManagementController extends Controller
 
         return view('products.combos.form', [
             'pageTitle' => 'Crear combo',
-            'combo' => new Product(['active' => true, 'product_type' => 'combo', 'tracks_stock' => false]),
+            'combo' => new Product([
+                'active' => true,
+                'product_type' => 'combo',
+                'tracks_stock' => false,
+                'sort_order' => $this->nextProductSortOrder(),
+            ]),
             'categoryName' => old('category_name', 'Combos'),
             'taxRates' => $this->taxRates(),
             'categoryOptions' => $this->categoryOptions(),
@@ -377,6 +462,7 @@ class ProductManagementController extends Controller
             'sku' => ['required', 'string', 'max:255', Rule::unique('products', 'sku')->ignore($product?->id)],
             'category_name' => ['required', 'string', 'max:255'],
             'price' => ['required', 'numeric', 'min:0'],
+            'sort_order' => ['required', 'integer', 'min:0'],
             'stock' => ['nullable', Rule::requiredIf($request->boolean('tracks_stock')), 'integer', 'min:0'],
             'tracks_stock' => ['nullable', 'boolean'],
             'tax_rate_id' => ['nullable', 'exists:tax_rates,id'],
@@ -394,6 +480,7 @@ class ProductManagementController extends Controller
             'sku' => ['required', 'string', 'max:255', Rule::unique('products', 'sku')->ignore($combo?->id)],
             'category_name' => ['required', 'string', 'max:255'],
             'price' => ['required', 'numeric', 'min:0'],
+            'sort_order' => ['required', 'integer', 'min:0'],
             'stock' => ['nullable', Rule::requiredIf($request->boolean('tracks_stock')), 'integer', 'min:0'],
             'tracks_stock' => ['nullable', 'boolean'],
             'tax_rate_id' => ['nullable', 'exists:tax_rates,id'],
@@ -460,6 +547,38 @@ class ProductManagementController extends Controller
         ]);
     }
 
+    private function validateCategoryData(Request $request, ?ProductCategory $category = null): array
+    {
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'description' => ['nullable', 'string'],
+            'sort_order' => ['required', 'integer', 'min:0'],
+            'is_active' => ['nullable', 'boolean'],
+        ]);
+
+        $validated['name'] = trim($validated['name']);
+        $validated['slug'] = Str::slug($validated['name']);
+
+        if ($validated['slug'] === '') {
+            throw ValidationException::withMessages([
+                'name' => 'Escribe un nombre valido para generar el identificador de la categoria.',
+            ]);
+        }
+
+        $slugExists = ProductCategory::query()
+            ->where('slug', $validated['slug'])
+            ->when($category, fn ($query) => $query->whereKeyNot($category->id))
+            ->exists();
+
+        if ($slugExists) {
+            throw ValidationException::withMessages([
+                'name' => 'Ya existe una categoria con ese nombre.',
+            ]);
+        }
+
+        return $validated;
+    }
+
     private function buildProductPayload(array $validated, Request $request, string $type): array
     {
         $category = $this->resolveCategory($validated['category_name']);
@@ -490,6 +609,7 @@ class ProductManagementController extends Controller
             'category_id' => $category->id,
             'tax_rate_id' => $validated['tax_rate_id'] ?? null,
             'product_type' => $type,
+            'sort_order' => (int) $validated['sort_order'],
             'sku' => $validated['sku'],
             'image_path' => $imagePath,
             'active' => $request->boolean('active'),
@@ -553,9 +673,10 @@ class ProductManagementController extends Controller
 
     private function availableComboProducts(): Collection
     {
-        return Product::where('product_type', 'simple')
-            ->orderBy('name')
-            ->get(['id', 'name', 'sku', 'active']);
+        return Product::query()
+            ->where('product_type', 'simple')
+            ->orderedForMenu()
+            ->get(['products.id', 'products.name', 'products.sku', 'products.active']);
     }
 
     private function categoryOptions(): Collection
@@ -570,6 +691,11 @@ class ProductManagementController extends Controller
         return TaxRate::orderByDesc('is_default')
             ->orderBy('name')
             ->get(['id', 'name', 'rate', 'is_default', 'is_active']);
+    }
+
+    private function nextProductSortOrder(): int
+    {
+        return ((int) Product::max('sort_order')) + 1;
     }
 
     private function deleteProductSafely(Product $product, string $routeName): RedirectResponse

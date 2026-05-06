@@ -229,8 +229,8 @@ class OrderManagementController extends Controller
             }
 
             $products = Product::query()
+                ->visibleInMenu()
                 ->whereIn('id', $rows->pluck('product_id'))
-                ->where('active', true)
                 ->get()
                 ->keyBy('id');
 
@@ -620,13 +620,19 @@ class OrderManagementController extends Controller
     private function availableProducts(): Collection
     {
         return Product::query()
-            ->where('active', true)
-            ->where(function ($query) {
-                $query->whereIn('product_type', ['simple', 'combo'])
-                    ->orWhereNull('product_type');
-            })
-            ->orderBy('name')
-            ->get(['id', 'name', 'price', 'product_type', 'image_path']);
+            ->with('menuCategory:id,name,description,sort_order,is_active')
+            ->visibleInMenu()
+            ->orderedForMenu()
+            ->get([
+                'products.id',
+                'products.name',
+                'products.description',
+                'products.price',
+                'products.category_id',
+                'products.product_type',
+                'products.sort_order',
+                'products.image_path',
+            ]);
     }
 
     private function availableCustomers(): Collection
@@ -739,4 +745,3 @@ class OrderManagementController extends Controller
         return response()->view('errors.403', [], 403);
     }
 }
-

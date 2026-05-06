@@ -17,12 +17,8 @@ class POSController extends Controller
     public function index()
     {
         $products = Product::query()
-            ->where('active', true)
-            ->where(function ($query) {
-                $query->whereIn('product_type', ['simple', 'combo'])
-                    ->orWhereNull('product_type');
-            })
-            ->orderBy('name')
+            ->visibleInMenu()
+            ->orderedForMenu()
             ->get()
             ->map(function (Product $product): array {
                 return [
@@ -160,4 +156,3 @@ class POSController extends Controller
         return $value === null ? null : $this->sanitizeString($value);
     }
 }
-

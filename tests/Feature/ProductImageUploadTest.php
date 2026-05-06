@@ -32,6 +32,7 @@ class ProductImageUploadTest extends TestCase
                 'sku' => 'SKU-IMG-001',
                 'category_name' => 'Pizzas',
                 'price' => 32.50,
+                'sort_order' => 1,
                 'tracks_stock' => 0,
                 'active' => 1,
                 'image' => UploadedFile::fake()->image('pizza.jpg'),

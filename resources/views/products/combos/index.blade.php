@@ -42,14 +42,24 @@
                         @forelse($combos as $combo)
                             <article class="combo-card">
                                 <div class="combo-card-header">
-                                    <div>
-                                        <div class="d-flex align-items-center gap-2 flex-wrap mb-1">
-                                            <h6 class="mb-0">{{ $combo->name }}</h6>
-                                            <span class="badge rounded-pill {{ $combo->active ? 'bg-success' : 'bg-secondary' }}">
-                                                {{ $combo->active ? 'Activo' : 'Inactivo' }}
-                                            </span>
+                                    <div class="d-flex gap-3 align-items-start">
+                                        @if($combo->image_url)
+                                            <img src="{{ $combo->image_url }}" alt="{{ $combo->name }}" style="width: 72px; height: 72px; object-fit: cover; border-radius: 18px; border: 1px solid #dbe3f1;">
+                                        @else
+                                            <div style="width: 72px; height: 72px; border-radius: 18px; background: linear-gradient(135deg, #fff7ed, #ffedd5); display: flex; align-items: center; justify-content: center; color: #c2410c;">
+                                                <i class="fas fa-layer-group"></i>
+                                            </div>
+                                        @endif
+
+                                        <div>
+                                            <div class="d-flex align-items-center gap-2 flex-wrap mb-1">
+                                                <h6 class="mb-0">{{ $combo->name }}</h6>
+                                                <span class="badge rounded-pill {{ $combo->active ? 'bg-success' : 'bg-secondary' }}">
+                                                    {{ $combo->active ? 'Activo' : 'Inactivo' }}
+                                                </span>
+                                            </div>
+                                            <div class="table-note">{{ $combo->sku }} | {{ $combo->menuCategory->name ?? 'Sin categoria' }} | Orden {{ $combo->sort_order }} | {{ $combo->taxRate->name ?? 'Sin impuesto' }} | {{ $combo->tracks_stock ? 'Controla stock' : 'Sin control de stock' }}</div>
                                         </div>
-                                        <div class="table-note">{{ $combo->sku }} | {{ $combo->menuCategory->name ?? 'Sin categoria' }} | {{ $combo->taxRate->name ?? 'Sin impuesto' }} | {{ $combo->tracks_stock ? 'Controla stock' : 'Sin control de stock' }}</div>
                                     </div>
                                     <div class="combo-actions">
                                         <span class="summary-chip">${{ number_format($combo->price, 2) }}</span>

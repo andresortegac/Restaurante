@@ -15,15 +15,15 @@ class ProductSeeder extends Seeder
         $defaultTax = TaxRate::where('is_default', true)->first();
 
         $products = [
-            ['name' => 'Agua Mineral', 'description' => 'Botella de 500ml', 'price' => 15.00, 'stock' => 100, 'category' => 'Bebidas', 'sku' => 'AGU-001', 'active' => true, 'tracks_stock' => true],
-            ['name' => 'Refresco Cola', 'description' => 'Bebida gaseosa 350ml', 'price' => 25.00, 'stock' => 100, 'category' => 'Bebidas', 'sku' => 'REF-001', 'active' => true, 'tracks_stock' => true],
-            ['name' => 'Cafe Americano', 'description' => 'Cafe negro', 'price' => 45.00, 'stock' => 0, 'category' => 'Bebidas', 'sku' => 'CAF-001', 'active' => true, 'tracks_stock' => false],
-            ['name' => 'Hamburguesa Simple', 'description' => 'Carne de res con queso', 'price' => 85.00, 'stock' => 0, 'category' => 'Platos', 'sku' => 'HAM-001', 'active' => true, 'tracks_stock' => false],
-            ['name' => 'Pizza Mediana', 'description' => 'Pizza con 6 porciones', 'price' => 150.00, 'stock' => 0, 'category' => 'Platos', 'sku' => 'PIZ-001', 'active' => true, 'tracks_stock' => false],
-            ['name' => 'Pechuga de Pollo', 'description' => 'Pechuga a la plancha', 'price' => 130.00, 'stock' => 0, 'category' => 'Platos', 'sku' => 'POL-001', 'active' => true, 'tracks_stock' => false],
-            ['name' => 'Flan', 'description' => 'Flan casero', 'price' => 45.00, 'stock' => 0, 'category' => 'Postres', 'sku' => 'POS-001', 'active' => true, 'tracks_stock' => false],
-            ['name' => 'Helado', 'description' => 'Bola de helado', 'price' => 35.00, 'stock' => 0, 'category' => 'Postres', 'sku' => 'POS-002', 'active' => true, 'tracks_stock' => false],
-            ['name' => 'Combo Ejecutivo', 'description' => 'Combo base con plato fuerte, bebida y postre', 'price' => 150.00, 'stock' => 0, 'category' => 'Combos', 'sku' => 'COM-001', 'active' => false, 'product_type' => 'combo', 'tracks_stock' => false],
+            ['name' => 'Agua Mineral', 'description' => 'Botella de 500ml', 'price' => 15.00, 'stock' => 100, 'category' => 'Bebidas', 'sku' => 'AGU-001', 'active' => true, 'tracks_stock' => true, 'sort_order' => 1],
+            ['name' => 'Refresco Cola', 'description' => 'Bebida gaseosa 350ml', 'price' => 25.00, 'stock' => 100, 'category' => 'Bebidas', 'sku' => 'REF-001', 'active' => true, 'tracks_stock' => true, 'sort_order' => 2],
+            ['name' => 'Cafe Americano', 'description' => 'Cafe negro', 'price' => 45.00, 'stock' => 0, 'category' => 'Bebidas', 'sku' => 'CAF-001', 'active' => true, 'tracks_stock' => false, 'sort_order' => 3],
+            ['name' => 'Hamburguesa Simple', 'description' => 'Carne de res con queso', 'price' => 85.00, 'stock' => 0, 'category' => 'Platos', 'sku' => 'HAM-001', 'active' => true, 'tracks_stock' => false, 'sort_order' => 1],
+            ['name' => 'Pizza Mediana', 'description' => 'Pizza con 6 porciones', 'price' => 150.00, 'stock' => 0, 'category' => 'Platos', 'sku' => 'PIZ-001', 'active' => true, 'tracks_stock' => false, 'sort_order' => 2],
+            ['name' => 'Pechuga de Pollo', 'description' => 'Pechuga a la plancha', 'price' => 130.00, 'stock' => 0, 'category' => 'Platos', 'sku' => 'POL-001', 'active' => true, 'tracks_stock' => false, 'sort_order' => 3],
+            ['name' => 'Flan', 'description' => 'Flan casero', 'price' => 45.00, 'stock' => 0, 'category' => 'Postres', 'sku' => 'POS-001', 'active' => true, 'tracks_stock' => false, 'sort_order' => 1],
+            ['name' => 'Helado', 'description' => 'Bola de helado', 'price' => 35.00, 'stock' => 0, 'category' => 'Postres', 'sku' => 'POS-002', 'active' => true, 'tracks_stock' => false, 'sort_order' => 2],
+            ['name' => 'Combo Ejecutivo', 'description' => 'Combo base con plato fuerte, bebida y postre', 'price' => 150.00, 'stock' => 0, 'category' => 'Combos', 'sku' => 'COM-001', 'active' => false, 'product_type' => 'combo', 'tracks_stock' => false, 'sort_order' => 1],
         ];
 
         foreach ($products as $product) {
@@ -41,6 +41,7 @@ class ProductSeeder extends Seeder
                     'category_id' => $category?->id,
                     'tax_rate_id' => $defaultTax?->id,
                     'product_type' => $product['product_type'] ?? 'simple',
+                    'sort_order' => $product['sort_order'] ?? 0,
                     'active' => $product['active'],
                 ]
             );
