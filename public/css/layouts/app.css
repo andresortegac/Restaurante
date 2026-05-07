@@ -204,6 +204,16 @@ body {
     --btn-focus-ring: rgba(148, 163, 184, 0.2);
 }
 
+.btn-outline-dark {
+    --btn-bg-start: #f8fafc;
+    --btn-bg-end: #e2e8f0;
+    --btn-border: rgba(71, 85, 105, 0.34);
+    --btn-text: #1e293b;
+    --btn-shadow: 0 12px 22px rgba(15, 23, 42, 0.1);
+    --btn-shadow-hover: 0 16px 28px rgba(15, 23, 42, 0.16);
+    --btn-focus-ring: rgba(71, 85, 105, 0.2);
+}
+
 .btn-success {
     --btn-bg-start: #22c55e;
     --btn-bg-end: #15803d;

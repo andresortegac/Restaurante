@@ -13,9 +13,9 @@ class PaymentMethodSeeder extends Seeder
         $methods = [
             ['name' => 'Efectivo', 'code' => 'CASH', 'description' => 'Pago en efectivo', 'active' => true],
             ['name' => 'Tarjeta de Credito', 'code' => 'CREDIT_CARD', 'description' => 'Tarjeta de Credito', 'active' => true],
-            ['name' => 'Tarjeta de Debito', 'code' => 'DEBIT_CARD', 'description' => 'Tarjeta de Debito', 'active' => true],
+            ['name' => 'Tarjeta de Debito', 'code' => 'DEBIT_CARD', 'description' => 'Tarjeta de Debito', 'active' => false],
             ['name' => 'Transferencia Bancaria', 'code' => 'TRANSFER', 'description' => 'Transferencia electronica', 'active' => true],
-            ['name' => 'Billetera Digital', 'code' => 'DIGITAL_WALLET', 'description' => 'Pago con billetera digital', 'active' => true],
+            ['name' => 'Nequi', 'code' => 'DIGITAL_WALLET', 'description' => 'Pago con Nequi', 'active' => true],
         ];
 
         foreach ($methods as $method) {
@@ -26,4 +26,3 @@ class PaymentMethodSeeder extends Seeder
         }
     }
 }
-

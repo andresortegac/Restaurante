@@ -19,5 +19,15 @@ class DatabaseSeederTest extends TestCase
         $this->assertSame(0, Box::query()->count());
         $this->assertGreaterThan(0, User::query()->count());
         $this->assertGreaterThan(0, PaymentMethod::query()->count());
+        $this->assertDatabaseHas('payment_methods', [
+            'code' => 'DIGITAL_WALLET',
+            'name' => 'Nequi',
+            'active' => true,
+        ]);
+        $this->assertDatabaseHas('payment_methods', [
+            'code' => 'DEBIT_CARD',
+            'name' => 'Tarjeta de Debito',
+            'active' => false,
+        ]);
     }
 }

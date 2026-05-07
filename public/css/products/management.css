@@ -190,10 +190,12 @@
 }
 
 .table-actions {
-    display: flex;
-    justify-content: flex-end;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(8.75rem, 1fr));
+    justify-content: end;
     gap: 0.5rem;
-    flex-wrap: wrap;
+    width: min(100%, 18rem);
+    margin-left: auto;
 }
 
 .table-actions form,
@@ -201,12 +203,18 @@
     margin: 0;
 }
 
+.table-actions > * {
+    min-width: 0;
+}
+
 .delivery-action-form {
-    display: inline-flex;
+    display: block;
+    width: 100%;
 }
 
 .delivery-action-btn {
-    min-width: 6.75rem;
+    width: 100%;
+    min-width: 0;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -639,6 +647,11 @@
     .module-card .table td,
     .module-card .table th {
         padding: 0.85rem 1rem;
+    }
+
+    .table-actions {
+        grid-template-columns: 1fr;
+        width: 100%;
     }
 
     .combo-card-header,
