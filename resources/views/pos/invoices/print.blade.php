@@ -215,6 +215,8 @@
                     <span>
                         @if($sale->tableOrder)
                             {{ $sale->tableOrder->order_number }} / {{ $sale->tableOrder->table?->name ?? 'Mesa no disponible' }}
+                        @elseif($sale->delivery)
+                            {{ $sale->delivery->delivery_number }} / {{ $sale->delivery->delivery_address }}
                         @else
                             Punto de venta
                         @endif
@@ -304,7 +306,7 @@
     </div>
 
     <script>
-        const fallbackCloseUrl = @json($sale->tableOrder ? route('billing.history') : route('orders.index'));
+        const fallbackCloseUrl = @json($sale->tableOrder ? route('billing.history') : ($sale->delivery ? route('deliveries.index') : route('orders.index')));
 
         function handleClose() {
             window.location.href = fallbackCloseUrl;

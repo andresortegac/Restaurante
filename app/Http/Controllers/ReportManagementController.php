@@ -73,7 +73,7 @@ class ReportManagementController extends Controller
                 'invoice_failed' => (int) (($invoiceBreakdown['failed'] ?? 0) + ($invoiceBreakdown['rejected'] ?? 0)),
                 'deliveries_total' => (int) $deliveryBreakdown->sum(),
                 'deliveries_completed' => (int) ($deliveryBreakdown['delivered'] ?? 0),
-                'deliveries_active' => (int) (($deliveryBreakdown['pending'] ?? 0) + ($deliveryBreakdown['assigned'] ?? 0) + ($deliveryBreakdown['in_transit'] ?? 0)),
+                'deliveries_active' => (int) ($deliveryBreakdown['active'] ?? 0),
                 'customers_served' => (int) $this->countDistinctCustomers($saleIds),
             ],
             'statusBreakdown' => [

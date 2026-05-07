@@ -18,7 +18,7 @@ class InvoiceController extends Controller
     public function show($id)
     {
         $invoice = Invoice::findOrFail($id);
-        $invoice->load('sale.items.product', 'sale.payments.paymentMethod', 'sale.user', 'sale.box', 'sale.customer');
+        $invoice->load('sale.items.product', 'sale.payments.paymentMethod', 'sale.user', 'sale.box', 'sale.customer', 'sale.delivery');
         $this->sanitizeInvoiceForDisplay($invoice);
 
         return response()->json($invoice);
@@ -40,7 +40,7 @@ class InvoiceController extends Controller
 
     public function printSale(Sale $sale)
     {
-        $sale->load(['user', 'box', 'items.product', 'payments.paymentMethod', 'invoice', 'tableOrder.table', 'customer']);
+        $sale->load(['user', 'box', 'items.product', 'payments.paymentMethod', 'invoice', 'tableOrder.table', 'customer', 'delivery']);
 
         $invoice = $sale->invoice ?: $this->saleDocumentService->issueTicketForSale($sale);
         $sale->setRelation('invoice', $invoice);
@@ -112,6 +112,11 @@ class InvoiceController extends Controller
             if ($sale->tableOrder->relationLoaded('table') && $sale->tableOrder->table) {
                 $sale->tableOrder->table->name = $this->sanitizeString($sale->tableOrder->table->name);
             }
+        }
+
+        if ($sale->relationLoaded('delivery') && $sale->delivery) {
+            $sale->delivery->delivery_number = $this->sanitizeString($sale->delivery->delivery_number);
+            $sale->delivery->delivery_address = $this->sanitizeString($sale->delivery->delivery_address);
         }
 
         if ($sale->relationLoaded('payments')) {

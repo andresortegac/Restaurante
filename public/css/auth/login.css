@@ -11,6 +11,9 @@ body {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     min-height: 100vh;
     min-height: 100dvh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
     padding: clamp(24px, 5vh, 48px) 16px;
     overflow-y: auto;
 }
@@ -163,6 +166,7 @@ input[type="password"]:focus {
 
 @media (max-height: 760px) {
     body {
+        align-items: flex-start;
         padding-block: 20px;
     }
 

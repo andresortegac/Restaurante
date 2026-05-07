@@ -54,13 +54,20 @@ body {
     width: 100% !important;
     overflow: hidden !important;
     padding-top: 70px !important;
-    z-index: 1 !important;
 }
 
 .main-content {
     flex: 1;
     overflow-y: auto;
     width: 100%;
+}
+
+.modal {
+    z-index: 1200 !important;
+}
+
+.modal-backdrop {
+    z-index: 1190 !important;
 }
 
 /* Sistema global de botones */

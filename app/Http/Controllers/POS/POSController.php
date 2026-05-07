@@ -71,7 +71,7 @@ class POSController extends Controller
     public function salesHistory()
     {
         $sales = Sale::query()
-            ->with(['user', 'box', 'invoice', 'payments.paymentMethod', 'tableOrder.table', 'customer'])
+            ->with(['user', 'box', 'invoice', 'payments.paymentMethod', 'tableOrder.table', 'customer', 'delivery'])
             ->withCount('items')
             ->latest()
             ->paginate(15);
@@ -124,6 +124,11 @@ class POSController extends Controller
             if ($sale->tableOrder->relationLoaded('table') && $sale->tableOrder->table) {
                 $sale->tableOrder->table->name = $this->sanitizeString($sale->tableOrder->table->name);
             }
+        }
+
+        if ($sale->relationLoaded('delivery') && $sale->delivery) {
+            $sale->delivery->delivery_number = $this->sanitizeString($sale->delivery->delivery_number);
+            $sale->delivery->delivery_address = $this->sanitizeString($sale->delivery->delivery_address);
         }
 
         if ($sale->relationLoaded('invoice') && $sale->invoice) {

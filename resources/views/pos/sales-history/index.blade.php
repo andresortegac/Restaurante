@@ -85,6 +85,12 @@
                                             @if($sale->customer?->name || $sale->customer_name)
                                                 <div class="text-muted small">{{ $sale->customer?->name ?: $sale->customer_name }}</div>
                                             @endif
+                                        @elseif($sale->delivery)
+                                            <strong>{{ $sale->delivery->delivery_number }}</strong>
+                                            <div class="text-muted small">{{ $sale->delivery->delivery_address }}</div>
+                                            @if($sale->customer?->name || $sale->customer_name)
+                                                <div class="text-muted small">{{ $sale->customer?->name ?: $sale->customer_name }}</div>
+                                            @endif
                                         @else
                                             <span class="badge bg-secondary-subtle text-secondary border">POS directo</span>
                                             @if($sale->customer?->name || $sale->customer_name)

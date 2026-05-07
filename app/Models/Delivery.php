@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Delivery extends Model
 {
@@ -14,6 +15,7 @@ class Delivery extends Model
         'customer_id',
         'assigned_user_id',
         'delivery_driver_id',
+        'sale_id',
         'delivery_number',
         'customer_name',
         'customer_phone',
@@ -58,6 +60,16 @@ class Delivery extends Model
     public function deliveryDriver(): BelongsTo
     {
         return $this->belongsTo(DeliveryDriver::class, 'delivery_driver_id');
+    }
+
+    public function sale(): BelongsTo
+    {
+        return $this->belongsTo(Sale::class);
+    }
+
+    public function items(): HasMany
+    {
+        return $this->hasMany(DeliveryItem::class);
     }
 
     public function getDeliveryProofImageUrlAttribute(): ?string

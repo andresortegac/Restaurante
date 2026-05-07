@@ -159,6 +159,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/', [DeliveryManagementController::class, 'index'])->name('index');
         Route::get('/create', [DeliveryManagementController::class, 'create'])->name('create');
         Route::post('/', [DeliveryManagementController::class, 'store'])->name('store');
+        Route::get('/{delivery}/checkout', [DeliveryManagementController::class, 'showCheckout'])->name('checkout');
+        Route::post('/{delivery}/checkout', [DeliveryManagementController::class, 'processCheckout'])->name('checkout.store');
         Route::put('/{delivery}/complete', [DeliveryManagementController::class, 'complete'])->name('complete');
         Route::get('/{delivery}/edit', [DeliveryManagementController::class, 'edit'])->name('edit');
         Route::put('/{delivery}', [DeliveryManagementController::class, 'update'])->name('update');

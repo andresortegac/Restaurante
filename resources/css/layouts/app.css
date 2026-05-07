@@ -58,3 +58,11 @@ body {
     height: 100%;
     width: 100%;
 }
+
+.modal {
+    z-index: 1200 !important;
+}
+
+.modal-backdrop {
+    z-index: 1190 !important;
+}
