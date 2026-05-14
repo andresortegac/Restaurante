@@ -272,7 +272,7 @@
 
                                         <div class="form-actions waiter-form-actions">
                                             <a href="{{ route('orders.index') }}" class="btn btn-outline-secondary">Volver a pedidos</a>
-                                            <button type="submit" class="btn btn-primary" id="submitOrderButton">{{ $openOrder ? 'Guardar y mandar a cocina' : 'Crear pedido y mandar a cocina' }}</button>
+                                            <button type="submit" class="btn btn-primary" id="submitOrderButton">{{ $openOrder ? 'Guardar y mandar a cocina' : 'Crear pedido' }}</button>
                                         </div>
                                     </aside>
                                 </div>

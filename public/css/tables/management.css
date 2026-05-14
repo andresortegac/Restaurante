@@ -401,6 +401,16 @@
 
 .waiter-form-actions {
     margin-top: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+}
+
+.waiter-form-actions .btn {
+    width: 100%;
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
 }
 
 .order-items-table td,
