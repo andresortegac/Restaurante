@@ -6,6 +6,7 @@ use App\Models\RestaurantTable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class TableManagementController extends Controller
@@ -55,7 +56,9 @@ class TableManagementController extends Controller
 
         $validated = $this->validateTableData($request);
 
-        RestaurantTable::create($this->buildTablePayload($validated, $request));
+        DB::transaction(function () use ($validated, $request): void {
+            RestaurantTable::create($this->buildTablePayload($validated, $request));
+        });
 
         return redirect()
             ->route('tables.index')
@@ -153,7 +156,7 @@ class TableManagementController extends Controller
     {
         return $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'code' => ['required', 'string', 'max:255', Rule::unique('restaurant_tables', 'code')->ignore($table?->id)],
+            'code' => [$table ? 'required' : 'nullable', 'string', 'max:255', Rule::unique('restaurant_tables', 'code')->ignore($table?->id)],
             'area' => ['nullable', 'string', 'max:255'],
             'capacity' => ['required', 'integer', 'min:1', 'max:30'],
             'status' => ['required', Rule::in(['free', 'occupied', 'reserved'])],
@@ -166,13 +169,31 @@ class TableManagementController extends Controller
     {
         return [
             'name' => $validated['name'],
-            'code' => $validated['code'],
+            'code' => filled($validated['code'] ?? null) ? $validated['code'] : $this->generateUniqueTableCode(),
             'area' => $validated['area'] ?? null,
             'capacity' => $validated['capacity'],
             'status' => $validated['status'],
             'notes' => $validated['notes'] ?? null,
             'is_active' => $request->boolean('is_active'),
         ];
+    }
+
+    private function generateUniqueTableCode(): string
+    {
+        $existingCodes = RestaurantTable::query()
+            ->lockForUpdate()
+            ->pluck('code')
+            ->all();
+
+        $existingLookup = array_fill_keys($existingCodes, true);
+        $sequence = 1;
+
+        do {
+            $code = 'M-' . str_pad((string) $sequence, 2, '0', STR_PAD_LEFT);
+            $sequence++;
+        } while (isset($existingLookup[$code]));
+
+        return $code;
     }
 
     private function tableModulePermissions(): array

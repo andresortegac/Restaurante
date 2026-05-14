@@ -10,7 +10,7 @@
     <div class="module-page">
         <section class="module-hero">
             <div>
-                <span class="module-kicker">Gestion de Mesas / RF-06 y RF-07</span>
+                <span class="module-kicker">Gestion de Mesas</span>
                 <h1>{{ $pageTitle }}</h1>
                 <p>Configura la identificacion de la mesa, su area, capacidad y estado operativo para que quede disponible en el flujo del salon y en el modulo de pedidos.</p>
             </div>
@@ -43,11 +43,13 @@
                             <input type="text" class="form-control" id="name" name="name" value="{{ old('name', $restaurantTable->name) }}" required>
                         </div>
 
-                        <div>
-                            <label class="form-label" for="code">Codigo interno</label>
-                            <input type="text" class="form-control" id="code" name="code" value="{{ old('code', $restaurantTable->code) }}" required>
-                            <div class="form-help">Ejemplo: M-01, Terraza-2 o VIP-05.</div>
-                        </div>
+                        @if($restaurantTable->exists)
+                            <div>
+                                <label class="form-label" for="code">Codigo interno</label>
+                                <input type="text" class="form-control" id="code" name="code" value="{{ old('code', $restaurantTable->code) }}" required>
+                                <div class="form-help">Ejemplo: M-01, Terraza-2 o VIP-05.</div>
+                            </div>
+                        @endif
 
                         <div>
                             <label class="form-label" for="area">Area</label>

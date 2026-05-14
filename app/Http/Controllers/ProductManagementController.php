@@ -140,13 +140,17 @@ class ProductManagementController extends Controller
 
         $validated = $this->validateCategoryData($request);
 
-        ProductCategory::create([
-            'name' => $validated['name'],
-            'slug' => $validated['slug'],
-            'description' => $validated['description'] ?? null,
-            'sort_order' => $validated['sort_order'],
-            'is_active' => $request->boolean('is_active'),
-        ]);
+        DB::transaction(function () use ($request, $validated): void {
+            $category = ProductCategory::create([
+                'name' => $validated['name'],
+                'slug' => $validated['slug'],
+                'description' => $validated['description'] ?? null,
+                'sort_order' => 0,
+                'is_active' => $request->boolean('is_active'),
+            ]);
+
+            $this->moveCategoryToSortOrder($category, (int) $validated['sort_order']);
+        });
 
         return redirect()
             ->route('products.menu.index')
@@ -166,9 +170,10 @@ class ProductManagementController extends Controller
                 'name' => $validated['name'],
                 'slug' => $validated['slug'],
                 'description' => $validated['description'] ?? null,
-                'sort_order' => $validated['sort_order'],
                 'is_active' => $request->boolean('is_active'),
             ]);
+
+            $this->moveCategoryToSortOrder($category, (int) $validated['sort_order']);
 
             Product::query()
                 ->where('category_id', $category->id)
@@ -194,7 +199,10 @@ class ProductManagementController extends Controller
                 ->with('error', 'No se puede eliminar la categoria porque aun tiene productos asociados.');
         }
 
-        $category->delete();
+        DB::transaction(function () use ($category): void {
+            $category->delete();
+            $this->normalizeCategorySortOrders();
+        });
 
         return redirect()
             ->route('products.menu.index')
@@ -552,7 +560,7 @@ class ProductManagementController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
-            'sort_order' => ['required', 'integer', 'min:0'],
+            'sort_order' => ['required', 'integer', 'min:1'],
             'is_active' => ['nullable', 'boolean'],
         ]);
 
@@ -577,6 +585,51 @@ class ProductManagementController extends Controller
         }
 
         return $validated;
+    }
+
+    private function moveCategoryToSortOrder(ProductCategory $category, int $requestedSortOrder): void
+    {
+        $categories = ProductCategory::query()
+            ->whereKeyNot($category->id)
+            ->lockForUpdate()
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get()
+            ->all();
+
+        $targetIndex = max(1, min($requestedSortOrder, count($categories) + 1)) - 1;
+
+        array_splice($categories, $targetIndex, 0, [$category]);
+
+        $this->persistCategorySortOrders($categories);
+    }
+
+    private function normalizeCategorySortOrders(): void
+    {
+        $this->persistCategorySortOrders(
+            ProductCategory::query()
+                ->lockForUpdate()
+                ->orderBy('sort_order')
+                ->orderBy('id')
+                ->get()
+                ->all()
+        );
+    }
+
+    /**
+     * @param  array<int, ProductCategory>  $categories
+     */
+    private function persistCategorySortOrders(array $categories): void
+    {
+        foreach ($categories as $index => $category) {
+            $newSortOrder = $index + 1;
+
+            if ((int) $category->sort_order === $newSortOrder) {
+                continue;
+            }
+
+            $category->forceFill(['sort_order' => $newSortOrder])->save();
+        }
     }
 
     private function buildProductPayload(array $validated, Request $request, string $type): array

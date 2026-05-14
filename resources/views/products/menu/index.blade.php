@@ -136,7 +136,7 @@
                                                             <div class="menu-product-price">${{ number_format($product->price, 2) }}</div>
                                                         </div>
 
-                                                        <div class="table-actions">
+                                                        <div class="table-actions menu-product-actions">
                                                             @if($canEditProduct)
                                                                 <a href="{{ route('products.menu.edit', $product) }}" class="btn btn-outline-primary btn-sm">
                                                                     Editar
@@ -144,7 +144,7 @@
                                                             @endif
 
                                                             @if($canDeleteProduct)
-                                                                <form method="POST" action="{{ route('products.menu.destroy', $product) }}" onsubmit="return confirm('Deseas eliminar este producto?');">
+                                                                <form class="menu-product-action-form" method="POST" action="{{ route('products.menu.destroy', $product) }}" onsubmit="return confirm('Deseas eliminar este producto?');">
                                                                     @csrf
                                                                     @method('DELETE')
                                                                     <button type="submit" class="btn btn-outline-danger btn-sm">Eliminar</button>
@@ -181,7 +181,7 @@
                                     <div class="row g-3">
                                         <div class="col-sm-6">
                                             <label class="form-label" for="category_create_sort_order">Orden</label>
-                                            <input type="number" class="form-control" id="category_create_sort_order" name="sort_order" min="0" value="{{ old('sort_order', $categories->max('sort_order') + 1) }}" required>
+                                            <input type="number" class="form-control" id="category_create_sort_order" name="sort_order" min="1" value="{{ old('sort_order', max(1, $categories->max('sort_order') + 1)) }}" required>
                                         </div>
                                         <div class="col-sm-6">
                                             <label class="form-label d-block">Estado</label>
@@ -233,7 +233,7 @@
                                                 <div class="row g-3">
                                                     <div class="col-sm-6">
                                                         <label class="form-label" for="category_sort_order_{{ $category->id }}">Orden</label>
-                                                        <input type="number" class="form-control" id="category_sort_order_{{ $category->id }}" name="sort_order" min="0" value="{{ old('sort_order', $category->sort_order) }}" required>
+                                                        <input type="number" class="form-control" id="category_sort_order_{{ $category->id }}" name="sort_order" min="1" value="{{ old('sort_order', max(1, $category->sort_order)) }}" required>
                                                     </div>
                                                     <div class="col-sm-6">
                                                         <label class="form-label d-block">Estado</label>
@@ -247,14 +247,14 @@
                                                     <label class="form-label" for="category_description_{{ $category->id }}">Descripcion</label>
                                                     <textarea class="form-control" id="category_description_{{ $category->id }}" name="description" rows="3">{{ old('description', $category->description) }}</textarea>
                                                 </div>
-                                                <div class="form-actions">
+                                                <div class="form-actions category-admin-actions">
                                                     <button type="submit" class="btn btn-outline-primary">Guardar cambios</button>
                                                 </div>
                                             </form>
                                         @endif
 
                                         @if($canDeleteCategory)
-                                            <form method="POST" action="{{ route('products.categories.destroy', $category) }}" onsubmit="return confirm('Deseas eliminar esta categoria?');">
+                                            <form class="category-admin-delete-form" method="POST" action="{{ route('products.categories.destroy', $category) }}" onsubmit="return confirm('Deseas eliminar esta categoria?');">
                                                 @csrf
                                                 @method('DELETE')
                                                 <button type="submit" class="btn btn-outline-danger w-100" @disabled($category->simple_products_count > 0)>

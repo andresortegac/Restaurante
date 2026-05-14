@@ -13,30 +13,52 @@ class ProductCategoryManagementTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_admin_can_create_and_update_category_with_visual_order(): void
+    public function test_admin_can_create_category_in_requested_position_and_shift_existing_categories(): void
     {
         $user = $this->createAdminUser();
+
+        $bebidas = $this->createCategory('Bebidas', 1);
+        $platos = $this->createCategory('Platos', 2);
+        $postres = $this->createCategory('Postres', 3);
 
         $createResponse = $this
             ->actingAs($user)
             ->post(route('products.categories.store'), [
                 'name' => 'Entradas',
                 'description' => 'Platos para compartir',
-                'sort_order' => 3,
+                'sort_order' => 2,
                 'is_active' => 1,
             ]);
 
         $createResponse->assertRedirect(route('products.menu.index'));
 
-        $category = ProductCategory::query()->firstOrFail();
-
         $this->assertDatabaseHas('product_categories', [
-            'id' => $category->id,
             'name' => 'Entradas',
             'slug' => 'entradas',
-            'sort_order' => 3,
+            'sort_order' => 2,
             'is_active' => true,
         ]);
+
+        $orderedCategories = ProductCategory::query()
+            ->orderBy('sort_order')
+            ->pluck('name', 'sort_order')
+            ->all();
+
+        $this->assertSame([
+            1 => $bebidas->name,
+            2 => 'Entradas',
+            3 => $platos->name,
+            4 => $postres->name,
+        ], $orderedCategories);
+    }
+
+    public function test_admin_can_move_category_to_first_position_without_duplicate_orders(): void
+    {
+        $user = $this->createAdminUser();
+
+        $bebidas = $this->createCategory('Bebidas', 1);
+        $platos = $this->createCategory('Platos', 2);
+        $category = $this->createCategory('Postres', 3);
 
         $product = Product::create([
             'name' => 'Patacon mixto',
@@ -44,7 +66,7 @@ class ProductCategoryManagementTest extends TestCase
             'price' => 18,
             'stock' => 0,
             'tracks_stock' => false,
-            'category' => 'Entradas',
+            'category' => 'Postres',
             'category_id' => $category->id,
             'sku' => 'CAT-TEST-001',
             'product_type' => 'simple',
@@ -76,6 +98,17 @@ class ProductCategoryManagementTest extends TestCase
             'category_id' => $category->id,
             'category' => 'Entradas frias',
         ]);
+
+        $orderedCategories = ProductCategory::query()
+            ->orderBy('sort_order')
+            ->pluck('name', 'sort_order')
+            ->all();
+
+        $this->assertSame([
+            1 => 'Entradas frias',
+            2 => $bebidas->name,
+            3 => $platos->name,
+        ], $orderedCategories);
     }
 
     public function test_category_with_products_cannot_be_deleted(): void
@@ -127,5 +160,16 @@ class ProductCategoryManagementTest extends TestCase
         $user->roles()->attach($adminRole);
 
         return $user;
+    }
+
+    private function createCategory(string $name, int $sortOrder): ProductCategory
+    {
+        return ProductCategory::create([
+            'name' => $name,
+            'slug' => strtolower($name),
+            'description' => 'Categoria de prueba',
+            'sort_order' => $sortOrder,
+            'is_active' => true,
+        ]);
     }
 }
