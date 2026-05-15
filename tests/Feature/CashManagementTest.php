@@ -137,6 +137,36 @@ class CashManagementTest extends TestCase
         ]);
     }
 
+    public function test_admin_can_open_manual_movement_form_for_an_open_box(): void
+    {
+        $user = User::factory()->create();
+        $adminRole = Role::create([
+            'name' => 'Admin',
+            'description' => 'Administrador',
+        ]);
+        $user->roles()->attach($adminRole);
+
+        $box = Box::create([
+            'name' => 'Caja auxiliar',
+            'code' => 'BOX-AUX',
+            'status' => 'closed',
+        ]);
+
+        $this->actingAs($user)
+            ->post(route('cash-management.open', $box), [
+                'opening_balance' => 80,
+            ])
+            ->assertRedirect(route('cash-management.show', $box));
+
+        $response = $this->actingAs($user)
+            ->get(route('cash-management.movements.create', $box));
+
+        $response->assertOk();
+        $response->assertSee('Movimiento manual en Caja auxiliar');
+        $response->assertSee('Ingreso manual');
+        $response->assertSee('Egreso manual');
+    }
+
     public function test_user_gets_a_form_error_when_trying_to_open_a_second_box(): void
     {
         $user = User::factory()->create();

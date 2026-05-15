@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\RestaurantTable;
+use App\Models\TableOrder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -75,16 +76,77 @@ class TableManagementController extends Controller
             'openOrder.customer',
             'openOrder.items.product',
             'openOrder.openedBy',
-            'orders' => fn ($query) => $query
-                ->with(['items', 'previousTable', 'customer'])
-                ->latest()
-                ->take(10),
         ]);
 
         return view('tables.show', [
             'restaurantTable' => $table,
             'openOrder' => $table->openOrder,
-            'recentOrders' => $table->orders,
+        ]);
+    }
+
+    public function historyIndex()
+    {
+        if ($response = $this->denyIfUnauthorized($this->tableModulePermissions())) {
+            return $response;
+        }
+
+        $tables = RestaurantTable::query()
+            ->with(['latestOrder.customer', 'openOrder'])
+            ->withCount([
+                'orders',
+                'orders as open_orders_count' => fn ($query) => $query->where('status', 'open'),
+                'orders as paid_orders_count' => fn ($query) => $query->where('status', 'paid'),
+            ])
+            ->orderBy('area')
+            ->orderBy('name')
+            ->get();
+
+        return view('tables.history.index', [
+            'tables' => $tables,
+            'summary' => [
+                'tables' => $tables->count(),
+                'withHistory' => $tables->where('orders_count', '>', 0)->count(),
+                'orders' => $tables->sum('orders_count'),
+                'open' => $tables->sum('open_orders_count'),
+            ],
+        ]);
+    }
+
+    public function historyShow(RestaurantTable $table)
+    {
+        if ($response = $this->denyIfUnauthorized($this->tableModulePermissions())) {
+            return $response;
+        }
+
+        $table->load([
+            'openOrder.customer',
+            'latestOrder.customer',
+        ])->loadCount([
+            'orders',
+            'orders as open_orders_count' => fn ($query) => $query->where('status', 'open'),
+            'orders as paid_orders_count' => fn ($query) => $query->where('status', 'paid'),
+        ]);
+
+        $orders = TableOrder::query()
+            ->with(['previousTable', 'openedBy', 'sale', 'customer'])
+            ->withCount('items')
+            ->where('restaurant_table_id', $table->id)
+            ->latest()
+            ->paginate(10);
+
+        return view('tables.history.show', [
+            'restaurantTable' => $table,
+            'openOrder' => $table->openOrder,
+            'orders' => $orders,
+            'summary' => [
+                'total' => (int) $table->orders_count,
+                'today' => TableOrder::query()
+                    ->where('restaurant_table_id', $table->id)
+                    ->whereDate('created_at', today())
+                    ->count(),
+                'open' => (int) $table->open_orders_count,
+                'paid' => (int) $table->paid_orders_count,
+            ],
         ]);
     }
 

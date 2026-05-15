@@ -38,6 +38,11 @@ class RestaurantTable extends Model
             ->latestOfMany();
     }
 
+    public function latestOrder(): HasOne
+    {
+        return $this->hasOne(TableOrder::class)->latestOfMany();
+    }
+
     public function reservations(): HasMany
     {
         return $this->hasMany(Reservation::class, 'restaurant_table_id');

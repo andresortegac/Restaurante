@@ -7,7 +7,6 @@ use App\Models\Box;
 use App\Models\BoxSession;
 use App\Models\PaymentMethod;
 use App\Models\Product;
-use App\Models\Sale;
 
 class POSController extends Controller
 {
@@ -73,79 +72,7 @@ class POSController extends Controller
 
     public function salesHistory()
     {
-        $sales = Sale::query()
-            ->with(['user', 'box', 'invoice', 'payments.paymentMethod', 'tableOrder.table', 'customer', 'delivery'])
-            ->withCount('items')
-            ->latest()
-            ->paginate(15);
-
-        $sales->getCollection()->transform(function (Sale $sale) {
-            $this->sanitizeSaleForDisplay($sale);
-
-            return $sale;
-        });
-
-        $todaySales = Sale::query()
-            ->whereDate('created_at', today())
-            ->count();
-
-        $todayRevenue = (float) Sale::query()
-            ->whereDate('created_at', today())
-            ->sum('total');
-
-        $pendingInvoices = Sale::query()
-            ->doesntHave('invoice')
-            ->count();
-
-        return view('pos.sales-history.index', [
-            'sales' => $sales,
-            'todaySales' => $todaySales,
-            'todayRevenue' => $todayRevenue,
-            'pendingInvoices' => $pendingInvoices,
-        ]);
-    }
-
-    private function sanitizeSaleForDisplay(Sale $sale): void
-    {
-        if ($sale->relationLoaded('user') && $sale->user) {
-            $sale->user->name = $this->sanitizeString($sale->user->name);
-        }
-
-        $sale->customer_name = $sale->customer_name === null ? null : $this->sanitizeString($sale->customer_name);
-
-        if ($sale->relationLoaded('customer') && $sale->customer) {
-            $sale->customer->name = $this->sanitizeString($sale->customer->name);
-        }
-
-        if ($sale->relationLoaded('box') && $sale->box) {
-            $sale->box->name = $this->sanitizeString($sale->box->name);
-        }
-
-        if ($sale->relationLoaded('tableOrder') && $sale->tableOrder) {
-            $sale->tableOrder->order_number = $this->sanitizeString($sale->tableOrder->order_number);
-
-            if ($sale->tableOrder->relationLoaded('table') && $sale->tableOrder->table) {
-                $sale->tableOrder->table->name = $this->sanitizeString($sale->tableOrder->table->name);
-            }
-        }
-
-        if ($sale->relationLoaded('delivery') && $sale->delivery) {
-            $sale->delivery->delivery_number = $this->sanitizeString($sale->delivery->delivery_number);
-            $sale->delivery->delivery_address = $this->sanitizeString($sale->delivery->delivery_address);
-        }
-
-        if ($sale->relationLoaded('invoice') && $sale->invoice) {
-            $sale->invoice->invoice_number = $this->sanitizeString($sale->invoice->invoice_number);
-            $sale->invoice->status = $this->sanitizeString($sale->invoice->status);
-        }
-
-        if ($sale->relationLoaded('payments')) {
-            foreach ($sale->payments as $payment) {
-                if ($payment->relationLoaded('paymentMethod') && $payment->paymentMethod) {
-                    $payment->paymentMethod->name = $this->sanitizeString($payment->paymentMethod->name);
-                }
-            }
-        }
+        return redirect()->route('billing.history');
     }
 
     private function sanitizeString(?string $value): string

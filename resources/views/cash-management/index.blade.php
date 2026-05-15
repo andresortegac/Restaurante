@@ -123,6 +123,11 @@
                                                 <i class="fas {{ $box->activeSession ? 'fa-right-from-bracket' : 'fa-lock-open' }}"></i>
                                                 {{ $box->activeSession ? 'Gestionar cierre' : 'Preparar apertura' }}
                                             </a>
+                                            @if($box->activeSession)
+                                                <a href="{{ route('cash-management.movements.create', $box) }}" class="btn btn-outline-primary">
+                                                    <i class="fas fa-money-bill-transfer"></i> Movimiento manual
+                                                </a>
+                                            @endif
                                             @if($canManageBoxCatalog)
                                                 <a href="{{ route('cash-management.edit', $box) }}" class="btn btn-outline-secondary">
                                                     <i class="fas fa-pen"></i> Editar
@@ -157,6 +162,7 @@
                                     <div class="d-flex flex-column align-items-end gap-2">
                                         <span class="summary-chip">${{ number_format($session->currentBalance(), 2) }}</span>
                                         <a href="{{ route('cash-management.show', $session->box) }}" class="btn btn-sm btn-outline-primary">Ver cierre</a>
+                                        <a href="{{ route('cash-management.movements.create', $session->box) }}" class="btn btn-sm btn-outline-secondary">Movimiento manual</a>
                                     </div>
                                 </div>
                             @empty

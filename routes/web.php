@@ -3,6 +3,7 @@
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BillingManagementController;
 use App\Http\Controllers\CustomerManagementController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DeliveryDriverManagementController;
 use App\Http\Controllers\OrderManagementController;
 use App\Http\Controllers\ProductManagementController;
@@ -43,9 +44,7 @@ Route::middleware('auth')->group(function () {
     })->name('media.public');
 
     // Dashboard
-    Route::get('/dashboard', function () {
-        return view('dashboard');
-    })->name('dashboard');
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     Route::prefix('cash-management')->name('cash-management.')->group(function () {
         Route::get('/', [CashManagementController::class, 'index'])->name('index');
@@ -53,6 +52,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/', [CashManagementController::class, 'store'])->name('store');
         Route::get('/history', [CashManagementController::class, 'history'])->name('history');
         Route::get('/monthly', [CashManagementController::class, 'monthlyReport'])->name('monthly');
+        Route::get('/{box}/movements/create', [CashManagementController::class, 'createMovement'])->name('movements.create');
         Route::get('/{box}/edit', [CashManagementController::class, 'edit'])->name('edit');
         Route::put('/{box}', [CashManagementController::class, 'update'])->name('update');
         Route::get('/{box}', [CashManagementController::class, 'show'])->name('show');
@@ -183,6 +183,10 @@ Route::middleware('auth')->group(function () {
         Route::get('/', [TableManagementController::class, 'index'])->name('index');
         Route::get('/create', [TableManagementController::class, 'create'])->name('create');
         Route::post('/', [TableManagementController::class, 'store'])->name('store');
+        Route::prefix('history')->name('history.')->group(function () {
+            Route::get('/', [TableManagementController::class, 'historyIndex'])->name('index');
+            Route::get('/{table}', [TableManagementController::class, 'historyShow'])->name('show');
+        });
         Route::get('/{table}', [TableManagementController::class, 'show'])->name('show');
         Route::get('/{table}/edit', [TableManagementController::class, 'edit'])->name('edit');
         Route::put('/{table}', [TableManagementController::class, 'update'])->name('update');

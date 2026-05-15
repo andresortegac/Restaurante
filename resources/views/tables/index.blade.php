@@ -92,7 +92,7 @@
                 </div>
             </div>
         @else
-            <div class="tables-grid">
+            <div class="tables-grid tables-grid-compact">
                 @foreach($tables as $restaurantTable)
                     @php
                         $openOrder = $restaurantTable->openOrder;

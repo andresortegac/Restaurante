@@ -1,39 +1,49 @@
-﻿@extends('layouts.app')
+@extends('layouts.app')
 
 @section('title', 'Dashboard - RestaurantePOS')
 
 @section('content')
+    @php
+        $currentAccess = $accountUser->current_login_at;
+        $previousAccess = $accountUser->previous_login_at;
+    @endphp
+
     <div class="dashboard-panel">
-        <!-- Welcome Section -->
         <div class="welcome-section">
-            <h1><i class="fas fa-wave-hand"></i> Bienvenido, {{ Auth::user()->name }}!</h1>
+            <h1><i class="fas fa-wave-hand"></i> Bienvenido, {{ $accountUser->name }}!</h1>
             <p>
                 Has iniciado sesión correctamente en el Sistema de Gestión de Restaurantes.
-                Aquí­ puedes gestionar todas las operaciones del restaurante.
+                Aqui puedes consultar el estado operativo del negocio y seguir el movimiento del dia en tiempo real.
             </p>
         </div>
 
-        <!-- Dashboard Stats -->
         <div class="dashboard-grid">
             <div class="stat-card">
-                <h3><i class="fas fa-clipboard-list"></i> Pedidos Pendientes</h3>
-                <div class="value">0</div>
+                <h3><i class="fas fa-clipboard-list"></i> Pedidos realizados hoy</h3>
+                <div class="value">{{ number_format($stats['orders_today']) }}</div>
             </div>
             <div class="stat-card">
                 <h3><i class="fas fa-chair"></i> Mesas Ocupadas</h3>
-                <div class="value">0</div>
+                <div class="value">{{ number_format($stats['occupied_tables']) }}</div>
+            </div>
+            <div class="stat-card">
+                <h3><i class="fas fa-check-circle"></i> Mesas disponibles</h3>
+                <div class="value">{{ number_format($stats['available_tables']) }}</div>
             </div>
             <div class="stat-card">
                 <h3><i class="fas fa-dollar-sign"></i> Ventas Hoy</h3>
-                <div class="value">$0.00</div>
+                <div class="value">${{ number_format($stats['sales_today'], 2) }}</div>
+            </div>
+            <div class="stat-card">
+                <h3><i class="fas fa-chart-line"></i> Ingresos mensuales</h3>
+                <div class="value">${{ number_format($stats['monthly_income'], 2) }}</div>
             </div>
             <div class="stat-card">
                 <h3><i class="fas fa-users"></i> Clientes</h3>
-                <div class="value">0</div>
+                <div class="value">{{ number_format($stats['customers']) }}</div>
             </div>
         </div>
 
-        <!-- User Information -->
         <div class="row">
             <div class="col-md-6">
                 <div class="card mb-4">
@@ -44,15 +54,19 @@
                         <table class="table table-sm table-borderless">
                             <tr>
                                 <td><strong>Nombre:</strong></td>
-                                <td>{{ Auth::user()->name }}</td>
+                                <td>{{ $accountUser->name }}</td>
                             </tr>
                             <tr>
                                 <td><strong>Email:</strong></td>
-                                <td>{{ Auth::user()->email }}</td>
+                                <td>{{ $accountUser->email }}</td>
                             </tr>
                             <tr>
-                                <td><strong>Último acceso:</strong></td>
-                                <td>Hace poco</td>
+                                <td><strong>Acceso actual:</strong></td>
+                                <td>{{ $currentAccess ? $currentAccess->format('d/m/Y H:i') : 'Sin registro' }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Acceso anterior:</strong></td>
+                                <td>{{ $previousAccess ? $previousAccess->format('d/m/Y H:i') : 'Sin registro anterior' }}</td>
                             </tr>
                         </table>
                     </div>
@@ -65,63 +79,22 @@
                         <h5 class="card-title mb-0"><i class="fas fa-shield-alt"></i> Roles y Permisos</h5>
                     </div>
                     <div class="card-body">
-                        <div id="roles-container" style="margin-bottom: 15px;">
-                            <p class="text-muted"><i class="fas fa-spinner fa-spin"></i> Cargando roles...</p>
+                        <div class="dashboard-role-list">
+                            @forelse($roles as $role)
+                                <span class="badge-role">
+                                    <i class="fas fa-user-shield"></i> {{ $role->name }}
+                                    @if($role->description)
+                                        <small class="text-muted d-block">{{ $role->description }}</small>
+                                    @endif
+                                </span>
+                            @empty
+                                <p class="text-muted mb-0">Sin roles asignados.</p>
+                            @endforelse
                         </div>
-                        <small class="text-muted d-block">Tienes <strong id="permissions-count">0</strong> permisos activos</small>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Permissions -->
-        <div class="card mb-4">
-            <div class="card-header">
-                <h5 class="card-title mb-0"><i class="fas fa-lock"></i> Permisos Autorizados</h5>
-            </div>
-            <div class="card-body">
-                <div id="permissions-container">
-                    <p class="text-muted"><i class="fas fa-spinner fa-spin"></i> Cargando permisos...</p>
-                </div>
-            </div>
-        </div>
-
-        <!-- Active Sessions -->
-        <div class="card">
-            <div class="card-header">
-                <h5 class="card-title mb-0"><i class="fas fa-history"></i> Estado del Sistema</h5>
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-3">
-                        <p class="text-center">
-                            <strong>Sesión Activa</strong><br>
-                            <span class="badge bg-success">En línea</span>
-                        </p>
-                    </div>
-                    <div class="col-md-3">
-                        <p class="text-center">
-                            <strong>Base de Datos</strong><br>
-                            <span class="badge bg-success">Conectada</span>
-                        </p>
-                    </div>
-                    <div class="col-md-3">
-                        <p class="text-center">
-                            <strong>Servidor</strong><br>
-                            <span class="badge bg-success">Operativo</span>
-                        </p>
-                    </div>
-                    <div class="col-md-3">
-                        <p class="text-center">
-                            <strong>Versión</strong><br>
-                            <span class="badge bg-info">v1.0.0</span>
-                        </p>
+                        <small class="text-muted d-block">Tienes <strong>{{ number_format($permissionsCount) }}</strong> permisos activos</small>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-
-    <!-- Custom JS para dashboard -->
-    <script src="{{ asset('js/dashboard/dashboard.js') }}"></script>
 @endsection

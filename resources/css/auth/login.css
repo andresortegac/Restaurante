@@ -165,7 +165,6 @@ input[type="password"]:focus {
 
 @media (max-height: 760px) {
     body {
-        align-items: flex-start;
         padding-block: 20px;
     }
 

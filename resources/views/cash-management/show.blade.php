@@ -58,51 +58,62 @@
                 </div>
             @endif
 
+            @if($currentSession)
+                <div class="card module-card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0"><i class="fas fa-circle-info"></i> 2. Estado</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="meta-box mb-3">
+                            <div class="summary-kicker">Diferencia clave</div>
+                            <div class="seat-note">La caja es el punto fisico. La sesion es el turno diario que abres y cierras.</div>
+                        </div>
+                        <div class="module-list">
+                            <div class="module-list-item">
+                                <div>
+                                    <strong>Responsable</strong>
+                                    <div class="table-note">{{ $currentSession?->user?->name ?? $box->user?->name ?? 'Sin responsable' }}</div>
+                                </div>
+                            </div>
+                            <div class="module-list-item">
+                                <div>
+                                    <strong>Apertura</strong>
+                                    <div class="table-note">{{ $currentSession->opened_at ? $currentSession->opened_at->format('d/m/Y H:i') : 'Sin sesion activa' }}</div>
+                                </div>
+                            </div>
+                            <div class="module-list-item">
+                                <div>
+                                    <strong>Base inicial</strong>
+                                    <div class="table-note">${{ number_format((float) $currentSession->opening_balance, 2) }}</div>
+                                </div>
+                            </div>
+                            <div class="module-list-item">
+                                <div>
+                                    <strong>Saldo esperado</strong>
+                                    <div class="table-note">${{ number_format((float) $currentBalance, 2) }}</div>
+                                </div>
+                            </div>
+                            @if(! $currentSession->isOpen())
+                                <div class="module-list-item">
+                                    <div>
+                                        <strong>Diferencia del ultimo cierre</strong>
+                                        <div class="table-note">${{ number_format((float) $currentSession->difference_amount, 2) }}</div>
+                                    </div>
+                                </div>
+                            @endif
+                        </div>
+                        @if($currentSession->isOpen())
+                            <div class="detail-actions mt-4">
+                                <a href="{{ route('cash-management.movements.create', $box) }}" class="btn btn-outline-primary">
+                                    <i class="fas fa-money-bill-transfer"></i> Realizar movimiento manual
+                                </a>
+                            </div>
+                        @endif
+                    </div>
+                </div>
+            @endif
+
             @if($currentSession && $currentSession->isOpen())
-                <div class="card module-card">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0"><i class="fas fa-plus-circle"></i> 2. Ingreso manual</h5>
-                    </div>
-                    <div class="card-body">
-                        <p class="table-note">Registra entradas que no nacen de una venta, por ejemplo fondo adicional o ajuste controlado.</p>
-                        <form method="POST" action="{{ route('cash-management.movements.store', $box) }}">
-                            @csrf
-                            <input type="hidden" name="movement_type" value="manual_income">
-                            <div class="mb-3">
-                                <label class="form-label" for="income_amount">Monto</label>
-                                <input type="number" step="0.01" min="0.01" class="form-control" id="income_amount" name="amount" required>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label" for="income_description">Motivo</label>
-                                <input type="text" class="form-control" id="income_description" name="description" required>
-                            </div>
-                            <button type="submit" class="btn btn-outline-success w-100">Registrar ingreso</button>
-                        </form>
-                    </div>
-                </div>
-
-                <div class="card module-card">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0"><i class="fas fa-minus-circle"></i> 2. Egreso manual</h5>
-                    </div>
-                    <div class="card-body">
-                        <p class="table-note">Registra salidas controladas como compra de cambio, domicilios pagados en efectivo o gastos menores.</p>
-                        <form method="POST" action="{{ route('cash-management.movements.store', $box) }}">
-                            @csrf
-                            <input type="hidden" name="movement_type" value="manual_expense">
-                            <div class="mb-3">
-                                <label class="form-label" for="expense_amount">Monto</label>
-                                <input type="number" step="0.01" min="0.01" class="form-control" id="expense_amount" name="amount" required>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label" for="expense_description">Motivo</label>
-                                <input type="text" class="form-control" id="expense_description" name="description" required>
-                            </div>
-                            <button type="submit" class="btn btn-outline-danger w-100">Registrar egreso</button>
-                        </form>
-                    </div>
-                </div>
-
                 <div class="card module-card">
                     <div class="card-header">
                         <h5 class="card-title mb-0"><i class="fas fa-right-from-bracket"></i> 3. Cierre diario</h5>
@@ -169,159 +180,6 @@
                     </div>
                 </div>
             @endif
-
-            <div class="card module-card">
-                <div class="card-header">
-                    <h5 class="card-title mb-0"><i class="fas fa-list"></i> Movimientos de la sesion</h5>
-                </div>
-                <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle mb-0">
-                            <thead>
-                                <tr>
-                                    <th>Fecha</th>
-                                    <th>Tipo</th>
-                                    <th>Detalle</th>
-                                    <th>Monto</th>
-                                    <th>Saldo</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @forelse($movements as $movement)
-                                    <tr>
-                                        <td>{{ $movement->occurred_at?->format('d/m/Y H:i') ?? '-' }}</td>
-                                        <td>{{ str_replace('_', ' ', $movement->movement_type) }}</td>
-                                        <td>
-                                            <strong>{{ $movement->description ?: 'Sin detalle' }}</strong>
-                                            <div class="table-note">{{ $movement->user?->name ?? 'Sistema' }}</div>
-                                        </td>
-                                        <td class="{{ $movement->amount >= 0 ? 'text-success' : 'text-danger' }}">
-                                            ${{ number_format(abs((float) $movement->amount), 2) }}
-                                        </td>
-                                        <td>${{ number_format((float) $movement->balance_after, 2) }}</td>
-                                    </tr>
-                                @empty
-                                    <tr>
-                                        <td colspan="5" class="text-center py-4 text-muted">Todavia no hay movimientos para esta sesion.</td>
-                                    </tr>
-                                @endforelse
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            <div class="mt-n2">
-                {{ $movements->links() }}
-            </div>
-
-            <div class="card module-card">
-                <div class="card-header">
-                    <h5 class="card-title mb-0"><i class="fas fa-circle-info"></i> Estado</h5>
-                </div>
-                <div class="card-body">
-                    <div class="meta-box mb-3">
-                        <div class="summary-kicker">Diferencia clave</div>
-                        <div class="seat-note">La caja es el punto fisico. La sesion es el turno diario que abres y cierras.</div>
-                    </div>
-                    <div class="module-list">
-                        <div class="module-list-item">
-                            <div>
-                                <strong>Responsable</strong>
-                                <div class="table-note">{{ $currentSession?->user?->name ?? $box->user?->name ?? 'Sin responsable' }}</div>
-                            </div>
-                        </div>
-                        <div class="module-list-item">
-                            <div>
-                                <strong>Apertura</strong>
-                                <div class="table-note">{{ $currentSession?->opened_at ? $currentSession->opened_at->format('d/m/Y H:i') : 'Sin sesion activa' }}</div>
-                            </div>
-                        </div>
-                        <div class="module-list-item">
-                            <div>
-                                <strong>Base inicial</strong>
-                                <div class="table-note">${{ number_format((float) ($currentSession?->opening_balance ?? 0), 2) }}</div>
-                            </div>
-                        </div>
-                        <div class="module-list-item">
-                            <div>
-                                <strong>Saldo esperado</strong>
-                                <div class="table-note">${{ number_format((float) $currentBalance, 2) }}</div>
-                            </div>
-                        </div>
-                        @if($currentSession && ! $currentSession->isOpen())
-                            <div class="module-list-item">
-                                <div>
-                                    <strong>Diferencia del ultimo cierre</strong>
-                                    <div class="table-note">${{ number_format((float) $currentSession->difference_amount, 2) }}</div>
-                                </div>
-                            </div>
-                        @endif
-                    </div>
-                </div>
-            </div>
-
-            <div class="card module-card">
-                <div class="card-header">
-                    <h5 class="card-title mb-0"><i class="fas fa-list-check"></i> Flujo diario</h5>
-                </div>
-                <div class="card-body">
-                    <div class="module-list">
-                        <div class="module-list-item">
-                            <div>
-                                <strong>1. Abrir sesion</strong>
-                                <div class="table-note">Ingresa la base con la que arranca el turno.</div>
-                            </div>
-                            <span class="badge rounded-pill {{ $currentSession && $currentSession->isOpen() ? 'bg-success' : 'bg-secondary' }}">
-                                {{ $currentSession && $currentSession->isOpen() ? 'Hecho' : 'Pendiente' }}
-                            </span>
-                        </div>
-                        <div class="module-list-item">
-                            <div>
-                                <strong>2. Operar la caja</strong>
-                                <div class="table-note">Las ventas y movimientos manuales alimentan el saldo esperado.</div>
-                            </div>
-                            <span class="badge rounded-pill {{ $currentSession && $currentSession->isOpen() ? 'bg-primary' : 'bg-secondary' }}">
-                                {{ $currentSession && $currentSession->isOpen() ? 'En curso' : 'Bloqueado' }}
-                            </span>
-                        </div>
-                        <div class="module-list-item">
-                            <div>
-                                <strong>3. Cerrar turno</strong>
-                                <div class="table-note">Cuenta el efectivo, compara contra el sistema y registra la diferencia.</div>
-                            </div>
-                            <span class="badge rounded-pill {{ $currentSession && ! $currentSession->isOpen() ? 'bg-success' : 'bg-secondary' }}">
-                                {{ $currentSession && ! $currentSession->isOpen() ? 'Ultimo cierre listo' : 'Pendiente' }}
-                            </span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="card module-card">
-                <div class="card-header">
-                    <h5 class="card-title mb-0"><i class="fas fa-clock-rotate-left"></i> Ultimas sesiones</h5>
-                </div>
-                <div class="card-body">
-                    <div class="module-list">
-                        @forelse($recentSessions as $session)
-                            <div class="module-list-item">
-                                <div>
-                                    <strong>{{ $session->opened_at?->format('d/m/Y H:i') ?? 'Sin fecha' }}</strong>
-                                    <div class="table-note">Abierta por {{ $session->user?->name ?? 'Sin responsable' }}</div>
-                                    <div class="table-note">Base ${{ number_format((float) $session->opening_balance, 2) }}</div>
-                                </div>
-                                <div class="text-end">
-                                    <div class="table-note">{{ $session->closed_at?->format('d/m/Y H:i') ?? 'Sesion abierta' }}</div>
-                                    <span class="summary-chip">${{ number_format((float) ($session->counted_balance ?? $session->currentBalance()), 2) }}</span>
-                                </div>
-                            </div>
-                        @empty
-                            <p class="text-muted mb-0">Aun no hay sesiones registradas para esta caja.</p>
-                        @endforelse
-                    </div>
-                </div>
-            </div>
         </div>
     </div>
 @endsection

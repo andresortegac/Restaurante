@@ -35,7 +35,7 @@
                     value="{{ old('email') }}"
                     required
                     autofocus
-                    placeholder="tu@email.com"
+                    placeholder="Ingrese su correo"
                     class="@error('email') is-invalid @enderror"
                 />
             </div>
@@ -47,7 +47,7 @@
                     id="password"
                     name="password"
                     required
-                    placeholder="????????"
+                    placeholder="Ingrese su contraseña"
                     class="@error('password') is-invalid @enderror"
                 />
             </div>

@@ -296,7 +296,7 @@ class BillingManagementTest extends TestCase
 
         $response->assertOk();
         $response->assertViewIs('billing.history');
-        $response->assertSee('Historial de cobros');
+        $response->assertSee('Ventas generales');
         $response->assertSee('PED-HISTORY-001');
         $response->assertSee('Mesa 10');
         $response->assertSee('TKT-202605-000001');

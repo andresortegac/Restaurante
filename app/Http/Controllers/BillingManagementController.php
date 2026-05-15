@@ -169,18 +169,21 @@ class BillingManagementController extends Controller
         ]);
 
         $salesQuery = Sale::query()
-            ->with(['user', 'box', 'invoice', 'payments.paymentMethod', 'tableOrder.table', 'customer'])
+            ->with(['user', 'box', 'invoice', 'payments.paymentMethod', 'tableOrder.table', 'customer', 'delivery'])
             ->withCount('items')
-            ->whereNotNull('table_order_id')
             ->when($filters['search'] ?? null, function ($query, string $search) {
                 $query->where(function ($nestedQuery) use ($search) {
                     $nestedQuery
                         ->where('customer_name', 'like', '%' . $search . '%')
+                        ->orWhere('id', 'like', '%' . $search . '%')
                         ->orWhereHas('tableOrder', fn ($orderQuery) => $orderQuery
                             ->where('order_number', 'like', '%' . $search . '%')
                             ->orWhereHas('table', fn ($tableQuery) => $tableQuery
                                 ->where('name', 'like', '%' . $search . '%')
                                 ->orWhere('code', 'like', '%' . $search . '%')))
+                        ->orWhereHas('delivery', fn ($deliveryQuery) => $deliveryQuery
+                            ->where('delivery_number', 'like', '%' . $search . '%')
+                            ->orWhere('delivery_address', 'like', '%' . $search . '%'))
                         ->orWhereHas('invoice', fn ($invoiceQuery) => $invoiceQuery
                             ->where('invoice_number', 'like', '%' . $search . '%')
                             ->orWhere('cufe', 'like', '%' . $search . '%'));
@@ -194,7 +197,7 @@ class BillingManagementController extends Controller
             ->paginate(15)
             ->withQueryString();
 
-        $summaryBaseQuery = Sale::query()->whereNotNull('table_order_id');
+        $summaryBaseQuery = Sale::query();
 
         return view('billing.history', [
             'sales' => $sales,
@@ -205,7 +208,6 @@ class BillingManagementController extends Controller
                 'revenue' => (float) (clone $summaryBaseQuery)->sum('total'),
                 'electronic' => Invoice::query()
                     ->where('invoice_type', Invoice::TYPE_ELECTRONIC)
-                    ->whereHas('sale', fn ($saleQuery) => $saleQuery->whereNotNull('table_order_id'))
                     ->count(),
             ],
         ]);

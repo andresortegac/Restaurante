@@ -64,9 +64,12 @@
                 $isPosSalesHistoryRoute = request()->routeIs('pos.sales-history.*');
                 $isPosPromoCodesRoute = request()->routeIs('pos.promo-codes.*');
                 $isBillingRoute = request()->routeIs('billing.*');
+                $isBillingHistoryRoute = request()->routeIs('billing.history') || $isPosSalesHistoryRoute;
                 $isProductsRoute = request()->routeIs('products.*');
                 $isProductsCategoriesRoute = request()->routeIs('products.categories.*');
                 $isTablesRoute = request()->routeIs('tables.*');
+                $isTablesCatalogRoute = request()->routeIs('tables.index') || request()->routeIs('tables.show') || request()->routeIs('tables.edit');
+                $isTableHistoryRoute = request()->routeIs('tables.history.*');
                 $isCustomersRoute = request()->routeIs('customers.*');
                 $isDeliveriesRoute = request()->routeIs('deliveries.*');
                 $isElectronicInvoicesRoute = request()->routeIs('electronic-invoices.*');
@@ -204,8 +207,7 @@
                         <li><a href="{{ route('billing.index') }}" class="{{ request()->routeIs('billing.index') || request()->routeIs('billing.checkout') ? 'active' : '' }}"><i class="fas fa-cash-register"></i> Cuentas por cobrar</a></li>
                         @endif
                         @if(Auth::user()->hasRole('Admin') || Auth::user()->hasAnyPermission(['billing.view', 'billing.history']))
-                        <li><a href="{{ route('billing.history') }}" class="{{ request()->routeIs('billing.history') ? 'active' : '' }}"><i class="fas fa-clock-rotate-left"></i> Historial de cobros</a></li>
-                        <li><a href="{{ route('pos.sales-history.index') }}" class="{{ $isPosSalesHistoryRoute ? 'active' : '' }}"><i class="fas fa-receipt"></i> Ventas generales</a></li>
+                        <li><a href="{{ route('billing.history') }}" class="{{ $isBillingHistoryRoute ? 'active' : '' }}"><i class="fas fa-receipt"></i> Ventas generales</a></li>
                         @endif
                         @if(Auth::user()->hasRole('Admin') || Auth::user()->hasAnyPermission(['electronic_invoices.view', 'electronic_invoices.manage']))
                         <li><a href="{{ route('electronic-invoices.index') }}" class="{{ request()->routeIs('electronic-invoices.index') || request()->routeIs('electronic-invoices.show') ? 'active' : '' }}"><i class="fas fa-list"></i> Facturas electrónicas</a></li>
@@ -242,7 +244,8 @@
                     </a>
                     <ul class="sidebar-submenu {{ $isTablesRoute ? 'show' : '' }}">
                         @if(Auth::user()->hasRole('Admin') || Auth::user()->hasPermission('tables.view'))
-                        <li><a href="{{ route('tables.index') }}" class="{{ request()->routeIs('tables.index') || request()->routeIs('tables.show') || request()->routeIs('tables.edit') ? 'active' : '' }}"><i class="fas fa-list"></i> Ver mesas</a></li>
+                        <li><a href="{{ route('tables.index') }}" class="{{ $isTablesCatalogRoute ? 'active' : '' }}"><i class="fas fa-list"></i> Ver mesas</a></li>
+                        <li><a href="{{ route('tables.history.index') }}" class="{{ $isTableHistoryRoute ? 'active' : '' }}"><i class="fas fa-clock-rotate-left"></i> Historial por mesa</a></li>
                         @endif
                         @if(Auth::user()->hasRole('Admin') || Auth::user()->hasPermission('tables.create'))
                         <li><a href="{{ route('tables.create') }}" class="{{ request()->routeIs('tables.create') ? 'active' : '' }}"><i class="fas fa-plus"></i> Nueva mesa</a></li>

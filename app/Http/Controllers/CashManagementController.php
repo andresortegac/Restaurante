@@ -108,19 +108,6 @@ class CashManagementController extends Controller
             ->latest('opened_at')
             ->first();
 
-        $movements = BoxMovement::query()
-            ->with(['user', 'sale', 'payment.paymentMethod'])
-            ->where('box_id', $box->id)
-            ->when($currentSession, fn ($query) => $query->where('box_session_id', $currentSession->id))
-            ->latest('occurred_at')
-            ->paginate(15);
-
-        $recentSessions = $box->sessions()
-            ->with(['user', 'closedBy'])
-            ->latest('opened_at')
-            ->limit(5)
-            ->get();
-
         $automaticIncome = $currentSession
             ? (float) $currentSession->movements()
                 ->whereIn('movement_type', ['sale_income', 'table_order_payment'])
@@ -141,14 +128,31 @@ class CashManagementController extends Controller
         return view('cash-management.show', [
             'box' => $box,
             'currentSession' => $currentSession,
-            'recentSessions' => $recentSessions,
-            'movements' => $movements,
             'incomeTotal' => $currentSession ? $currentSession->incomeTotal() : 0,
             'expenseTotal' => $currentSession ? $currentSession->expenseTotal() : 0,
             'currentBalance' => $currentSession ? $currentSession->currentBalance() : 0,
             'automaticIncome' => $automaticIncome,
             'manualIncome' => $manualIncome,
             'manualExpense' => $manualExpense,
+        ]);
+    }
+
+    public function createMovement(Box $box)
+    {
+        if ($response = $this->denyIfUnauthorized(['boxes.movements'])) {
+            return $response;
+        }
+
+        $box->load(['activeSession.user', 'user']);
+
+        $currentSession = $box->activeSession ?: $box->sessions()
+            ->with(['user', 'closedBy'])
+            ->latest('opened_at')
+            ->first();
+
+        return view('cash-management.movement-form', [
+            'box' => $box,
+            'currentSession' => $currentSession,
         ]);
     }
 

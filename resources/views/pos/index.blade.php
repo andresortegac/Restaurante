@@ -8,8 +8,8 @@
         <h1>Punto de Venta</h1>
         <p>{{ $activeBox ? 'Caja activa: ' . $activeBox->name : 'No hay una caja abierta en este momento.' }}</p>
     </div>
-    <a href="{{ route('pos.sales-history.index') }}" class="btn btn-outline-primary">
-        <i class="fas fa-clock-rotate-left"></i> Historial de ventas
+    <a href="{{ route('billing.history') }}" class="btn btn-outline-primary">
+        <i class="fas fa-receipt"></i> Ventas generales
     </a>
 </div>
 
@@ -186,7 +186,7 @@ let products = @json($initialProducts ?? []);
 let paymentMethods = @json($initialPaymentMethods ?? []);
 const activeBoxId = @json(optional($activeBox)->id);
 const csrfToken = @json(csrf_token());
-const salesHistoryUrl = @json(route('pos.sales-history.index'));
+const salesHistoryUrl = @json(route('billing.history'));
 const salesPrintBaseUrl = @json(url('/pos/sales'));
 
 document.addEventListener('DOMContentLoaded', function() {
