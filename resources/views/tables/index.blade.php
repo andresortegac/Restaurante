@@ -118,7 +118,7 @@
                                 <div class="seat-note">personas</div>
                             </div>
                             <div class="meta-box">
-                                <div class="summary-kicker">Disponibilidad</div>
+                                <div class="summary-kicker">Estado</div>
                                 <div class="fw-bold">{{ $restaurantTable->is_active ? 'Activa' : 'Inactiva' }}</div>
                                 <div class="seat-note">{{ $restaurantTable->notes ?: 'Sin notas internas.' }}</div>
                             </div>

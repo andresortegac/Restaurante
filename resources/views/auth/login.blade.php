@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title>Login - Sistema de Gestión de Restaurante</title>
+    <title>{{ config('app.name', 'Solomo & Pomo') }} | Acceso</title>
     
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -19,7 +19,7 @@
 <body>
     <div class="login-container">
         <div class="login-header">
-            <h1>RestaurantePOS</h1>
+            <h1>{{ config('app.name', 'Solomo & Pomo') }}</h1>
             <p>Sistema de Gestión para Restaurantes</p>
         </div>
 
@@ -67,14 +67,6 @@
             </button>
         </form>
 
-        <div class="demo-credentials">
-            <h4><i class="fas fa-info-circle"></i> Credenciales de Demostración:</h4>
-            <ul>
-                <li><strong>Admin:</strong> admin@restaurante.com / password123</li>
-                <li><strong>Cajero:</strong> cajero@restaurante.com / password123</li>
-                <li><strong>Mesero:</strong> mesero@restaurante.com / password123</li>
-            </ul>
-        </div>
     </div>
 
     <!-- Bootstrap JS -->

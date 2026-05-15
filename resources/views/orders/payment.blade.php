@@ -133,7 +133,7 @@
                         <div class="meta-box mb-3">
                             <div class="summary-kicker">Caja activa</div>
                             <div class="fw-bold">{{ $activeBox->name }}</div>
-                            <div class="seat-note">Codigo {{ $activeBox->code }}</div>
+                            <div class="seat-note">{{ $activeBox->description ?: 'Sin descripcion operativa registrada.' }}</div>
                             <div class="seat-note">Saldo estimado: ${{ number_format($activeBox->currentBalance(), 2) }}</div>
                         </div>
 

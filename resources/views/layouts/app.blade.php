@@ -5,7 +5,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title>@yield('title', 'RestaurantePOS - Sistema de Gestión')</title>
+    <title>{{ str_replace('RestaurantePOS', config('app.name', 'Solomo & Pomo'), trim($__env->yieldContent('title', config('app.name', 'Solomo & Pomo') . ' - Sistema de Gestión'))) }}</title>
     
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -27,7 +27,7 @@
     <nav class="navbar navbar-expand-lg navbar-dark">
         <div class="container-fluid">
             <a class="navbar-brand" href="{{ route('dashboard') }}">
-                <i class="fas fa-utensils"></i> RestaurantePOS
+                <i class="fas fa-utensils"></i> {{ config('app.name', 'Solomo & Pomo') }}
             </a>
             <button class="navbar-toggler" type="button" id="sidebarToggle">
                 <span class="navbar-toggler-icon"></span>
@@ -65,6 +65,7 @@
                 $isPosPromoCodesRoute = request()->routeIs('pos.promo-codes.*');
                 $isBillingRoute = request()->routeIs('billing.*');
                 $isProductsRoute = request()->routeIs('products.*');
+                $isProductsCategoriesRoute = request()->routeIs('products.categories.*');
                 $isTablesRoute = request()->routeIs('tables.*');
                 $isCustomersRoute = request()->routeIs('customers.*');
                 $isDeliveriesRoute = request()->routeIs('deliveries.*');
@@ -100,6 +101,13 @@
                         <li>
                             <a href="{{ route('products.menu.index') }}" class="{{ request()->routeIs('products.menu.*') ? 'active' : '' }}">
                                 <i class="fas fa-book-open"></i> Menu y Precios
+                            </a>
+                        </li>
+                        @endif
+                        @if(Auth::user()->hasRole('Admin') || Auth::user()->hasAnyPermission(['products.view', 'products.create', 'products.edit', 'products.delete']))
+                        <li>
+                            <a href="{{ route('products.categories.index') }}" class="{{ $isProductsCategoriesRoute ? 'active' : '' }}">
+                                <i class="fas fa-tags"></i> Categorias
                             </a>
                         </li>
                         @endif

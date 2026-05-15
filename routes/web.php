@@ -116,6 +116,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/menu/{product}/edit', [ProductManagementController::class, 'editMenuProduct'])->name('menu.edit');
         Route::put('/menu/{product}', [ProductManagementController::class, 'updateMenuProduct'])->name('menu.update');
         Route::delete('/menu/{product}', [ProductManagementController::class, 'destroyMenuProduct'])->name('menu.destroy');
+        Route::get('/categories', [ProductManagementController::class, 'categories'])->name('categories.index');
         Route::post('/categories', [ProductManagementController::class, 'storeCategory'])->name('categories.store');
         Route::put('/categories/{category}', [ProductManagementController::class, 'updateCategory'])->name('categories.update');
         Route::delete('/categories/{category}', [ProductManagementController::class, 'destroyCategory'])->name('categories.destroy');

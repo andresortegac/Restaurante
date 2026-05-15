@@ -88,11 +88,40 @@ class Sale extends Model
 
     public function calculateTotal()
     {
-        $this->subtotal = $this->items->sum('subtotal');
+        $this->loadMissing('items.product.taxRate');
+
+        $this->subtotal = round((float) $this->items->sum('subtotal'), 2);
         $discountAmount = min((float) ($this->discount_amount ?? 0), (float) $this->subtotal);
-        $this->discount_amount = max(0, $discountAmount);
-        $this->tax_amount = ($this->subtotal - $this->discount_amount) * 0.16;
-        $this->total = $this->subtotal - $this->discount_amount + $this->tax_amount;
+        $this->discount_amount = round(max(0, $discountAmount), 2);
+
+        $discountFactor = (float) $this->subtotal > 0
+            ? max(0, ((float) $this->subtotal - (float) $this->discount_amount) / (float) $this->subtotal)
+            : 1.0;
+
+        $taxAmount = $this->items->sum(function ($item) use ($discountFactor): float {
+            $subtotal = round((float) $item->subtotal * $discountFactor, 2);
+            $taxRate = $item->product?->taxRate;
+
+            if (! $taxRate) {
+                return 0.0;
+            }
+
+            return $taxRate->calculateTaxAmount($subtotal);
+        });
+
+        $taxedTotal = $this->items->sum(function ($item) use ($discountFactor): float {
+            $subtotal = round((float) $item->subtotal * $discountFactor, 2);
+            $taxRate = $item->product?->taxRate;
+
+            if (! $taxRate) {
+                return $subtotal;
+            }
+
+            return $taxRate->calculateTotalAmount($subtotal);
+        });
+
+        $this->tax_amount = round((float) $taxAmount, 2);
+        $this->total = round((float) $taxedTotal, 2);
         $this->save();
     }
 }

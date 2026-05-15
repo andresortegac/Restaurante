@@ -14,6 +14,7 @@ class Box extends Model
 
     protected $fillable = [
         'name',
+        'description',
         'code',
         'user_id',
         'closed_by_user_id',

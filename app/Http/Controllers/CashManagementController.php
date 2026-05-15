@@ -13,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class CashManagementController extends Controller
@@ -82,7 +83,8 @@ class CashManagementController extends Controller
 
         $box = Box::query()->create([
             'name' => $validated['name'],
-            'code' => strtoupper($validated['code']),
+            'description' => $validated['description'],
+            'code' => $this->generateUniqueBoxCode($validated['name']),
             'status' => 'closed',
             'user_id' => null,
             'opening_balance' => 0,
@@ -174,7 +176,8 @@ class CashManagementController extends Controller
 
         $box->update([
             'name' => $validated['name'],
-            'code' => strtoupper($validated['code']),
+            'description' => $validated['description'],
+            'code' => $box->code ?: $this->generateUniqueBoxCode($validated['name'], $box->id),
         ]);
 
         return redirect()
@@ -539,12 +542,32 @@ class CashManagementController extends Controller
     {
         $request->merge([
             'name' => trim((string) $request->input('name')),
-            'code' => strtoupper(trim((string) $request->input('code'))),
+            'description' => trim((string) $request->input('description')),
         ]);
 
         return $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'code' => ['required', 'string', 'max:50', 'unique:boxes,code' . ($box ? ',' . $box->id : '')],
+            'description' => ['required', 'string', 'max:500'],
         ]);
+    }
+
+    private function generateUniqueBoxCode(string $name, ?int $ignoreBoxId = null): string
+    {
+        $normalized = Str::upper(Str::slug($name, '-'));
+        $base = 'BOX-' . ($normalized !== '' ? substr($normalized, 0, 40) : 'CAJA');
+        $candidate = $base;
+        $suffix = 2;
+
+        while (
+            Box::query()
+                ->when($ignoreBoxId, fn ($query) => $query->whereKeyNot($ignoreBoxId))
+                ->where('code', $candidate)
+                ->exists()
+        ) {
+            $candidate = substr($base, 0, 46) . '-' . $suffix;
+            $suffix++;
+        }
+
+        return $candidate;
     }
 }

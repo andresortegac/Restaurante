@@ -17,6 +17,7 @@ class POSController extends Controller
     public function index()
     {
         $products = Product::query()
+            ->with('taxRate:id,rate,is_inclusive')
             ->visibleInMenu()
             ->orderedForMenu()
             ->get()
@@ -30,6 +31,8 @@ class POSController extends Controller
                     'sku' => $this->sanitizeNullableString($product->sku),
                     'product_type' => $product->product_type ?: 'simple',
                     'image_url' => $product->image_url,
+                    'tax_rate' => (float) ($product->taxRate?->rate ?? 0),
+                    'tax_inclusive' => (bool) ($product->taxRate?->is_inclusive ?? false),
                 ];
             })
             ->values();

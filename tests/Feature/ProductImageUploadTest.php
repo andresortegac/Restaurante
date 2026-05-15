@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Models\Role;
+use App\Models\Product;
+use App\Models\ProductCategory;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -23,14 +25,20 @@ class ProductImageUploadTest extends TestCase
             'description' => 'Administrador',
         ]);
         $user->roles()->attach($adminRole);
+        $category = ProductCategory::create([
+            'name' => 'Pizzas',
+            'slug' => 'pizzas',
+            'description' => 'Categoria de prueba',
+            'sort_order' => 1,
+            'is_active' => true,
+        ]);
 
         $response = $this
             ->actingAs($user)
             ->post(route('products.menu.store'), [
                 'name' => 'Pizza Margarita',
                 'description' => 'Pizza de prueba',
-                'sku' => 'SKU-IMG-001',
-                'category_name' => 'Pizzas',
+                'category_id' => $category->id,
                 'price' => 32.50,
                 'sort_order' => 1,
                 'tracks_stock' => 0,
@@ -42,10 +50,11 @@ class ProductImageUploadTest extends TestCase
 
         $this->assertDatabaseHas('products', [
             'name' => 'Pizza Margarita',
-            'sku' => 'SKU-IMG-001',
         ]);
 
-        $imagePath = (string) \App\Models\Product::query()->value('image_path');
+        $this->assertNull(Product::query()->value('sku'));
+
+        $imagePath = (string) Product::query()->value('image_path');
 
         $this->assertNotSame('', $imagePath);
         Storage::disk('public')->assertExists($imagePath);

@@ -53,7 +53,7 @@
                             <div class="col-6 text-end"><strong id="discount">$0.00</strong></div>
                         </div>
                         <div class="row mb-2">
-                            <div class="col-6">Impuesto (16%):</div>
+                            <div class="col-6">Impuesto:</div>
                             <div class="col-6 text-end"><strong id="tax">$0.00</strong></div>
                         </div>
                         <hr>
@@ -466,8 +466,30 @@ function renderCart() {
 function updateTotals() {
     const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
     const discount = 0;
-    const tax = (subtotal - discount) * 0.16;
-    const total = subtotal - discount + tax;
+    const tax = cart.reduce((sum, item) => {
+        const lineSubtotal = Number(item.price || 0) * Number(item.quantity || 0);
+        const rate = Number(item.tax_rate || 0);
+
+        if (rate <= 0) {
+            return sum;
+        }
+
+        if (item.tax_inclusive) {
+            return sum + (lineSubtotal - (lineSubtotal / (1 + (rate / 100))));
+        }
+
+        return sum + (lineSubtotal * (rate / 100));
+    }, 0);
+    const total = cart.reduce((sum, item) => {
+        const lineSubtotal = Number(item.price || 0) * Number(item.quantity || 0);
+        const rate = Number(item.tax_rate || 0);
+
+        if (rate <= 0 || item.tax_inclusive) {
+            return sum + lineSubtotal;
+        }
+
+        return sum + lineSubtotal + (lineSubtotal * (rate / 100));
+    }, 0) - discount;
 
     document.getElementById('subtotal').textContent = '$' + subtotal.toFixed(2);
     document.getElementById('discount').textContent = '$' + discount.toFixed(2);

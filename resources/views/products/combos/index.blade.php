@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Combos - RestaurantePOS')
+@section('title', 'Combos - ' . config('app.name', 'Solomo & Pomo'))
 
 @section('content')
     @php

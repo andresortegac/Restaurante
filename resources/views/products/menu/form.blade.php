@@ -1,9 +1,10 @@
 @extends('layouts.app')
 
-@section('title', $pageTitle . ' - RestaurantePOS')
+@section('title', $pageTitle . ' - ' . config('app.name', 'Solomo & Pomo'))
 
 @section('content')
     <div class="module-page">
+        @php($hasCategoryOptions = $categoryOptions->isNotEmpty())
         <section class="module-hero">
             <div>
                 <span class="module-kicker">Gestion de Productos / RF-20</span>
@@ -34,19 +35,18 @@
                         </div>
 
                         <div>
-                            <label class="form-label" for="sku">SKU</label>
-                            <input type="text" class="form-control" id="sku" name="sku" value="{{ old('sku', $product->sku) }}" required>
-                        </div>
-
-                        <div>
-                            <label class="form-label" for="category_name">Categoria</label>
-                            <input type="text" class="form-control" id="category_name" name="category_name" value="{{ $categoryName }}" list="category-options" required>
-                            <datalist id="category-options">
+                            <label class="form-label" for="category_id">Categoria</label>
+                            <select class="form-select" id="category_id" name="category_id" required @disabled(! $hasCategoryOptions)>
+                                <option value="">Selecciona una categoria</option>
                                 @foreach($categoryOptions as $categoryOption)
-                                    <option value="{{ $categoryOption->name }}"></option>
+                                    <option value="{{ $categoryOption->id }}" @selected((string) old('category_id', $selectedCategoryId) === (string) $categoryOption->id)>
+                                        {{ $categoryOption->name }}
+                                    </option>
                                 @endforeach
-                            </datalist>
-                            <div class="form-help">Puedes seleccionar una existente o escribir una nueva.</div>
+                            </select>
+                            <div class="form-help">
+                                {{ $hasCategoryOptions ? 'Solo puedes seleccionar categorias ya creadas.' : 'Primero crea una categoria existente para poder registrar productos.' }}
+                            </div>
                         </div>
 
                         <div>
@@ -129,7 +129,7 @@
 
                     <div class="form-actions">
                         <a href="{{ route('products.menu.index') }}" class="btn btn-outline-secondary">Cancelar</a>
-                        <button type="submit" class="btn btn-primary">{{ $submitLabel }}</button>
+                        <button type="submit" class="btn btn-primary" @disabled(! $hasCategoryOptions)>{{ $submitLabel }}</button>
                     </div>
                 </form>
             </div>

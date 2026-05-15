@@ -31,4 +31,35 @@ class TaxRate extends Model
     {
         return $this->hasMany(Product::class);
     }
+
+    public function calculateTaxAmount(float $amount): float
+    {
+        $amount = round($amount, 2);
+        $rate = (float) $this->rate;
+
+        if (! $this->is_active || $rate <= 0 || $amount <= 0) {
+            return 0.0;
+        }
+
+        if ($this->is_inclusive) {
+            return round($amount - ($amount / (1 + ($rate / 100))), 2);
+        }
+
+        return round($amount * ($rate / 100), 2);
+    }
+
+    public function calculateTotalAmount(float $amount): float
+    {
+        $amount = round($amount, 2);
+
+        if (! $this->is_active || (float) $this->rate <= 0) {
+            return $amount;
+        }
+
+        if ($this->is_inclusive) {
+            return $amount;
+        }
+
+        return round($amount + $this->calculateTaxAmount($amount), 2);
+    }
 }

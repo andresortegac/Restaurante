@@ -47,6 +47,26 @@ class ProductManagementController extends Controller
         ]);
     }
 
+    public function categories()
+    {
+        if ($response = $this->denyIfUnauthorized($this->productPermissions())) {
+            return $response;
+        }
+
+        $categories = ProductCategory::withCount([
+            'products as simple_products_count' => fn ($query) => $query->where('product_type', 'simple'),
+            'products as active_products_count' => fn ($query) => $query->where('product_type', 'simple')->where('active', true),
+        ])
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get();
+
+        return view('products.categories.index', [
+            'categories' => $categories,
+            'simpleProductsCount' => Product::query()->where('product_type', 'simple')->count(),
+        ]);
+    }
+
     public function createMenuProduct()
     {
         if ($response = $this->denyIfUnauthorized(['products.create'])) {
@@ -60,7 +80,7 @@ class ProductManagementController extends Controller
                 'tracks_stock' => false,
                 'sort_order' => $this->nextProductSortOrder(),
             ]),
-            'categoryName' => old('category_name'),
+            'selectedCategoryId' => old('category_id'),
             'taxRates' => $this->taxRates(),
             'categoryOptions' => $this->categoryOptions(),
             'formAction' => route('products.menu.store'),
@@ -95,7 +115,7 @@ class ProductManagementController extends Controller
         return view('products.menu.form', [
             'pageTitle' => 'Editar producto',
             'product' => $product,
-            'categoryName' => old('category_name', $product->menuCategory->name ?? $product->category),
+            'selectedCategoryId' => old('category_id', $product->category_id),
             'taxRates' => $this->taxRates(),
             'categoryOptions' => $this->categoryOptions(),
             'formAction' => route('products.menu.update', $product),
@@ -153,7 +173,7 @@ class ProductManagementController extends Controller
         });
 
         return redirect()
-            ->route('products.menu.index')
+            ->route('products.categories.index')
             ->with('success', 'Categoria creada correctamente.');
     }
 
@@ -181,7 +201,7 @@ class ProductManagementController extends Controller
         });
 
         return redirect()
-            ->route('products.menu.index')
+            ->route('products.categories.index')
             ->with('success', 'Categoria actualizada correctamente.');
     }
 
@@ -195,7 +215,7 @@ class ProductManagementController extends Controller
 
         if ($linkedProducts > 0) {
             return redirect()
-                ->route('products.menu.index')
+                ->route('products.categories.index')
                 ->with('error', 'No se puede eliminar la categoria porque aun tiene productos asociados.');
         }
 
@@ -205,7 +225,7 @@ class ProductManagementController extends Controller
         });
 
         return redirect()
-            ->route('products.menu.index')
+            ->route('products.categories.index')
             ->with('success', 'Categoria eliminada correctamente.');
     }
 
@@ -467,8 +487,7 @@ class ProductManagementController extends Controller
         return $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
-            'sku' => ['required', 'string', 'max:255', Rule::unique('products', 'sku')->ignore($product?->id)],
-            'category_name' => ['required', 'string', 'max:255'],
+            'category_id' => ['required', 'integer', 'exists:product_categories,id'],
             'price' => ['required', 'numeric', 'min:0'],
             'sort_order' => ['required', 'integer', 'min:0'],
             'stock' => ['nullable', Rule::requiredIf($request->boolean('tracks_stock')), 'integer', 'min:0'],
@@ -634,7 +653,7 @@ class ProductManagementController extends Controller
 
     private function buildProductPayload(array $validated, Request $request, string $type): array
     {
-        $category = $this->resolveCategory($validated['category_name']);
+        $category = $this->resolveCategoryFromValidatedData($validated);
         $tracksStock = $request->boolean('tracks_stock');
         $currentImagePath = $request->attributes->get('current_image_path');
         $imagePath = $currentImagePath;
@@ -663,10 +682,27 @@ class ProductManagementController extends Controller
             'tax_rate_id' => $validated['tax_rate_id'] ?? null,
             'product_type' => $type,
             'sort_order' => (int) $validated['sort_order'],
-            'sku' => $validated['sku'],
+            'sku' => $validated['sku'] ?? null,
             'image_path' => $imagePath,
             'active' => $request->boolean('active'),
         ];
+    }
+
+    private function resolveCategoryFromValidatedData(array $validated): ProductCategory
+    {
+        if (array_key_exists('category_id', $validated)) {
+            $category = ProductCategory::query()->find((int) $validated['category_id']);
+
+            if (! $category) {
+                throw ValidationException::withMessages([
+                    'category_id' => 'Selecciona una categoria valida.',
+                ]);
+            }
+
+            return $category;
+        }
+
+        return $this->resolveCategory($validated['category_name']);
     }
 
     private function resolveCategory(string $categoryName): ProductCategory

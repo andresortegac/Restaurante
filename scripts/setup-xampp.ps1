@@ -168,6 +168,7 @@ if ($UseExistingDestination -and (Test-Path -LiteralPath $envDestination)) {
     Copy-Item -LiteralPath $envTemplate -Destination $envDestination -Force
 }
 
+Set-EnvValue -FilePath $envDestination -Key 'APP_NAME' -Value '"Solomo & Pomo"'
 Set-EnvValue -FilePath $envDestination -Key 'APP_URL' -Value $AppUrl
 Set-EnvValue -FilePath $envDestination -Key 'DB_CONNECTION' -Value 'mysql'
 Set-EnvValue -FilePath $envDestination -Key 'DB_HOST' -Value '127.0.0.1'
@@ -268,7 +269,5 @@ Write-Step 'Proceso terminado'
 Write-Host ''
 Write-Host "Proyecto copiado en: $destinationPath" -ForegroundColor Green
 Write-Host "URL sugerida: $AppUrl/login" -ForegroundColor Green
-Write-Host 'Usuario demo: admin@restaurante.com' -ForegroundColor Yellow
-Write-Host 'Clave demo: password123' -ForegroundColor Yellow
 Write-Host ''
 Write-Host 'Reinicia Apache desde XAMPP para tomar la nueva configuracion.' -ForegroundColor Cyan

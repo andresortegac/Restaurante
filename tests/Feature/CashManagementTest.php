@@ -24,7 +24,7 @@ class CashManagementTest extends TestCase
         $this->actingAs($user)
             ->post(route('cash-management.store'), [
                 'name' => 'Caja barra',
-                'code' => 'bar-01',
+                'description' => 'Caja secundaria de barra',
             ])
             ->assertRedirect();
 
@@ -33,21 +33,21 @@ class CashManagementTest extends TestCase
         $this->assertDatabaseHas('boxes', [
             'id' => $box->id,
             'name' => 'Caja barra',
-            'code' => 'BAR-01',
+            'description' => 'Caja secundaria de barra',
             'status' => 'closed',
         ]);
 
         $this->actingAs($user)
             ->put(route('cash-management.update', $box), [
                 'name' => 'Caja barra norte',
-                'code' => 'BAR-02',
+                'description' => 'Caja fija del costado norte',
             ])
             ->assertRedirect(route('cash-management.show', $box));
 
         $this->assertDatabaseHas('boxes', [
             'id' => $box->id,
             'name' => 'Caja barra norte',
-            'code' => 'BAR-02',
+            'description' => 'Caja fija del costado norte',
         ]);
     }
 

@@ -67,40 +67,75 @@ class TableOrder extends Model
 
     public function recalculateTotals(): void
     {
-        $this->loadMissing('items');
+        $this->loadMissing('items.product.taxRate');
 
-        $subtotal = (float) $this->items->sum('subtotal');
-        $taxAmount = $subtotal * 0.16;
+        $subtotal = round((float) $this->items->sum('subtotal'), 2);
+        $taxAmount = round(
+            $this->items->sum(fn (TableOrderItem $item): float => $this->itemTaxAmount($item)),
+            2
+        );
+        $total = round(
+            $this->items->sum(fn (TableOrderItem $item): float => $this->itemTotalAmount($item)),
+            2
+        );
 
         $this->subtotal = $subtotal;
         $this->tax_amount = $taxAmount;
-        $this->total = $subtotal + $taxAmount;
+        $this->total = $total;
         $this->save();
     }
 
     public function splitSummary(): Collection
     {
-        $this->loadMissing('items');
-
-        $subtotal = (float) $this->subtotal;
-        $taxAmount = (float) $this->tax_amount;
+        $this->loadMissing('items.product.taxRate');
 
         return $this->items
             ->groupBy(fn (TableOrderItem $item) => (int) ($item->split_group ?: 1))
-            ->map(function (Collection $items, int $group) use ($subtotal, $taxAmount): array {
-                $groupSubtotal = (float) $items->sum('subtotal');
-                $groupTax = $subtotal > 0 ? ($groupSubtotal / $subtotal) * $taxAmount : 0;
+            ->map(function (Collection $items, int $group): array {
+                $groupSubtotal = round((float) $items->sum('subtotal'), 2);
+                $groupTax = round(
+                    $items->sum(fn (TableOrderItem $item): float => $this->itemTaxAmount($item)),
+                    2
+                );
+                $groupTotal = round(
+                    $items->sum(fn (TableOrderItem $item): float => $this->itemTotalAmount($item)),
+                    2
+                );
 
                 return [
                     'group' => $group,
                     'items_count' => $items->count(),
                     'subtotal' => $groupSubtotal,
                     'tax_amount' => $groupTax,
-                    'total' => $groupSubtotal + $groupTax,
+                    'total' => $groupTotal,
                 ];
             })
             ->sortKeys()
             ->values();
+    }
+
+    private function itemTaxAmount(TableOrderItem $item): float
+    {
+        $subtotal = round((float) $item->subtotal, 2);
+        $taxRate = $item->product?->taxRate;
+
+        if (! $taxRate) {
+            return 0.0;
+        }
+
+        return $taxRate->calculateTaxAmount($subtotal);
+    }
+
+    private function itemTotalAmount(TableOrderItem $item): float
+    {
+        $subtotal = round((float) $item->subtotal, 2);
+        $taxRate = $item->product?->taxRate;
+
+        if (! $taxRate) {
+            return $subtotal;
+        }
+
+        return $taxRate->calculateTotalAmount($subtotal);
     }
 
     public static function generateOrderNumber(): string

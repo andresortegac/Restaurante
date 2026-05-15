@@ -12,6 +12,7 @@ class ProductController extends Controller
     public function index()
     {
         $products = Product::query()
+            ->with('taxRate:id,rate,is_inclusive')
             ->visibleInMenu()
             ->orderedForMenu()
             ->get()
@@ -22,9 +23,11 @@ class ProductController extends Controller
                     'price' => (float) $product->price,
                     'stock' => (int) $product->stock,
                     'tracks_stock' => (bool) $product->tracks_stock,
-                    'sku' => $this->sanitizeString((string) $product->sku),
+                    'sku' => $this->sanitizeNullableString($product->sku),
                     'product_type' => $product->product_type ?: 'simple',
                     'image_url' => $product->image_url,
+                    'tax_rate' => (float) ($product->taxRate?->rate ?? 0),
+                    'tax_inclusive' => (bool) ($product->taxRate?->is_inclusive ?? false),
                 ];
             })
             ->values();
@@ -46,7 +49,7 @@ class ProductController extends Controller
             'stock' => ['nullable', Rule::requiredIf($request->boolean('tracks_stock')), 'integer', 'min:0'],
             'tracks_stock' => 'nullable|boolean',
             'category' => 'required|string',
-            'sku' => 'required|unique:products',
+            'sku' => ['nullable', 'string', 'max:255', Rule::unique('products', 'sku')],
         ]);
 
         $product = Product::create([
@@ -77,5 +80,10 @@ class ProductController extends Controller
         }
 
         return mb_convert_encoding($value, 'UTF-8', 'Windows-1252, ISO-8859-1, UTF-8');
+    }
+
+    private function sanitizeNullableString(?string $value): ?string
+    {
+        return $value === null ? null : $this->sanitizeString($value);
     }
 }

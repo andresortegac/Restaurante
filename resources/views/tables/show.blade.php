@@ -68,7 +68,7 @@
                             </div>
                             <div class="col-md-4">
                                 <div class="order-summary-card h-100">
-                                    <div class="summary-kicker">Disponibilidad</div>
+                                    <div class="summary-kicker">Estado</div>
                                     <div class="h3 mb-0">{{ $restaurantTable->is_active ? 'Activa' : 'Inactiva' }}</div>
                                 </div>
                             </div>

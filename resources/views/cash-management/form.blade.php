@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', $pageTitle . ' - Gestion de Caja')
+@section('title', $pageTitle . ' - ' . config('app.name', 'Solomo & Pomo'))
 
 @section('content')
     <div class="module-page">
@@ -30,13 +30,14 @@
                             @endif
 
                             <div class="row g-3">
-                                <div class="col-md-7">
+                                <div class="col-md-5">
                                     <label class="form-label" for="name">Nombre de la caja</label>
                                     <input type="text" class="form-control" id="name" name="name" value="{{ old('name', $box->name) }}" placeholder="Ej: Caja principal, Caja barra, Caja domicilios" required>
                                 </div>
-                                <div class="col-md-5">
-                                    <label class="form-label" for="code">Codigo interno</label>
-                                    <input type="text" class="form-control" id="code" name="code" value="{{ old('code', $box->code) }}" placeholder="Ej: BOX-001" required>
+                                <div class="col-md-7">
+                                    <label class="form-label" for="description">Descripcion operativa</label>
+                                    <input type="text" class="form-control" id="description" name="description" value="{{ old('description', $box->description) }}" placeholder="Ej: Punto principal del salon, caja de barra, cobros de domicilios" required>
+                                    <div class="form-help">Esta descripcion reemplaza el codigo interno visible y ayuda a identificar para que se usa la caja.</div>
                                 </div>
                             </div>
 
@@ -64,8 +65,8 @@
                             </div>
                             <div class="module-list-item">
                                 <div>
-                                    <strong>Codigo corto y unico</strong>
-                                    <div class="table-note">Usa identificadores faciles de recordar, por ejemplo BOX-PRINCIPAL o BOX-BARRA.</div>
+                                    <strong>Descripcion clara</strong>
+                                    <div class="table-note">Describe el uso real de la caja, por ejemplo punto principal del salon o caja exclusiva de barra.</div>
                                 </div>
                             </div>
                             <div class="module-list-item">

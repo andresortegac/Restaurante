@@ -36,15 +36,10 @@ powershell -ExecutionPolicy Bypass -File .\scripts\setup-xampp.ps1
 - Alias local disponible en `http://localhost/restaurante`
 - Login disponible en `http://localhost/restaurante/login`
 
-Credenciales sembradas por defecto:
-
-- `admin@restaurante.com`
-- `password123`
-
 ## Parametros utiles
 
 ```powershell
-.\scripts\setup-xampp.ps1 -ProjectName RestaurantePOS -ProjectAlias restaurantepos
+.\scripts\setup-xampp.ps1 -ProjectName SolomoPomo -ProjectAlias solomopomo
 .\scripts\setup-xampp.ps1 -DbName restaurante_local -DbUser root -DbPassword 12345
 .\scripts\setup-xampp.ps1 -UseExistingDestination
 .\scripts\setup-xampp.ps1 -SkipDatabase

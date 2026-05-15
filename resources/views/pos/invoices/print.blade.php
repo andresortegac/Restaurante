@@ -1,133 +1,204 @@
+@php
+    $brandName = config('app.name', 'Solomo & Pomo');
+    $documentTitle = $invoice->isElectronic() ? 'Factura electronica' : 'Recibo de caja';
+    $customerName = $sale->customer?->name ?: $sale->customer_name;
+    $paymentMethods = $sale->payments->pluck('paymentMethod.name')->filter()->unique()->join(', ');
+    $receivedAmount = (float) $sale->payments->sum('received_amount');
+    $changeAmount = (float) $sale->payments->sum('change_amount');
+    $tipAmount = (float) $sale->payments->sum('tip_amount');
+@endphp
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Documento {{ $invoice->invoice_number }}</title>
+    <title>{{ $documentTitle }} {{ $invoice->invoice_number }} | {{ $brandName }}</title>
     <style>
+        :root {
+            color-scheme: light;
+        }
+
+        @page {
+            size: 80mm auto;
+            margin: 4mm;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
         body {
             margin: 0;
-            padding: 24px;
-            font-family: Arial, sans-serif;
-            background: #f4f6fb;
-            color: #1f2937;
+            padding: 16px;
+            background: #efefef;
+            color: #111111;
+            font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
         }
 
-        .invoice-shell {
-            max-width: 820px;
+        .receipt {
+            width: min(100%, 302px);
             margin: 0 auto;
+            padding: 18px 16px 20px;
             background: #ffffff;
             border-radius: 18px;
-            box-shadow: 0 20px 50px rgba(15, 23, 42, 0.12);
-            overflow: hidden;
+            box-shadow: 0 14px 32px rgba(17, 17, 17, 0.10);
         }
 
-        .invoice-header {
-            padding: 28px 32px;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: #ffffff;
-        }
-
-        .invoice-header h1 {
-            margin: 0 0 8px;
-            font-size: 28px;
-        }
-
-        .invoice-header p {
-            margin: 0;
-            opacity: 0.92;
-        }
-
-        .invoice-body {
-            padding: 32px;
-        }
-
-        .meta-grid {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 16px;
-            margin-bottom: 24px;
-        }
-
-        .meta-card {
-            padding: 16px 18px;
-            border: 1px solid #e5e7eb;
-            border-radius: 14px;
-            background: #f8fafc;
-        }
-
-        .meta-card strong,
-        .summary-card strong {
-            display: block;
-            margin-bottom: 6px;
-            font-size: 12px;
+        .brand {
+            margin-bottom: 10px;
+            text-align: center;
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 0.28em;
             text-transform: uppercase;
-            letter-spacing: 0.08em;
-            color: #64748b;
         }
 
-        .items-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 24px;
-        }
-
-        .items-table th,
-        .items-table td {
-            padding: 12px 10px;
-            border-bottom: 1px solid #e5e7eb;
-            text-align: left;
-        }
-
-        .items-table th:last-child,
-        .items-table td:last-child {
-            text-align: right;
-        }
-
-        .summary-grid {
-            display: grid;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-            gap: 16px;
-        }
-
-        .summary-card {
-            padding: 18px;
-            border-radius: 14px;
-            background: #eef2ff;
-            border: 1px solid #c7d2fe;
-        }
-
-        .summary-card .value {
+        .title {
+            margin: 0;
+            text-align: center;
             font-size: 24px;
+            line-height: 1.08;
+            font-weight: 800;
+        }
+
+        .number {
+            margin-top: 8px;
+            text-align: center;
+            font-size: 21px;
+            font-weight: 800;
+            line-height: 1.1;
+        }
+
+        .subtitle {
+            margin-top: 4px;
+            text-align: center;
+            font-size: 12px;
+            color: #575757;
+        }
+
+        .rule {
+            margin: 14px 0;
+            border-top: 1px dashed #d6d6d6;
+        }
+
+        .meta {
+            display: grid;
+            gap: 8px;
+        }
+
+        .meta-row,
+        .summary-row {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 12px;
+            font-size: 13px;
+            line-height: 1.35;
+        }
+
+        .meta-row span,
+        .summary-row span {
+            color: #666666;
+        }
+
+        .meta-row strong,
+        .summary-row strong {
+            text-align: right;
             font-weight: 700;
-            color: #312e81;
+            color: #111111;
+        }
+
+        .items {
+            display: grid;
+            gap: 12px;
+        }
+
+        .item {
+            padding-top: 12px;
+            border-top: 1px dashed #dddddd;
+        }
+
+        .item:first-child {
+            padding-top: 0;
+            border-top: 0;
+        }
+
+        .item-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .item-name {
+            font-size: 14px;
+            line-height: 1.25;
+            font-weight: 700;
+        }
+
+        .item-qty {
+            margin-right: 6px;
+            font-weight: 800;
+        }
+
+        .item-total {
+            font-size: 14px;
+            line-height: 1.2;
+            font-weight: 800;
+            white-space: nowrap;
+        }
+
+        .item-sub {
+            margin-top: 4px;
+            font-size: 12px;
+            color: #666666;
+        }
+
+        .summary {
+            display: grid;
+            gap: 8px;
+        }
+
+        .summary-total {
+            padding-top: 10px;
+            border-top: 1px dashed #d6d6d6;
+            font-size: 16px;
+            font-weight: 800;
+        }
+
+        .footer-copy {
+            font-size: 11px;
+            line-height: 1.4;
+            color: #555555;
+            word-break: break-word;
         }
 
         .actions {
             display: flex;
-            gap: 12px;
-            justify-content: flex-end;
-            margin: 24px auto 0;
-            max-width: 820px;
+            gap: 10px;
+            justify-content: center;
+            margin: 16px auto 0;
+            width: min(100%, 302px);
         }
 
         .btn {
+            appearance: none;
             border: 0;
             border-radius: 999px;
-            padding: 12px 18px;
-            font-size: 14px;
+            padding: 11px 16px;
+            font-size: 13px;
             font-weight: 700;
             cursor: pointer;
         }
 
         .btn-primary {
-            background: #1d4ed8;
+            background: #111111;
             color: #ffffff;
         }
 
         .btn-secondary {
-            background: #e5e7eb;
-            color: #111827;
+            background: #e8e8e8;
+            color: #111111;
         }
 
         @media print {
@@ -136,168 +207,134 @@
                 background: #ffffff;
             }
 
-            .invoice-shell {
+            .receipt {
+                width: auto;
                 max-width: none;
-                box-shadow: none;
                 border-radius: 0;
+                box-shadow: none;
+                padding: 0;
             }
 
             .actions {
                 display: none;
             }
         }
-
-        @media (max-width: 768px) {
-            body {
-                padding: 12px;
-            }
-
-            .invoice-body,
-            .invoice-header {
-                padding: 20px;
-            }
-
-            .meta-grid,
-            .summary-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .actions {
-                flex-direction: column;
-            }
-        }
     </style>
 </head>
 <body>
-    <div class="invoice-shell">
-        <div class="invoice-header">
-            <h1>
-                {{ $invoice->isElectronic() ? 'Factura electronica' : 'Ticket' }}
-                {{ $invoice->invoice_number }}
-            </h1>
-            <p>Venta #{{ $sale->id }} registrada el {{ $sale->created_at?->format('d/m/Y H:i') }}</p>
-        </div>
+    <div class="receipt">
+        <div class="brand">{{ strtoupper($brandName) }}</div>
+        <h1 class="title">{{ $documentTitle }}</h1>
+        <div class="number">{{ $invoice->invoice_number }}</div>
+        <div class="subtitle">{{ $sale->created_at?->format('d/m/Y H:i') }}</div>
 
-        <div class="invoice-body">
-            <div class="meta-grid">
-                <div class="meta-card">
-                    <strong>Documento</strong>
-                    <span>{{ $invoice->isElectronic() ? 'Factura electronica' : 'Ticket normal' }}</span>
-                </div>
-                <div class="meta-card">
-                    <strong>Vendedor</strong>
-                    <span>{{ $sale->user?->name ?? 'Sin usuario' }}</span>
-                </div>
-                <div class="meta-card">
-                    <strong>Caja</strong>
-                    <span>{{ $sale->box?->name ?? 'Sin caja' }}</span>
-                </div>
-                <div class="meta-card">
-                    <strong>Metodo de pago</strong>
-                    <span>{{ $sale->payments->pluck('paymentMethod.name')->filter()->join(', ') ?: 'Sin pago registrado' }}</span>
-                </div>
-                <div class="meta-card">
-                    <strong>Estado</strong>
-                    <span>{{ ucfirst($invoice->status) }}</span>
-                </div>
-                @if($invoice->isElectronic())
-                    <div class="meta-card">
-                        <strong>CUFE</strong>
-                        <span>{{ $invoice->cufe ?: 'Sin CUFE todavia' }}</span>
-                    </div>
-                    <div class="meta-card">
-                        <strong>Numero Factus</strong>
-                        <span>{{ $invoice->electronic_number ?: 'Sin numero electronico' }}</span>
-                    </div>
-                @endif
-                <div class="meta-card">
-                    <strong>Origen</strong>
-                    <span>
-                        @if($sale->tableOrder)
-                            {{ $sale->tableOrder->order_number }} / {{ $sale->tableOrder->table?->name ?? 'Mesa no disponible' }}
-                        @elseif($sale->delivery)
-                            {{ $sale->delivery->delivery_number }} / {{ $sale->delivery->delivery_address }}
-                        @else
-                            Punto de venta
-                        @endif
-                    </span>
-                </div>
-                <div class="meta-card">
-                    <strong>Cliente</strong>
-                    <span>{{ $sale->customer?->name ?: $sale->customer_name ?: 'Consumidor final' }}</span>
-                </div>
-            </div>
+        <div class="rule"></div>
 
-            <table class="items-table">
-                <thead>
-                    <tr>
-                        <th>Producto</th>
-                        <th>Cantidad</th>
-                        <th>Precio unitario</th>
-                        <th>Subtotal</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach($sale->items as $item)
-                        <tr>
-                            <td>{{ $item->product_name ?: ($item->product?->name ?? 'Producto eliminado') }}</td>
-                            <td>{{ $item->quantity }}</td>
-                            <td>${{ number_format((float) $item->unit_price, 2) }}</td>
-                            <td>${{ number_format((float) $item->subtotal, 2) }}</td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
-
-            <div class="summary-grid">
-                <div class="summary-card">
-                    <strong>Subtotal</strong>
-                    <div class="value">${{ number_format((float) $sale->subtotal, 2) }}</div>
+        <div class="meta">
+            @if($sale->tableOrder)
+                <div class="meta-row">
+                    <span>Mesa</span>
+                    <strong>{{ $sale->tableOrder->table?->name ?? 'Sin mesa' }}</strong>
                 </div>
-                <div class="summary-card">
-                    <strong>Impuesto</strong>
-                    <div class="value">${{ number_format((float) $sale->tax_amount, 2) }}</div>
+                <div class="meta-row">
+                    <span>Pedido</span>
+                    <strong>{{ $sale->tableOrder->order_number }}</strong>
                 </div>
-                <div class="summary-card">
-                    <strong>Total</strong>
-                    <div class="value">${{ number_format((float) $sale->total, 2) }}</div>
-                </div>
-            </div>
-
-            @php
-                $payment = $sale->payments->first();
-            @endphp
-
-            @if($payment)
-                <div class="summary-grid" style="margin-top: 16px;">
-                    <div class="summary-card">
-                        <strong>Monto recibido</strong>
-                        <div class="value">${{ number_format((float) $payment->received_amount, 2) }}</div>
-                    </div>
-                    <div class="summary-card">
-                        <strong>Cambio</strong>
-                        <div class="value">${{ number_format((float) $payment->change_amount, 2) }}</div>
-                    </div>
-                    <div class="summary-card">
-                        <strong>Propina</strong>
-                        <div class="value">${{ number_format((float) $payment->tip_amount, 2) }}</div>
-                    </div>
+            @elseif($sale->delivery)
+                <div class="meta-row">
+                    <span>Domicilio</span>
+                    <strong>{{ $sale->delivery->delivery_number }}</strong>
                 </div>
             @endif
 
-            @if($invoice->isElectronic())
-                <div class="meta-grid" style="margin-top: 16px;">
-                    <div class="meta-card">
-                        <strong>Estado Factus</strong>
-                        <span>{{ $invoice->status_message ?: 'Sin mensaje adicional' }}</span>
+            @if(filled($customerName) && $customerName !== 'Consumidor final')
+                <div class="meta-row">
+                    <span>Cliente</span>
+                    <strong>{{ $customerName }}</strong>
+                </div>
+            @endif
+
+            <div class="meta-row">
+                <span>Pago</span>
+                <strong>{{ $paymentMethods ?: 'Sin pago registrado' }}</strong>
+            </div>
+        </div>
+
+        <div class="rule"></div>
+
+        <div class="items">
+            @foreach($sale->items as $item)
+                <div class="item">
+                    <div class="item-head">
+                        <div class="item-name">
+                            <span class="item-qty">{{ $item->quantity }}x</span>
+                            {{ $item->product_name ?: ($item->product?->name ?? 'Producto eliminado') }}
+                        </div>
+                        <div class="item-total">${{ number_format((float) $item->subtotal, 2) }}</div>
                     </div>
-                    <div class="meta-card">
-                        <strong>Consulta</strong>
-                        <span>{{ $invoice->public_url ?: 'Sin enlace publico disponible' }}</span>
-                    </div>
+                    @if((float) $item->quantity > 1)
+                        <div class="item-sub">${{ number_format((float) $item->unit_price, 2) }} c/u</div>
+                    @endif
+                </div>
+            @endforeach
+        </div>
+
+        <div class="rule"></div>
+
+        <div class="summary">
+            <div class="summary-row">
+                <span>Subtotal</span>
+                <strong>${{ number_format((float) $sale->subtotal, 2) }}</strong>
+            </div>
+
+            @if((float) $sale->discount_amount > 0)
+                <div class="summary-row">
+                    <span>Descuento</span>
+                    <strong>-${{ number_format((float) $sale->discount_amount, 2) }}</strong>
+                </div>
+            @endif
+
+            @if((float) $sale->tax_amount > 0)
+                <div class="summary-row">
+                    <span>Impuesto</span>
+                    <strong>${{ number_format((float) $sale->tax_amount, 2) }}</strong>
+                </div>
+            @endif
+
+            @if($tipAmount > 0)
+                <div class="summary-row">
+                    <span>Propina</span>
+                    <strong>${{ number_format($tipAmount, 2) }}</strong>
+                </div>
+            @endif
+
+            <div class="summary-row summary-total">
+                <span>Total</span>
+                <strong>${{ number_format((float) $sale->total, 2) }}</strong>
+            </div>
+
+            @if($receivedAmount > 0)
+                <div class="summary-row">
+                    <span>Recibido</span>
+                    <strong>${{ number_format($receivedAmount, 2) }}</strong>
+                </div>
+            @endif
+
+            @if($changeAmount > 0)
+                <div class="summary-row">
+                    <span>Cambio</span>
+                    <strong>${{ number_format($changeAmount, 2) }}</strong>
                 </div>
             @endif
         </div>
+
+        @if($invoice->isElectronic() && $invoice->cufe)
+            <div class="rule"></div>
+            <div class="footer-copy">
+                <strong>CUFE:</strong><br>
+                {{ $invoice->cufe }}
+            </div>
+        @endif
     </div>
 
     <div class="actions">

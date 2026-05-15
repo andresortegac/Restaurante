@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Gestion de Caja - RestaurantePOS')
+@section('title', 'Gestion de Caja - ' . config('app.name', 'Solomo & Pomo'))
 
 @section('content')
     @php
@@ -97,7 +97,7 @@
                                         <div class="cash-box-header">
                                             <div>
                                                 <h5 class="mb-1">{{ $box->name }}</h5>
-                                                <div class="table-note">{{ $box->code }}</div>
+                                                <div class="table-note">{{ $box->description ?: 'Sin descripcion operativa registrada.' }}</div>
                                             </div>
                                             <span class="badge rounded-pill cash-box-status {{ $boxStatusClass }}">
                                                 {{ $boxStatusLabel }}

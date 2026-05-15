@@ -30,7 +30,7 @@ class ProductCategoryManagementTest extends TestCase
                 'is_active' => 1,
             ]);
 
-        $createResponse->assertRedirect(route('products.menu.index'));
+        $createResponse->assertRedirect(route('products.categories.index'));
 
         $this->assertDatabaseHas('product_categories', [
             'name' => 'Entradas',
@@ -83,7 +83,7 @@ class ProductCategoryManagementTest extends TestCase
                 'is_active' => 0,
             ]);
 
-        $updateResponse->assertRedirect(route('products.menu.index'));
+        $updateResponse->assertRedirect(route('products.categories.index'));
 
         $this->assertDatabaseHas('product_categories', [
             'id' => $category->id,
@@ -141,7 +141,7 @@ class ProductCategoryManagementTest extends TestCase
             ->actingAs($user)
             ->delete(route('products.categories.destroy', $category));
 
-        $response->assertRedirect(route('products.menu.index'));
+        $response->assertRedirect(route('products.categories.index'));
         $response->assertSessionHas('error');
 
         $this->assertDatabaseHas('product_categories', [

@@ -14,24 +14,19 @@ class UserSeeder extends Seeder
      */
     public function run(): void
     {
+        User::query()
+            ->whereIn('email', [
+                'cajero@restaurante.com',
+                'mesero@restaurante.com',
+            ])
+            ->delete();
+
         $users = [
             [
                 'name' => 'Admin',
                 'email' => 'admin@restaurante.com',
                 'password' => Hash::make('password123'),
                 'role' => 'Admin',
-            ],
-            [
-                'name' => 'Cajero Default',
-                'email' => 'cajero@restaurante.com',
-                'password' => Hash::make('password123'),
-                'role' => 'Cajero',
-            ],
-            [
-                'name' => 'Mesero Default',
-                'email' => 'mesero@restaurante.com',
-                'password' => Hash::make('password123'),
-                'role' => 'Mesero',
             ],
         ];
 

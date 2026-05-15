@@ -2,10 +2,8 @@
 
 namespace Database\Seeders;
 
-use App\Models\ProductCategory;
 use App\Models\TaxRate;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Str;
 
 class ProductCatalogSeeder extends Seeder
 {
@@ -14,25 +12,6 @@ class ProductCatalogSeeder extends Seeder
      */
     public function run(): void
     {
-        $categories = [
-            ['name' => 'Bebidas', 'description' => 'Bebidas frias, calientes y refrescos', 'sort_order' => 1],
-            ['name' => 'Platos', 'description' => 'Platos principales y opciones del menu', 'sort_order' => 2],
-            ['name' => 'Postres', 'description' => 'Postres y acompanamientos dulces', 'sort_order' => 3],
-            ['name' => 'Combos', 'description' => 'Paquetes o productos compuestos listos para vender', 'sort_order' => 4],
-        ];
-
-        foreach ($categories as $category) {
-            ProductCategory::updateOrCreate(
-                ['slug' => Str::slug($category['name'])],
-                [
-                    'name' => $category['name'],
-                    'description' => $category['description'],
-                    'sort_order' => $category['sort_order'],
-                    'is_active' => true,
-                ]
-            );
-        }
-
         $taxRates = [
             [
                 'name' => 'Exento',

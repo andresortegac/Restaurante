@@ -182,6 +182,13 @@
     align-self: flex-end;
 }
 
+.menu-toolbar-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: center;
+}
+
 .module-alert {
     margin-bottom: 1.5rem;
     border: none;
@@ -409,6 +416,67 @@
     gap: 1.25rem;
 }
 
+.category-mini-strip {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
+    padding: 0.85rem 1rem;
+    border-radius: 16px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+}
+
+.category-mini-strip__label {
+    flex: 0 0 auto;
+    color: #475569;
+    font-size: 0.82rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.category-mini-strip__items {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.55rem;
+    min-width: 0;
+}
+
+.category-mini-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.38rem 0.65rem;
+    border-radius: 999px;
+    background: #ffffff;
+    border: 1px solid #dbe3f1;
+    color: #334155;
+    font-size: 0.8rem;
+    font-weight: 700;
+    line-height: 1;
+    text-decoration: none;
+    transition: border-color 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
+}
+
+.category-mini-chip:hover {
+    border-color: #bfdbfe;
+    background: #f8fbff;
+    transform: translateY(-1px);
+    color: #1e293b;
+}
+
+.category-mini-chip small {
+    color: #64748b;
+    font-size: 0.72rem;
+    font-weight: 700;
+}
+
+.category-mini-chip.is-muted {
+    background: #eef2f7;
+    color: #64748b;
+}
+
 .menu-showcase-card .card-body {
     padding: 1.35rem;
 }
@@ -569,6 +637,12 @@
     border: 1px solid #e2e8f0;
 }
 
+.category-admin-card--solid {
+    background: transparent;
+    border: 0;
+    padding: 0;
+}
+
 .category-admin-card summary {
     list-style: none;
 }
@@ -667,7 +741,8 @@
     .component-row-footer,
     .menu-showcase-header,
     .menu-product-footer,
-    .category-admin-summary {
+    .category-admin-summary,
+    .category-mini-strip {
         flex-direction: column;
         align-items: stretch;
     }

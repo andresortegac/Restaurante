@@ -113,7 +113,7 @@ class FactusInvoicePayloadBuilder
     {
         return $sale->items
             ->map(function ($item) use ($settings): array {
-                $taxRate = (float) ($item->product?->taxRate?->rate ?? 19);
+                $taxRate = (float) ($item->product?->taxRate?->rate ?? 0);
 
                 return [
                     'code_reference' => $item->product?->sku ?: 'ITEM-' . $item->id,

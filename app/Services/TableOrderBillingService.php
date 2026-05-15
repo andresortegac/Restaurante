@@ -50,9 +50,11 @@ class TableOrderBillingService
 
         DB::transaction(function () use ($order, $paymentMethod, $payload, $tipAmount, $amountReceived, $userId, &$sale, &$table): void {
             $currentOrder = TableOrder::query()
-                ->with(['items.product', 'table', 'sale', 'customer'])
+                ->with(['items.product.taxRate', 'table', 'sale', 'customer'])
                 ->lockForUpdate()
                 ->findOrFail($order->id);
+
+            $currentOrder->recalculateTotals();
 
             if ($currentOrder->status !== 'open') {
                 throw ValidationException::withMessages([

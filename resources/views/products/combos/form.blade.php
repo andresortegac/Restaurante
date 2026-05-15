@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', $pageTitle . ' - RestaurantePOS')
+@section('title', $pageTitle . ' - ' . config('app.name', 'Solomo & Pomo'))
 
 @section('content')
     <div class="module-page">
@@ -147,7 +147,7 @@
                                                 <option value="">Selecciona un producto</option>
                                                 @foreach($availableProducts as $availableProduct)
                                                     <option value="{{ $availableProduct->id }}" @selected((string) ($component['component_product_id'] ?? '') === (string) $availableProduct->id)>
-                                                        {{ $availableProduct->name }} ({{ $availableProduct->sku }}){{ $availableProduct->active ? '' : ' - Inactivo' }}
+                                                        {{ $availableProduct->name }}{{ $availableProduct->sku ? ' (' . $availableProduct->sku . ')' : '' }}{{ $availableProduct->active ? '' : ' - Inactivo' }}
                                                     </option>
                                                 @endforeach
                                             </select>
@@ -200,7 +200,7 @@
                         <option value="">Selecciona un producto</option>
                         @foreach($availableProducts as $availableProduct)
                             <option value="{{ $availableProduct->id }}">
-                                {{ $availableProduct->name }} ({{ $availableProduct->sku }}){{ $availableProduct->active ? '' : ' - Inactivo' }}
+                                {{ $availableProduct->name }}{{ $availableProduct->sku ? ' (' . $availableProduct->sku . ')' : '' }}{{ $availableProduct->active ? '' : ' - Inactivo' }}
                             </option>
                         @endforeach
                     </select>

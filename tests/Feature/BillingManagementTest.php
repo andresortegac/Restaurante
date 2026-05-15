@@ -11,6 +11,7 @@ use App\Models\RestaurantTable;
 use App\Models\Role;
 use App\Models\Sale;
 use App\Models\TableOrder;
+use App\Models\TaxRate;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -109,6 +110,15 @@ class BillingManagementTest extends TestCase
             'is_active' => true,
         ]);
 
+        $taxRate = TaxRate::create([
+            'name' => 'IVA General',
+            'code' => 'IVA-16',
+            'rate' => 16,
+            'is_inclusive' => false,
+            'is_default' => true,
+            'is_active' => true,
+        ]);
+
         $product = Product::create([
             'name' => 'Plato FE',
             'description' => 'Producto de prueba',
@@ -117,6 +127,7 @@ class BillingManagementTest extends TestCase
             'tracks_stock' => false,
             'category' => 'Platos',
             'sku' => 'BILL-FE-001',
+            'tax_rate_id' => $taxRate->id,
             'product_type' => 'simple',
             'active' => true,
         ]);
