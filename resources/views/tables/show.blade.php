@@ -24,7 +24,7 @@
     <div class="module-page">
         <section class="module-hero">
             <div>
-                <span class="module-kicker">Gestion de Mesas / RF-06 y RF-07</span>
+                <span class="module-kicker">Gestion de Mesas</span>
                 <h1>{{ $restaurantTable->name }}</h1>
                 <p>Consulta la configuracion de la mesa y su estado actual. La operacion de pedidos, traslados, cuentas e impresion de cocina se realiza desde el modulo <strong>Pedidos</strong>.</p>
             </div>

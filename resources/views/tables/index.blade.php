@@ -9,22 +9,12 @@
         $canEditTable = $user->hasRole('Admin') || $user->hasPermission('tables.edit');
         $canDeleteTable = $user->hasRole('Admin') || $user->hasPermission('tables.delete');
         $canManageOrders = $user->hasRole('Admin') || $user->hasAnyPermission(['orders.view', 'orders.create', 'orders.edit']);
-        $statusLabels = [
-            'free' => 'Libre',
-            'occupied' => 'Ocupada',
-            'reserved' => 'Reservada',
-        ];
-        $statusClasses = [
-            'free' => 'status-free',
-            'occupied' => 'status-occupied',
-            'reserved' => 'status-reserved',
-        ];
     @endphp
 
     <div class="module-page">
         <section class="module-hero">
             <div>
-                <span class="module-kicker">Gestion de Mesas / RF-06 y RF-07</span>
+                <span class="module-kicker">Gestion de Mesas</span>
                 <h1>Configuracion de mesas</h1>
                 <p>Crea, edita y organiza las mesas del salon. La toma de pedidos para meseros ahora se realiza desde el modulo lateral de <strong>Pedidos</strong>.</p>
             </div>
@@ -96,46 +86,13 @@
                 @foreach($tables as $restaurantTable)
                     @php
                         $openOrder = $restaurantTable->openOrder;
-                        $statusLabel = $statusLabels[$restaurantTable->status] ?? ucfirst($restaurantTable->status);
-                        $statusClass = $statusClasses[$restaurantTable->status] ?? 'status-free';
-                        $itemsCount = $openOrder ? $openOrder->items->sum('quantity') : 0;
                     @endphp
 
                     <article class="table-card {{ $restaurantTable->is_active ? '' : 'inactive' }}">
                         <div class="table-card-header">
                             <div>
                                 <div class="summary-kicker">{{ $restaurantTable->area ?: 'Salon principal' }}</div>
-                                <h4 class="mb-1">{{ $restaurantTable->name }}</h4>
-                                <div class="seat-note">Codigo {{ $restaurantTable->code }}</div>
-                            </div>
-                            <span class="status-pill {{ $statusClass }}">{{ $statusLabel }}</span>
-                        </div>
-
-                        <div class="table-card-meta">
-                            <div class="meta-box">
-                                <div class="summary-kicker">Capacidad</div>
-                                <div class="h4 mb-0">{{ $restaurantTable->capacity }}</div>
-                                <div class="seat-note">personas</div>
-                            </div>
-                            <div class="meta-box">
-                                <div class="summary-kicker">Estado</div>
-                                <div class="fw-bold">{{ $restaurantTable->is_active ? 'Activa' : 'Inactiva' }}</div>
-                                <div class="seat-note">{{ $restaurantTable->notes ?: 'Sin notas internas.' }}</div>
-                            </div>
-                            <div class="meta-box">
-                                <div class="summary-kicker">Pedido actual</div>
-                                @if($openOrder)
-                                    <div class="fw-bold">{{ $openOrder->order_number }}</div>
-                                    <div class="seat-note">{{ $itemsCount }} items registrados</div>
-                                @else
-                                    <div class="fw-bold">Sin pedido abierto</div>
-                                    <div class="seat-note">La mesa esta lista para servicio</div>
-                                @endif
-                            </div>
-                            <div class="meta-box">
-                                <div class="summary-kicker">Cuenta actual</div>
-                                <div class="fw-bold">${{ number_format((float) ($openOrder?->total ?? 0), 2) }}</div>
-                                <div class="seat-note">{{ $openOrder?->customer?->name ?: $openOrder?->customer_name ?: 'Sin cliente asociado' }}</div>
+                                <h4 class="mb-1"><i class="fas fa-chair"></i> {{ $restaurantTable->name }}</h4>
                             </div>
                         </div>
 

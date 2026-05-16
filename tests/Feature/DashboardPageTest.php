@@ -4,7 +4,9 @@ namespace Tests\Feature;
 
 use App\Models\Box;
 use App\Models\Customer;
+use App\Models\Delivery;
 use App\Models\RestaurantTable;
+use App\Models\Reservation;
 use App\Models\Role;
 use App\Models\Sale;
 use App\Models\TableOrder;
@@ -96,6 +98,28 @@ class DashboardPageTest extends TestCase
             'updated_at' => Carbon::create(2026, 5, 10, 9, 0, 0),
         ])->saveQuietly();
 
+        Delivery::create([
+            'assigned_user_id' => $user->id,
+            'delivery_number' => 'DOM-DASH-001',
+            'customer_name' => 'Cliente Domicilio',
+            'customer_phone' => '3001234567',
+            'delivery_address' => 'Calle 1 # 2-3',
+            'order_total' => 40,
+            'delivery_fee' => 5,
+            'total_charge' => 45,
+            'status' => 'pending',
+        ]);
+
+        Reservation::create([
+            'restaurant_table_id' => $occupiedTable->id,
+            'reserved_by' => $user->id,
+            'customer_name' => 'Cliente Reserva',
+            'customer_phone' => '3000000000',
+            'reservation_at' => Carbon::create(2026, 5, 15, 20, 0, 0),
+            'party_size' => 2,
+            'status' => 'confirmed',
+        ]);
+
         $todaySale = Sale::create([
             'user_id' => $user->id,
             'box_id' => $box->id,
@@ -129,7 +153,9 @@ class DashboardPageTest extends TestCase
             ->get(route('dashboard'));
 
         $response->assertOk();
-        $response->assertSee('Pedidos realizados hoy');
+        $response->assertSee('Pedidos de mesa hoy');
+        $response->assertSee('Domicilios hoy');
+        $response->assertSee('Reservas hoy');
         $response->assertSee('Mesas disponibles');
         $response->assertSee('Ingresos mensuales');
         $response->assertSee('Acceso actual');
@@ -142,6 +168,25 @@ class DashboardPageTest extends TestCase
         $response->assertDontSee('Estado del Sistema');
 
         Carbon::setTestNow();
+    }
+
+    public function test_dashboard_hides_financial_stats_for_non_admin_profiles(): void
+    {
+        $user = User::factory()->create();
+        $role = Role::create([
+            'name' => 'Mesero',
+            'description' => 'Operacion',
+        ]);
+
+        $user->roles()->attach($role);
+
+        $response = $this
+            ->actingAs($user)
+            ->get(route('dashboard'));
+
+        $response->assertOk();
+        $response->assertDontSee('Ventas Hoy');
+        $response->assertDontSee('Ingresos mensuales');
     }
 
     public function test_login_updates_current_and_previous_access_timestamps(): void

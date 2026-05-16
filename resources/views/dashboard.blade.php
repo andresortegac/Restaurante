@@ -19,8 +19,16 @@
 
         <div class="dashboard-grid">
             <div class="stat-card">
-                <h3><i class="fas fa-clipboard-list"></i> Pedidos realizados hoy</h3>
-                <div class="value">{{ number_format($stats['orders_today']) }}</div>
+                <h3><i class="fas fa-utensils"></i> Pedidos de mesa hoy</h3>
+                <div class="value">{{ number_format($stats['table_orders_today']) }}</div>
+            </div>
+            <div class="stat-card">
+                <h3><i class="fas fa-motorcycle"></i> Domicilios hoy</h3>
+                <div class="value">{{ number_format($stats['deliveries_today']) }}</div>
+            </div>
+            <div class="stat-card">
+                <h3><i class="fas fa-calendar-check"></i> Reservas hoy</h3>
+                <div class="value">{{ number_format($stats['reservations_today']) }}</div>
             </div>
             <div class="stat-card">
                 <h3><i class="fas fa-chair"></i> Mesas Ocupadas</h3>
@@ -30,14 +38,16 @@
                 <h3><i class="fas fa-check-circle"></i> Mesas disponibles</h3>
                 <div class="value">{{ number_format($stats['available_tables']) }}</div>
             </div>
-            <div class="stat-card">
-                <h3><i class="fas fa-dollar-sign"></i> Ventas Hoy</h3>
-                <div class="value">${{ number_format($stats['sales_today'], 2) }}</div>
-            </div>
-            <div class="stat-card">
-                <h3><i class="fas fa-chart-line"></i> Ingresos mensuales</h3>
-                <div class="value">${{ number_format($stats['monthly_income'], 2) }}</div>
-            </div>
+            @if($canViewFinancialStats)
+                <div class="stat-card">
+                    <h3><i class="fas fa-dollar-sign"></i> Ventas Hoy</h3>
+                    <div class="value">${{ number_format($stats['sales_today'], 2) }}</div>
+                </div>
+                <div class="stat-card">
+                    <h3><i class="fas fa-chart-line"></i> Ingresos mensuales</h3>
+                    <div class="value">${{ number_format($stats['monthly_income'], 2) }}</div>
+                </div>
+            @endif
             <div class="stat-card">
                 <h3><i class="fas fa-users"></i> Clientes</h3>
                 <div class="value">{{ number_format($stats['customers']) }}</div>
