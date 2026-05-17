@@ -93,7 +93,7 @@
                     </a>
                 </li>
 
-                @if(Auth::user()->hasRole('Admin') || Auth::user()->hasAnyPermission(['products.view', 'products.create', 'products.edit', 'products.delete', 'combos.view', 'combos.create', 'combos.edit', 'combos.delete', 'taxes.view', 'taxes.create', 'taxes.edit', 'taxes.delete']))
+                @if(Auth::user()->hasRole('Admin') || Auth::user()->hasAnyPermission(['products.view', 'products.create', 'products.edit', 'products.delete']))
                 <li>
                     <a href="#" data-toggle-menu class="{{ $isProductsRoute ? 'expanded' : '' }}">
                         <i class="fas fa-utensils"></i> Gestion de Productos
@@ -111,20 +111,6 @@
                         <li>
                             <a href="{{ route('products.categories.index') }}" class="{{ $isProductsCategoriesRoute ? 'active' : '' }}">
                                 <i class="fas fa-tags"></i> Categorias
-                            </a>
-                        </li>
-                        @endif
-                        @if(Auth::user()->hasRole('Admin') || Auth::user()->hasAnyPermission(['combos.view', 'combos.create', 'combos.edit', 'combos.delete']))
-                        <li>
-                            <a href="{{ route('products.combos.index') }}" class="{{ request()->routeIs('products.combos.*') ? 'active' : '' }}">
-                                <i class="fas fa-layer-group"></i> Combos
-                            </a>
-                        </li>
-                        @endif
-                        @if(Auth::user()->hasRole('Admin') || Auth::user()->hasAnyPermission(['taxes.view', 'taxes.create', 'taxes.edit', 'taxes.delete']))
-                        <li>
-                            <a href="{{ route('products.taxes.index') }}" class="{{ request()->routeIs('products.taxes.*') ? 'active' : '' }}">
-                                <i class="fas fa-percent"></i> Impuestos
                             </a>
                         </li>
                         @endif

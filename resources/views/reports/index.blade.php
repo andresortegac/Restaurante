@@ -104,7 +104,7 @@
                 <div class="order-summary-card h-100">
                     <div class="summary-kicker">Ingreso neto</div>
                     <div class="summary-value">${{ number_format($summary['net_revenue'], 2) }}</div>
-                    <div class="table-note">Impuestos ${{ number_format($summary['taxes'], 2) }}</div>
+                    <div class="table-note">Descuentos ${{ number_format($summary['discounts'], 2) }}</div>
                 </div>
             </div>
             <div class="col-sm-6 col-xl-3">

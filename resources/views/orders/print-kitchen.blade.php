@@ -225,7 +225,7 @@
                     <div class="qty">{{ $item->quantity }}x</div>
                     <div>
                         <div class="name">{{ $item->product_name }}</div>
-                        <div class="item-meta">{{ $item->product?->product_type === 'combo' ? 'Combo del menu' : 'Producto del menu' }}</div>
+                        <div class="item-meta">Producto del menu</div>
                     </div>
                 </div>
             @endforeach

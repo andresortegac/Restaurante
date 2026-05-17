@@ -346,7 +346,7 @@ function renderProducts(productList = products) {
             <h6 style="margin: 8px 0; font-size: 12px;">${product.name}</h6>
             <p style="margin: 0; color: #007bff; font-weight: bold;">$${parseFloat(product.price).toFixed(2)}</p>
             <small style="color: #999;">${usesStockControl(product) ? `Stock: ${product.stock}` : 'Disponible'}</small>
-            <div style="margin-top: 6px; font-size: 11px; color: #666;">${product.product_type === 'combo' ? 'Combo' : 'Producto'}</div>
+            <div style="margin-top: 6px; font-size: 11px; color: #666;">Producto</div>
         </div>
     `).join('');
 }

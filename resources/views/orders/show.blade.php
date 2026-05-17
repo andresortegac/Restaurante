@@ -135,7 +135,7 @@
                                 <tbody>
                                     @foreach($openOrder->items as $item)
                                         <tr>
-                                            <td><strong>{{ $item->product_name }}</strong><div class="table-note">{{ $item->product?->product_type === 'combo' ? 'Combo' : 'Producto del menu' }}</div></td>
+                                            <td><strong>{{ $item->product_name }}</strong><div class="table-note">Producto del menu</div></td>
                                             <td>{{ $item->quantity }}</td>
                                             <td>${{ number_format((float) $item->unit_price, 2) }}</td>
                                             <td>Cuenta {{ $item->split_group ?: 1 }}</td>
@@ -374,7 +374,7 @@ document.addEventListener('DOMContentLoaded', function () {
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
     const money = value => '$' + Number(value || 0).toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    const typeLabel = type => type === 'combo' ? 'Combo' : 'Producto';
+    const typeLabel = () => 'Producto';
     const placeholderMarkup = icon => '<div class="waiter-image-placeholder"><i class="' + icon + '"></i></div>';
     const findCategory = categoryId => categories.find(category => category.id === categoryId);
 

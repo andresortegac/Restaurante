@@ -78,7 +78,7 @@ class SaleController extends Controller
 
                 $productType = $product->product_type ?: 'simple';
 
-                if (! in_array($productType, ['simple', 'combo'], true) || ! $product->active) {
+                if ($productType !== 'simple' || ! $product->active) {
                     throw ValidationException::withMessages([
                         'items' => 'Uno de los productos ya no esta disponible en el POS.',
                     ]);
@@ -161,4 +161,3 @@ class SaleController extends Controller
         return response()->json($sale);
     }
 }
-

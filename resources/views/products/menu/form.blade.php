@@ -9,7 +9,7 @@
             <div>
                 <span class="module-kicker">Gestion de Productos / RF-20</span>
                 <h1>{{ $pageTitle }}</h1>
-                <p>Configura nombre, categoria, precio e impuesto del producto. El stock en POS es opcional y puede quedar desactivado para platos o comidas.</p>
+                <p>Configura nombre, categoria y precio del producto. El stock en POS es opcional y puede quedar desactivado para platos o comidas.</p>
             </div>
             <div class="summary-group">
                 <a href="{{ route('products.menu.index') }}" class="btn btn-outline-secondary">
@@ -47,18 +47,6 @@
                             <div class="form-help">
                                 {{ $hasCategoryOptions ? 'Solo puedes seleccionar categorias ya creadas.' : 'Primero crea una categoria existente para poder registrar productos.' }}
                             </div>
-                        </div>
-
-                        <div>
-                            <label class="form-label" for="tax_rate_id">Impuesto</label>
-                            <select class="form-select" id="tax_rate_id" name="tax_rate_id">
-                                <option value="">Sin impuesto</option>
-                                @foreach($taxRates as $taxRate)
-                                    <option value="{{ $taxRate->id }}" @selected((string) old('tax_rate_id', $product->tax_rate_id) === (string) $taxRate->id)>
-                                        {{ $taxRate->name }} ({{ number_format($taxRate->rate, 2) }}%){{ $taxRate->is_default ? ' - Predeterminado' : '' }}
-                                    </option>
-                                @endforeach
-                            </select>
                         </div>
 
                         <div>

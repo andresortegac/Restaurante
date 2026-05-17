@@ -165,7 +165,7 @@
                                         </div>
                                         <div class="waiter-catalog-search">
                                             <label class="form-label" for="menuProductSearch">Buscar producto</label>
-                                            <input type="search" class="form-control" id="menuProductSearch" placeholder="Ej: hamburguesa, jugo, combo">
+                                            <input type="search" class="form-control" id="menuProductSearch" placeholder="Ej: hamburguesa, jugo">
                                         </div>
                                     </div>
 
@@ -374,7 +374,7 @@
                 .replace(/>/g, '&gt;')
                 .replace(/"/g, '&quot;')
                 .replace(/'/g, '&#39;');
-            const typeLabel = type => type === 'combo' ? 'Combo' : 'Producto';
+            const typeLabel = () => 'Producto';
             const placeholderMarkup = icon => '<div class="waiter-image-placeholder"><i class="' + icon + '"></i></div>';
             const findCategory = categoryId => categories.find(category => category.id === categoryId);
 

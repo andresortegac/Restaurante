@@ -154,12 +154,6 @@
 
                                             <p class="menu-product-description">{{ $product->description ?: 'Sin descripcion registrada para este producto.' }}</p>
 
-                                            <div class="menu-product-meta">
-                                                <span>Orden {{ $product->sort_order }}</span>
-                                                <span>{{ $product->taxRate->name ?? 'Sin impuesto' }}</span>
-                                                <span>{{ $product->tracks_stock ? 'Stock: ' . $product->stock : 'Sin control de stock' }}</span>
-                                            </div>
-
                                             <div class="menu-product-footer">
                                                 <div>
                                                     <div class="summary-kicker">Precio</div>

@@ -120,20 +120,6 @@ Route::middleware('auth')->group(function () {
         Route::post('/categories', [ProductManagementController::class, 'storeCategory'])->name('categories.store');
         Route::put('/categories/{category}', [ProductManagementController::class, 'updateCategory'])->name('categories.update');
         Route::delete('/categories/{category}', [ProductManagementController::class, 'destroyCategory'])->name('categories.destroy');
-
-        Route::get('/combos', [ProductManagementController::class, 'combos'])->name('combos.index');
-        Route::get('/combos/create', [ProductManagementController::class, 'createCombo'])->name('combos.create');
-        Route::post('/combos', [ProductManagementController::class, 'storeCombo'])->name('combos.store');
-        Route::get('/combos/{product}/edit', [ProductManagementController::class, 'editCombo'])->name('combos.edit');
-        Route::put('/combos/{product}', [ProductManagementController::class, 'updateCombo'])->name('combos.update');
-        Route::delete('/combos/{product}', [ProductManagementController::class, 'destroyCombo'])->name('combos.destroy');
-
-        Route::get('/taxes', [ProductManagementController::class, 'taxes'])->name('taxes.index');
-        Route::get('/taxes/create', [ProductManagementController::class, 'createTax'])->name('taxes.create');
-        Route::post('/taxes', [ProductManagementController::class, 'storeTax'])->name('taxes.store');
-        Route::get('/taxes/{taxRate}/edit', [ProductManagementController::class, 'editTax'])->name('taxes.edit');
-        Route::put('/taxes/{taxRate}', [ProductManagementController::class, 'updateTax'])->name('taxes.update');
-        Route::delete('/taxes/{taxRate}', [ProductManagementController::class, 'destroyTax'])->name('taxes.destroy');
     });
 
     // Gestion de clientes

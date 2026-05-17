@@ -62,17 +62,12 @@ class Product extends Model
         return $this->hasMany(ProductComponent::class, 'parent_product_id');
     }
 
-    public function usedInCombos(): HasMany
-    {
-        return $this->hasMany(ProductComponent::class, 'component_product_id');
-    }
-
     public function scopeSellable(Builder $query): Builder
     {
         return $query
             ->where('products.active', true)
             ->where(function (Builder $nestedQuery) {
-                $nestedQuery->whereIn('products.product_type', ['simple', 'combo'])
+                $nestedQuery->where('products.product_type', 'simple')
                     ->orWhereNull('products.product_type');
             });
     }
