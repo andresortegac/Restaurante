@@ -188,7 +188,6 @@ Route::middleware('auth')->group(function () {
         Route::get('/{order}/checkout', [OrderManagementController::class, 'showCheckout'])->name('checkout');
         Route::post('/{order}/checkout', [OrderManagementController::class, 'processCheckout'])->name('checkout.store');
         Route::post('/{order}/transfer', [OrderManagementController::class, 'transferOrder'])->name('transfer');
-        Route::put('/{order}/split', [OrderManagementController::class, 'updateSplit'])->name('split');
         Route::post('/{order}/close', [OrderManagementController::class, 'closeOrder'])->name('close');
         Route::get('/{order}/kitchen-ticket', [OrderManagementController::class, 'printKitchenTicket'])->name('kitchen-ticket');
     });

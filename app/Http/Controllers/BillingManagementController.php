@@ -99,7 +99,7 @@ class BillingManagementController extends Controller
         return view('billing.checkout', [
             'order' => $order,
             'restaurantTable' => $order->table,
-            'splitSummary' => $order->splitSummary(),
+            'splitSummary' => collect(),
             'activeBox' => $this->activeBox(),
             'paymentMethods' => $this->paymentMethods(),
             'billingReadiness' => $billingReadiness,

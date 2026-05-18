@@ -402,12 +402,20 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex-wrap: wrap;
     gap: 0.75rem;
     margin-top: 0.8rem;
 }
 
+.waiter-draft-controls strong {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    text-align: right;
+}
+
 .waiter-qty-controls {
     display: inline-flex;
+    flex: 0 0 auto;
     align-items: center;
     gap: 0.55rem;
     padding: 0.35rem;

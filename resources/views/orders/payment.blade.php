@@ -73,7 +73,6 @@
                                 <tr>
                                     <th>Producto</th>
                                     <th>Cantidad</th>
-                                    <th>Cuenta</th>
                                     <th>Precio</th>
                                     <th class="text-end">Subtotal</th>
                                 </tr>
@@ -86,7 +85,6 @@
                                             <div class="table-note">{{ $item->notes ?: 'Sin observaciones' }}</div>
                                         </td>
                                         <td>{{ $item->quantity }}</td>
-                                        <td>Cuenta {{ $item->split_group ?: 1 }}</td>
                                         <td>${{ number_format((float) $item->unit_price, 2) }}</td>
                                         <td class="text-end">${{ number_format((float) $item->subtotal, 2) }}</td>
                                     </tr>
@@ -95,7 +93,7 @@
                         </table>
                     </div>
 
-                    @if($splitSummary->isNotEmpty())
+                    @if(false && $splitSummary->isNotEmpty())
                         <div class="mt-4">
                             <div class="summary-kicker mb-2">Division de cuentas guardada</div>
                             <div class="row g-3">

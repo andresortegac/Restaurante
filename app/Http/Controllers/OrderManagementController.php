@@ -9,7 +9,6 @@ use App\Models\PaymentMethod;
 use App\Models\Product;
 use App\Models\RestaurantTable;
 use App\Models\TableOrder;
-use App\Models\TableOrderItem;
 use App\Services\TableOrderBillingService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -112,13 +111,9 @@ class OrderManagementController extends Controller
             'openOrder.openedBy',
         ]);
 
-        $openOrder = $table->openOrder;
-        $splitSummary = $openOrder ? $openOrder->splitSummary() : collect();
-
         return view('orders.show', [
             'restaurantTable' => $table,
-            'openOrder' => $openOrder,
-            'splitSummary' => $splitSummary,
+            'openOrder' => $table->openOrder,
             'availableProducts' => $this->availableProducts(),
             'availableCustomers' => $this->availableCustomers(),
             'orderRows' => $this->orderRows(),
@@ -300,41 +295,6 @@ class OrderManagementController extends Controller
         return redirect()
             ->route('orders.show', $targetTable)
             ->with('success', 'Pedido transferido correctamente a la nueva mesa.');
-    }
-
-    public function updateSplit(Request $request, TableOrder $order): Response|RedirectResponse
-    {
-        if ($response = $this->denyIfUnauthorized($this->orderManagementPermissions())) {
-            return $response;
-        }
-
-        if ($order->status !== 'open') {
-            return redirect()
-                ->route('orders.show', $order->table)
-                ->with('error', 'Solo puedes dividir cuentas de pedidos abiertos.');
-        }
-
-        $validated = $request->validate([
-            'split_items' => ['required', 'array'],
-            'split_items.*' => ['required', 'integer', 'min:1', 'max:8'],
-        ]);
-
-        $items = $order->items()->get()->keyBy('id');
-
-        DB::transaction(function () use ($validated, $items): void {
-            foreach ($validated['split_items'] as $itemId => $group) {
-                /** @var TableOrderItem|null $item */
-                $item = $items->get((int) $itemId);
-
-                if ($item) {
-                    $item->update(['split_group' => $group]);
-                }
-            }
-        });
-
-        return redirect()
-            ->route('orders.show', $order->table)
-            ->with('success', 'Las cuentas se dividieron correctamente.');
     }
 
     public function closeOrder(TableOrder $order): Response|RedirectResponse

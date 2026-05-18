@@ -87,11 +87,13 @@ class User extends Authenticatable
      */
     public function hasRole(string|array $role): bool
     {
+        $this->loadMissing('roles.permissions');
+
         if (is_array($role)) {
-            return $this->roles()->whereIn('name', $role)->exists();
+            return $this->roles->whereIn('name', $role)->isNotEmpty();
         }
 
-        return $this->roles()->where('name', $role)->exists();
+        return $this->roles->contains('name', $role);
     }
 
     /**
@@ -99,11 +101,11 @@ class User extends Authenticatable
      */
     public function hasPermission(string $permission): bool
     {
-        return $this->roles()
-            ->whereHas('permissions', function ($query) use ($permission) {
-                $query->where('name', $permission);
-            })
-            ->exists();
+        $this->loadMissing('roles.permissions');
+
+        return $this->roles->contains(function (Role $role) use ($permission) {
+            return $role->permissions->contains('name', $permission);
+        });
     }
 
     /**
@@ -111,6 +113,8 @@ class User extends Authenticatable
      */
     public function hasAllPermissions(array $permissions): bool
     {
+        $this->loadMissing('roles.permissions');
+
         foreach ($permissions as $permission) {
             if (!$this->hasPermission($permission)) {
                 return false;
@@ -124,6 +128,8 @@ class User extends Authenticatable
      */
     public function hasAnyPermission(array $permissions): bool
     {
+        $this->loadMissing('roles.permissions');
+
         foreach ($permissions as $permission) {
             if ($this->hasPermission($permission)) {
                 return true;

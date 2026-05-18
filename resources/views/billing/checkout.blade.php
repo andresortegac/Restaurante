@@ -33,7 +33,17 @@
 
     @include('products.partials.form-errors')
 
-    <div class="table-detail-layout">
+    <style>
+        .billing-checkout-layout {
+            grid-template-columns: 1fr;
+        }
+
+        .billing-checkout-layout > aside {
+            order: -1;
+        }
+    </style>
+
+    <div class="table-detail-layout billing-checkout-layout">
         <div>
             <div class="card module-card service-card">
                 <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-3">
@@ -74,7 +84,6 @@
                                 <tr>
                                     <th>Producto</th>
                                     <th>Cantidad</th>
-                                    <th>Cuenta</th>
                                     <th>Precio</th>
                                     <th class="text-end">Subtotal</th>
                                 </tr>
@@ -87,7 +96,6 @@
                                             <div class="table-note">{{ $item->notes ?: 'Sin observaciones' }}</div>
                                         </td>
                                         <td>{{ $item->quantity }}</td>
-                                        <td>Cuenta {{ $item->split_group ?: 1 }}</td>
                                         <td>${{ number_format((float) $item->unit_price, 2) }}</td>
                                         <td class="text-end">${{ number_format((float) $item->subtotal, 2) }}</td>
                                     </tr>
@@ -96,7 +104,7 @@
                         </table>
                     </div>
 
-                    @if($splitSummary->isNotEmpty())
+                    @if(false && $splitSummary->isNotEmpty())
                         <div class="mt-4">
                             <div class="summary-kicker mb-2">División de cuentas guardada</div>
                             <div class="row g-3">
@@ -138,16 +146,6 @@
                             <div class="seat-note">Saldo estimado: ${{ number_format($activeBox->currentBalance(), 2) }}</div>
                         </div>
 
-                        <div class="meta-box mb-3" id="electronicStatusCard">
-                            <div class="summary-kicker">Estado para factura electrónica</div>
-                            <div class="fw-bold {{ $billingReadiness['ready'] ? 'text-success' : 'text-warning' }}">
-                                {{ $billingReadiness['ready'] ? 'Cliente listo para facturar' : 'Revisión requerida' }}
-                            </div>
-                            <div class="seat-note" id="electronicStatusMessage">{{ $billingReadiness['message'] }}</div>
-                            @if(!$billingReadiness['ready'])
-                                <div class="seat-note mt-2">Si necesitas factura electrónica, vuelve al pedido y vincula o corrige el cliente antes de cobrar.</div>
-                            @endif
-                        </div>
 
                         <form method="POST" action="{{ route('billing.checkout.store', $order) }}" id="billingCheckoutForm" accept-charset="UTF-8">
                             @csrf
@@ -158,7 +156,7 @@
                                     <option value="ticket" @selected($initialDocumentType === 'ticket')>Ticket normal</option>
                                     <option value="electronic" @selected($initialDocumentType === 'electronic')>Factura electrónica</option>
                                 </select>
-                                <div class="form-help mt-1" id="documentTypeHelp">El ticket se imprime de inmediato y no requiere CUFE.</div>
+                                <div class="form-help mt-1" id="documentTypeHelp"></div>
                             </div>
 
                             <div class="mb-3">

@@ -122,7 +122,7 @@
                                 <div class="meta-box h-100">
                                     <div class="summary-kicker">Resumen</div>
                                     <div class="fw-bold">{{ $openOrder->items->sum('quantity') }} items</div>
-                                    <div class="seat-note">{{ $splitSummary->count() ?: 1 }} cuenta{{ ($splitSummary->count() ?: 1) > 1 ? 's' : '' }}</div>
+                                    <div class="seat-note">Cuenta unica del pedido</div>
                                 </div>
                             </div>
                         </div>
@@ -130,7 +130,7 @@
                         <div class="table-responsive mt-4">
                             <table class="table table-hover order-items-table align-middle mb-0">
                                 <thead>
-                                    <tr><th>Producto</th><th>Cantidad</th><th>Precio</th><th>Cuenta</th><th class="text-end">Subtotal</th></tr>
+                                    <tr><th>Producto</th><th>Cantidad</th><th>Precio</th><th class="text-end">Subtotal</th></tr>
                                 </thead>
                                 <tbody>
                                     @foreach($openOrder->items as $item)
@@ -138,7 +138,6 @@
                                             <td><strong>{{ $item->product_name }}</strong><div class="table-note">Producto del menu</div></td>
                                             <td>{{ $item->quantity }}</td>
                                             <td>${{ number_format((float) $item->unit_price, 2) }}</td>
-                                            <td>Cuenta {{ $item->split_group ?: 1 }}</td>
                                             <td class="text-end">${{ number_format((float) $item->subtotal, 2) }}</td>
                                         </tr>
                                     @endforeach
