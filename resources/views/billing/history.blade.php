@@ -94,6 +94,10 @@
                                                 <strong>{{ $sale->delivery->delivery_number }}</strong>
                                                 <div class="text-muted small">{{ $sale->delivery->delivery_address }}</div>
                                                 <div class="text-muted small">{{ $sale->customer?->name ?: $sale->customer_name ?: 'Consumidor final' }}</div>
+                                            @elseif(str_contains((string) $sale->notes, 'manual'))
+                                                <strong>{{ str_contains((string) $sale->notes, 'Domicilio manual') ? 'Domicilio manual' : 'Mesa manual' }}</strong>
+                                                <div class="text-muted small">{{ $sale->customer?->name ?: $sale->customer_name ?: 'Consumidor final' }}</div>
+                                                <div class="text-muted small">{{ $sale->notes }}</div>
                                             @else
                                                 <strong>POS directo</strong>
                                                 <div class="text-muted small">{{ $sale->customer?->name ?: $sale->customer_name ?: 'Consumidor final' }}</div>

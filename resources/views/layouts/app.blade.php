@@ -191,6 +191,7 @@
                     <ul class="sidebar-submenu {{ $isBillingMenuExpanded ? 'show' : '' }}">
                         @if(Auth::user()->hasRole('Admin') || Auth::user()->hasAnyPermission(['billing.view', 'billing.charge']))
                         <li><a href="{{ route('billing.index') }}" class="{{ request()->routeIs('billing.index') || request()->routeIs('billing.checkout') ? 'active' : '' }}"><i class="fas fa-cash-register"></i> Cuentas por cobrar</a></li>
+                        <li><a href="{{ route('billing.manual') }}" class="{{ request()->routeIs('billing.manual') ? 'active' : '' }}"><i class="fas fa-keyboard"></i> Cobro manual</a></li>
                         @endif
                         @if(Auth::user()->hasRole('Admin') || Auth::user()->hasAnyPermission(['billing.view', 'billing.history']))
                         <li><a href="{{ route('billing.history') }}" class="{{ $isBillingHistoryRoute ? 'active' : '' }}"><i class="fas fa-receipt"></i> Ventas generales</a></li>

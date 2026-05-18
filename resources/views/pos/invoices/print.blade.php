@@ -6,6 +6,7 @@
     $receivedAmount = (float) $sale->payments->sum('received_amount');
     $changeAmount = (float) $sale->payments->sum('change_amount');
     $tipAmount = (float) $sale->payments->sum('tip_amount');
+    $itemsCount = (float) $sale->items->sum('quantity');
 @endphp
 <!DOCTYPE html>
 <html lang="es">
@@ -74,6 +75,15 @@
             text-align: center;
             font-size: 12px;
             color: #575757;
+        }
+
+        .business-info {
+            margin-top: 10px;
+            text-align: center;
+            font-size: 11px;
+            line-height: 1.45;
+            font-weight: 700;
+            color: #222222;
         }
 
         .rule {
@@ -173,6 +183,14 @@
             word-break: break-word;
         }
 
+        .thanks {
+            margin-top: 14px;
+            text-align: center;
+            font-size: 12px;
+            font-weight: 800;
+            text-transform: uppercase;
+        }
+
         .actions {
             display: flex;
             gap: 10px;
@@ -227,6 +245,12 @@
         <h1 class="title">{{ $documentTitle }}</h1>
         <div class="number">{{ $invoice->invoice_number }}</div>
         <div class="subtitle">{{ $sale->created_at?->format('d/m/Y H:i') }}</div>
+        <div class="business-info">
+            <div>NIT 1083927195-1</div>
+            <div>CRA 33 NO 14A-25</div>
+            <div>ZONA ROSA - PTO ASÍS</div>
+            <div>CEL 3142181805 - 3209447915</div>
+        </div>
 
         <div class="rule"></div>
 
@@ -287,6 +311,11 @@
                 <strong>${{ number_format((float) $sale->subtotal, 2) }}</strong>
             </div>
 
+            <div class="summary-row">
+                <span>Numero de articulos</span>
+                <strong>{{ number_format($itemsCount, floor($itemsCount) === $itemsCount ? 0 : 2) }}</strong>
+            </div>
+
             @if((float) $sale->discount_amount > 0)
                 <div class="summary-row">
                     <span>Descuento</span>
@@ -320,9 +349,9 @@
                 </div>
             @endif
 
-            @if($changeAmount > 0)
+            @if($receivedAmount > 0 || $changeAmount > 0)
                 <div class="summary-row">
-                    <span>Cambio</span>
+                    <span>Su cambio</span>
                     <strong>${{ number_format($changeAmount, 2) }}</strong>
                 </div>
             @endif
@@ -335,6 +364,8 @@
                 {{ $invoice->cufe }}
             </div>
         @endif
+
+        <div class="thanks">Gracias por su compra</div>
     </div>
 
     <div class="actions">

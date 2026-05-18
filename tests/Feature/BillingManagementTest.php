@@ -302,6 +302,86 @@ class BillingManagementTest extends TestCase
         $response->assertSee('TKT-202605-000001');
     }
 
+    public function test_manual_billing_registers_table_charge_by_default(): void
+    {
+        $user = $this->createAdminUser();
+
+        $paymentMethod = PaymentMethod::create([
+            'name' => 'Efectivo',
+            'code' => 'CASH',
+            'description' => 'Pago en efectivo',
+            'active' => true,
+        ]);
+
+        $box = Box::create([
+            'name' => 'Caja manual',
+            'code' => 'BOX-MANUAL',
+            'user_id' => $user->id,
+            'opening_balance' => 50000,
+            'status' => 'open',
+            'opened_at' => now(),
+        ]);
+
+        $response = $this
+            ->actingAs($user)
+            ->postJson(route('billing.manual.store'), [
+                'origin_type' => 'table',
+                'origin_reference' => 'Mesa antigua 2',
+                'customer_name' => 'Cliente manual',
+                'document_type' => 'ticket',
+                'payment_method_id' => $paymentMethod->id,
+                'amount_received' => 25000,
+                'items' => [
+                    [
+                        'name' => 'Cuenta heredada',
+                        'quantity' => 1,
+                        'unit_price' => 25000,
+                    ],
+                ],
+            ]);
+
+        $response->assertOk();
+        $response->assertJsonPath('message', 'Cobro manual registrado correctamente.');
+
+        $this->assertDatabaseHas('sales', [
+            'box_id' => $box->id,
+            'customer_name' => 'Cliente manual',
+            'status' => 'completed',
+            'total' => 25000,
+            'notes' => 'Pedido de mesa manual | Referencia: Mesa antigua 2',
+        ]);
+
+        $sale = Sale::query()->firstOrFail();
+
+        $this->assertDatabaseHas('sale_items', [
+            'sale_id' => $sale->id,
+            'product_name' => 'Cuenta heredada',
+            'quantity' => 1,
+            'unit_price' => 25000,
+            'subtotal' => 25000,
+        ]);
+
+        $this->assertDatabaseHas('payments', [
+            'sale_id' => $sale->id,
+            'payment_method_id' => $paymentMethod->id,
+            'amount' => 25000,
+            'received_amount' => 25000,
+            'change_amount' => 0,
+        ]);
+
+        $this->assertDatabaseHas('invoices', [
+            'sale_id' => $sale->id,
+            'invoice_type' => 'ticket',
+            'status' => 'issued',
+        ]);
+
+        $this->assertDatabaseHas('box_movements', [
+            'sale_id' => $sale->id,
+            'movement_type' => 'manual_payment',
+            'amount' => 25000,
+        ]);
+    }
+
     private function createAdminUser(): User
     {
         $user = User::factory()->create();

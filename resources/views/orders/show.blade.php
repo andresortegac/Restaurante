@@ -155,130 +155,114 @@
             </div>
 
             @if($canManageOrders)
-                <div class="card module-card service-card" id="service-flow">
-                    <div class="card-header">
-                        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
-                            <div>
-                                <h5 class="mb-1">{{ $openOrder ? 'Agregar productos al pedido' : 'Tomar pedido para la mesa' }}</h5>
-                                <p class="table-note mb-0">La carta se organiza por categorias, con seleccion rapida para pantallas tactiles y resumen en tiempo real.</p>
+                <form method="POST" action="{{ route('orders.store', $restaurantTable) }}" id="orderServiceForm">
+                    @csrf
+
+                    @if(!$availableProducts->isEmpty())
+                        <aside class="waiter-draft-shell order-draft-before-products mb-4">
+                            <div class="waiter-draft-header">
+                                <div>
+                                    <div class="summary-kicker">Resumen en tiempo real</div>
+                                    <h6 class="mb-1">Pedido en armado</h6>
+                                    <p class="table-note mb-0">El impuesto se recalcula cuando guardes la comanda.</p>
+                                </div>
+                                <span class="summary-chip" id="draftUniqueItemsChip">0 referencias</span>
                             </div>
-                            <span class="summary-chip">Comanda visual</span>
+
+                            <div class="waiter-draft-stats">
+                                <div class="meta-box">
+                                    <div class="summary-kicker">Unidades</div>
+                                    <div class="fw-bold" id="draftUnitsCount">0</div>
+                                </div>
+                                <div class="meta-box">
+                                    <div class="summary-kicker">Subtotal nuevo</div>
+                                    <div class="fw-bold" id="draftSubtotal">$0.00</div>
+                                </div>
+                            </div>
+
+                            <div class="waiter-empty-draft meta-box" id="waiterEmptyDraft">
+                                Toca los productos del menu para construir el pedido de esta mesa.
+                            </div>
+
+                            <div class="waiter-draft-items" id="waiterDraftItems"></div>
+                            <div id="orderItemsInputs"></div>
+
+                            <div class="form-actions waiter-form-actions">
+                                <a href="{{ route('orders.index') }}" class="btn btn-outline-secondary">Volver a pedidos</a>
+                                <button type="submit" class="btn btn-primary" id="submitOrderButton">{{ $openOrder ? 'Guardar y mandar a cocina' : 'Crear pedido' }}</button>
+                            </div>
+                        </aside>
+                    @endif
+
+                    <div class="card module-card service-card" id="service-flow">
+                        <div class="card-header">
+                            <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+                                <div>
+                                    <h5 class="mb-1">{{ $openOrder ? 'Agregar productos al pedido' : 'Tomar pedido para la mesa' }}</h5>
+                                    <p class="table-note mb-0">Actualiza los datos del servicio y revisa el resumen en tiempo real.</p>
+                                </div>
+                                <span class="summary-chip">Comanda visual</span>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                                <div class="form-grid waiter-order-meta-grid">
+                                    <div>
+                                        <label class="form-label" for="customer_search">Cliente</label>
+                                        <input type="search" class="form-control mb-2" id="customer_search" placeholder="Buscar cliente por nombre, documento, telefono o email">
+                                        <select class="form-select" id="customer_id" name="customer_id">
+                                            <option value="">Sin cliente</option>
+                                            @foreach($availableCustomers as $customer)
+                                                <option
+                                                    value="{{ $customer->id }}"
+                                                    data-search="{{ \Illuminate\Support\Str::lower(trim($customer->name . ' ' . $customer->document_number . ' ' . $customer->phone . ' ' . $customer->email)) }}"
+                                                    @selected((string) old('customer_id', $openOrder?->customer_id) === (string) $customer->id)
+                                                >
+                                                    {{ $customer->name }}@if($customer->document_number) - {{ $customer->document_number }}@endif
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                        <div class="form-help mt-2" id="customerSelectionHelp">
+                                            @if(old('customer_id', $openOrder?->customer_id))
+                                                Cliente seleccionado: {{ $openOrder?->customer?->name ?: 'Cliente cargado' }}.
+                                            @else
+                                                Se usara la opcion sin cliente a menos que selecciones uno.
+                                            @endif
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label class="form-label" for="notes">Notas del pedido</label>
+                                        <input type="text" class="form-control" id="notes" name="notes" value="{{ old('notes', $openOrder?->notes) }}" placeholder="Ej: sin cebolla, termino medio, mesa de cumpleanos">
+                                        <div class="form-help">Estas notas viajaran junto con la comanda enviada a cocina.</div>
+                                    </div>
+                                </div>
+
+                                @if($availableProducts->isEmpty())
+                                    <div class="empty-state py-4">
+                                        <i class="fas fa-utensils"></i>
+                                        <h5 class="mb-2">No hay productos disponibles para pedir</h5>
+                                        <p class="mb-0">Activa categorias y productos en el modulo de menu para poder registrar pedidos desde esta mesa.</p>
+                                    </div>
+                                @else
+                                    <div class="waiter-menu-shell">
+                                        <div class="waiter-menu-toolbar">
+                                            <div>
+                                                <div class="summary-kicker">Carta del menu</div>
+                                                <h6 class="mb-1">Selecciona productos para la comanda</h6>
+                                                <p class="table-note mb-0">Toca un producto para agregarlo al resumen en tiempo real.</p>
+                                            </div>
+                                            <div class="waiter-menu-search">
+                                                <label class="form-label" for="menuProductSearch">Filtrar por nombre</label>
+                                                <input type="search" class="form-control" id="menuProductSearch" placeholder="Ej: churrasco, limonada, postre">
+                                            </div>
+                                        </div>
+
+                                        <div class="waiter-menu-groups" id="waiterProductGrid"></div>
+                                    </div>
+                                @endif
                         </div>
                     </div>
-                    <div class="card-body">
-                        <form method="POST" action="{{ route('orders.store', $restaurantTable) }}" id="orderServiceForm">
-                            @csrf
-
-                            <div class="form-grid waiter-order-meta-grid">
-                                <div>
-                                    <label class="form-label" for="customer_search">Cliente</label>
-                                    <input type="search" class="form-control mb-2" id="customer_search" placeholder="Buscar cliente por nombre, documento, telefono o email">
-                                    <select class="form-select" id="customer_id" name="customer_id">
-                                        <option value="">Sin cliente</option>
-                                        @foreach($availableCustomers as $customer)
-                                            <option
-                                                value="{{ $customer->id }}"
-                                                data-search="{{ \Illuminate\Support\Str::lower(trim($customer->name . ' ' . $customer->document_number . ' ' . $customer->phone . ' ' . $customer->email)) }}"
-                                                @selected((string) old('customer_id', $openOrder?->customer_id) === (string) $customer->id)
-                                            >
-                                                {{ $customer->name }}@if($customer->document_number) - {{ $customer->document_number }}@endif
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                    <div class="form-help mt-2" id="customerSelectionHelp">
-                                        @if(old('customer_id', $openOrder?->customer_id))
-                                            Cliente seleccionado: {{ $openOrder?->customer?->name ?: 'Cliente cargado' }}.
-                                        @else
-                                            Se usara la opcion sin cliente a menos que selecciones uno.
-                                        @endif
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <label class="form-label" for="notes">Notas del pedido</label>
-                                    <input type="text" class="form-control" id="notes" name="notes" value="{{ old('notes', $openOrder?->notes) }}" placeholder="Ej: sin cebolla, termino medio, mesa de cumpleanos">
-                                    <div class="form-help">Estas notas viajaran junto con la comanda enviada a cocina.</div>
-                                </div>
-                            </div>
-
-                            @if($availableProducts->isEmpty())
-                                <div class="empty-state py-4">
-                                    <i class="fas fa-utensils"></i>
-                                    <h5 class="mb-2">No hay productos disponibles para pedir</h5>
-                                    <p class="mb-0">Activa categorias y productos en el modulo de menu para poder registrar pedidos desde esta mesa.</p>
-                                </div>
-                            @else
-                                <div class="waiter-entry-layout">
-                                    <div class="waiter-catalog-shell">
-                                        <div class="waiter-catalog-topbar">
-                                            <div>
-                                                <div class="summary-kicker">Carta del restaurante</div>
-                                                <h6 class="mb-1">Seleccion rapida por categorias</h6>
-                                                <p class="table-note mb-0">Toca un producto para sumarlo al pedido. Puedes usar la busqueda para encontrarlo mas rapido.</p>
-                                            </div>
-                                            <div class="waiter-catalog-search">
-                                                <label class="form-label" for="menuProductSearch">Buscar producto</label>
-                                                <input type="search" class="form-control" id="menuProductSearch" placeholder="Ej: limonada, pasta, postre">
-                                            </div>
-                                        </div>
-
-                                        <div class="menu-category-tabs" id="menuCategoryTabs">
-                                            <button type="button" class="menu-category-tab is-active" data-category-tab="all">
-                                                Todo el menu
-                                            </button>
-                                            @foreach($menuCategories as $category)
-                                                <button type="button" class="menu-category-tab" data-category-tab="{{ $category['id'] }}">
-                                                    {{ $category['name'] }}
-                                                    <span>{{ $category['count'] }}</span>
-                                                </button>
-                                            @endforeach
-                                        </div>
-
-                                        <div class="menu-category-caption" id="menuCategoryCaption">
-                                            Explora toda la carta y agrega productos al pedido en segundos.
-                                        </div>
-
-                                        <div class="waiter-product-grid" id="waiterProductGrid"></div>
-                                    </div>
-
-                                    <aside class="waiter-draft-shell">
-                                        <div class="waiter-draft-header">
-                                            <div>
-                                                <div class="summary-kicker">Resumen en tiempo real</div>
-                                                <h6 class="mb-1">Pedido en armado</h6>
-                                                <p class="table-note mb-0">El impuesto se recalcula cuando guardes la comanda.</p>
-                                            </div>
-                                            <span class="summary-chip" id="draftUniqueItemsChip">0 referencias</span>
-                                        </div>
-
-                                        <div class="waiter-draft-stats">
-                                            <div class="meta-box">
-                                                <div class="summary-kicker">Unidades</div>
-                                                <div class="fw-bold" id="draftUnitsCount">0</div>
-                                            </div>
-                                            <div class="meta-box">
-                                                <div class="summary-kicker">Subtotal nuevo</div>
-                                                <div class="fw-bold" id="draftSubtotal">$0.00</div>
-                                            </div>
-                                        </div>
-
-                                        <div class="waiter-empty-draft meta-box" id="waiterEmptyDraft">
-                                            Toca los productos del menu para construir el pedido de esta mesa.
-                                        </div>
-
-                                        <div class="waiter-draft-items" id="waiterDraftItems"></div>
-                                        <div id="orderItemsInputs"></div>
-
-                                        <div class="form-actions waiter-form-actions">
-                                            <a href="{{ route('orders.index') }}" class="btn btn-outline-secondary">Volver a pedidos</a>
-                                            <button type="submit" class="btn btn-primary" id="submitOrderButton">{{ $openOrder ? 'Guardar y mandar a cocina' : 'Crear pedido' }}</button>
-                                        </div>
-                                    </aside>
-                                </div>
-                            @endif
-                        </form>
-                    </div>
-                </div>
+                </form>
             @endif
         </div>
     </div>
@@ -402,9 +386,12 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         const category = categoryId === 'all' ? null : findCategory(categoryId);
-        categoryCaption.textContent = category
-            ? category.description
-            : 'Explora toda la carta y agrega productos al pedido en segundos.';
+
+        if (categoryCaption) {
+            categoryCaption.textContent = category
+                ? category.description
+                : 'Explora toda la carta y agrega productos al pedido en segundos.';
+        }
 
         renderProductGrid();
     };
@@ -444,7 +431,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         return products.filter(product => {
             const matchesCategory = activeCategory === 'all' || product.categoryId === activeCategory;
-            const matchesSearch = searchTerm === '' || product.searchText.includes(searchTerm);
+            const matchesSearch = searchTerm === '' || String(product.searchText || '').includes(searchTerm);
 
             return matchesCategory && matchesSearch;
         });
@@ -462,16 +449,16 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        productGrid.innerHTML = visibleProducts.map(product => {
+        const productCard = product => {
             const selectedQuantity = selectedItems.get(String(product.id))?.quantity || 0;
             const mediaMarkup = product.imageUrl
                 ? '<img src="' + escapeHtml(product.imageUrl) + '" alt="' + escapeHtml(product.name) + '">'
                 : placeholderMarkup('fas fa-utensils');
 
             return '' +
-                '<button type="button" class="waiter-product-card" data-add-product="' + product.id + '">' +
-                    '<div class="waiter-product-media">' + mediaMarkup + '</div>' +
-                    '<div class="waiter-product-copy">' +
+                '<button type="button" class="waiter-menu-card" data-add-product="' + product.id + '">' +
+                    '<div class="waiter-menu-card-media">' + mediaMarkup + '</div>' +
+                    '<div class="waiter-menu-card-copy">' +
                         '<div class="waiter-product-heading">' +
                             '<div>' +
                                 '<h6>' + escapeHtml(product.name) + '</h6>' +
@@ -486,6 +473,33 @@ document.addEventListener('DOMContentLoaded', function () {
                         '</div>' +
                     '</div>' +
                 '</button>';
+        };
+
+        const searchTerm = (productSearchInput?.value || '').toString().trim();
+
+        if (searchTerm !== '') {
+            productGrid.innerHTML = '<div class="waiter-menu-grid">' + visibleProducts.map(productCard).join('') + '</div>';
+            return;
+        }
+
+        productGrid.innerHTML = categories.map(category => {
+            const categoryProducts = visibleProducts.filter(product => product.categoryId === category.id);
+
+            if (!categoryProducts.length) {
+                return '';
+            }
+
+            return '' +
+                '<section class="waiter-menu-category-group">' +
+                    '<div class="waiter-menu-category-heading">' +
+                        '<div>' +
+                            '<div class="summary-kicker">' + escapeHtml(category.name) + '</div>' +
+                            '<p class="table-note mb-0">' + escapeHtml(category.description || 'Productos listos para agregar al pedido.') + '</p>' +
+                        '</div>' +
+                        '<span class="summary-chip">' + categoryProducts.length + (categoryProducts.length === 1 ? ' producto' : ' productos') + '</span>' +
+                    '</div>' +
+                    '<div class="waiter-menu-grid">' + categoryProducts.map(productCard).join('') + '</div>' +
+                '</section>';
         }).join('');
     };
 
@@ -676,7 +690,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     seedDraftItems();
     renderDraft();
-    setActiveCategory(categories[0]?.id || 'all');
+    setActiveCategory('all');
 });
 </script>
 @endif

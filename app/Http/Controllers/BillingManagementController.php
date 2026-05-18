@@ -4,10 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Models\Box;
 use App\Models\BoxSession;
+use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\PaymentMethod;
+use App\Models\Product;
 use App\Models\Sale;
 use App\Models\TableOrder;
+use App\Services\ManualBillingService;
 use App\Services\SaleDocumentService;
 use App\Services\TableOrderBillingService;
 use Illuminate\Http\Request;
@@ -18,6 +21,7 @@ class BillingManagementController extends Controller
 {
     public function __construct(
         private readonly TableOrderBillingService $billingService,
+        private readonly ManualBillingService $manualBillingService,
         private readonly SaleDocumentService $saleDocumentService
     ) {
     }
@@ -151,6 +155,87 @@ class BillingManagementController extends Controller
                 : 'Estamos abriendo el documento y en unos segundos volverás al historial de facturación.',
             'primaryActionLabel' => 'Abrir documento',
             'secondaryActionLabel' => 'Ir a facturación',
+            'redirectUrl' => route('billing.history'),
+            'printUrl' => route('pos.sales.print', $sale),
+        ]);
+    }
+
+    public function showManualCheckout()
+    {
+        if ($response = $this->denyIfUnauthorized(['billing.view', 'billing.charge'])) {
+            return $response;
+        }
+
+        return view('billing.manual-checkout', [
+            'activeBox' => $this->activeBox(),
+            'paymentMethods' => $this->paymentMethods(),
+            'products' => Product::query()
+                ->with('menuCategory:id,name,description,sort_order,is_active')
+                ->visibleInMenu()
+                ->orderedForMenu()
+                ->get(),
+            'customers' => Customer::query()
+                ->orderBy('name')
+                ->limit(200)
+                ->get(['id', 'name', 'document_number', 'billing_identification', 'email', 'phone', 'billing_address']),
+            'billingReadiness' => $this->saleDocumentService->electronicInvoiceStatus(null),
+        ]);
+    }
+
+    public function processManualCheckout(Request $request)
+    {
+        if ($response = $this->denyIfUnauthorized(['billing.charge'])) {
+            return $response;
+        }
+
+        $validated = $request->validate([
+            'origin_type' => ['required', 'in:table,delivery'],
+            'origin_reference' => ['nullable', 'string', 'max:255'],
+            'delivery_address' => ['nullable', 'string', 'max:255'],
+            'customer_id' => ['nullable', 'exists:customers,id'],
+            'customer_name' => ['nullable', 'string', 'max:255'],
+            'notes' => ['nullable', 'string', 'max:1000'],
+            'document_type' => ['nullable', 'in:ticket,electronic'],
+            'payment_method_id' => ['required', 'exists:payment_methods,id'],
+            'amount_received' => ['required', 'numeric', 'min:0'],
+            'tip_amount' => ['nullable', 'numeric', 'min:0'],
+            'reference' => ['nullable', 'string', 'max:255'],
+            'items' => ['required', 'array', 'min:1'],
+            'items.*.product_id' => ['nullable', 'exists:products,id'],
+            'items.*.name' => ['required', 'string', 'max:255'],
+            'items.*.quantity' => ['required', 'integer', 'min:1'],
+            'items.*.unit_price' => ['required', 'numeric', 'min:0.01'],
+        ]);
+
+        $result = $this->manualBillingService->checkout($validated, Auth::id());
+        $sale = $result['sale'];
+        $invoice = $result['invoice'];
+        $documentWarning = $result['document_warning'];
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => $documentWarning
+                    ? 'Cobro manual registrado, pero el documento quedo con novedad: ' . $documentWarning
+                    : 'Cobro manual registrado correctamente.',
+                'printUrl' => route('pos.sales.print', $sale),
+                'redirectUrl' => route('billing.history'),
+                'invoiceStatus' => $invoice?->status,
+                'cufe' => $invoice?->cufe,
+            ]);
+        }
+
+        session()->flash(
+            $documentWarning ? 'warning' : 'success',
+            $documentWarning
+                ? 'Cobro manual registrado, pero el documento quedo con novedad: ' . $documentWarning
+                : 'Cobro manual registrado correctamente.'
+        );
+
+        return view('orders.print-bridge', [
+            'title' => 'Preparando documento',
+            'message' => 'Estamos abriendo el documento y en unos segundos volveras al historial de facturacion.',
+            'primaryActionLabel' => 'Abrir documento',
+            'secondaryActionLabel' => 'Ir a facturacion',
             'redirectUrl' => route('billing.history'),
             'printUrl' => route('pos.sales.print', $sale),
         ]);
