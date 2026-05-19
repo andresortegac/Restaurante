@@ -20,6 +20,8 @@ class Sale extends Model
         'tax_amount',
         'total',
         'status',
+        'payment_status',
+        'credit_due_at',
         'notes',
     ];
 
@@ -28,6 +30,7 @@ class Sale extends Model
         'discount_amount' => 'decimal:2',
         'tax_amount' => 'decimal:2',
         'total' => 'decimal:2',
+        'credit_due_at' => 'date',
     ];
 
     public function user()

@@ -257,6 +257,19 @@
                                             </div>
                                         </div>
 
+                                        <div class="menu-category-tabs">
+                                            <button type="button" class="menu-category-tab is-active" data-category-tab="all">
+                                                Todo el menu <span>{{ $availableProducts->count() }}</span>
+                                            </button>
+                                            @foreach($menuCategories as $menuCategory)
+                                                <button type="button" class="menu-category-tab" data-category-tab="{{ $menuCategory['id'] }}">
+                                                    {{ $menuCategory['name'] }} <span>{{ $menuCategory['count'] }}</span>
+                                                </button>
+                                            @endforeach
+                                        </div>
+                                        <p class="menu-category-caption" id="menuCategoryCaption">
+                                            Explora toda la carta y agrega productos al pedido en segundos.
+                                        </p>
                                         <div class="waiter-menu-groups" id="waiterProductGrid"></div>
                                     </div>
                                 @endif
@@ -452,7 +465,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const productCard = product => {
             const selectedQuantity = selectedItems.get(String(product.id))?.quantity || 0;
             const mediaMarkup = product.imageUrl
-                ? '<img src="' + escapeHtml(product.imageUrl) + '" alt="' + escapeHtml(product.name) + '">'
+                ? '<img src="' + escapeHtml(product.imageUrl) + '" alt="' + escapeHtml(product.name) + '" loading="lazy" decoding="async">'
                 : placeholderMarkup('fas fa-utensils');
 
             return '' +
@@ -521,7 +534,7 @@ document.addEventListener('DOMContentLoaded', function () {
         emptyDraftState.style.display = entries.length === 0 ? '' : 'none';
         draftItemsContainer.innerHTML = entries.map(entry => {
             const mediaMarkup = entry.product.imageUrl
-                ? '<img src="' + escapeHtml(entry.product.imageUrl) + '" alt="' + escapeHtml(entry.product.name) + '">'
+                ? '<img src="' + escapeHtml(entry.product.imageUrl) + '" alt="' + escapeHtml(entry.product.name) + '" loading="lazy" decoding="async">'
                 : placeholderMarkup('fas fa-image');
 
             return '' +

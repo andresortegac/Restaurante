@@ -76,7 +76,7 @@
 
                             @if($driver->photo_url)
                                 <div class="mt-3 d-flex align-items-center gap-3">
-                                    <img src="{{ $driver->photo_url }}" alt="{{ $driver->name }}" style="width: 160px; height: 160px; object-fit: cover; border-radius: 18px; border: 1px solid #dbe3f1;">
+                                    <img src="{{ $driver->photo_url }}" alt="{{ $driver->name }}" loading="lazy" decoding="async" style="width: 160px; height: 160px; object-fit: cover; border-radius: 18px; border: 1px solid #dbe3f1;">
                                     <div class="form-check">
                                         <input class="form-check-input" type="checkbox" id="remove_photo" name="remove_photo" value="1">
                                         <label class="form-check-label" for="remove_photo">Quitar foto actual</label>

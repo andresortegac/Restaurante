@@ -2,7 +2,11 @@
     $brandName = config('app.name', 'Solomo & Pomo');
     $documentTitle = $invoice->isElectronic() ? 'Factura electronica' : 'Recibo de caja';
     $customerName = $sale->customer?->name ?: $sale->customer_name;
-    $paymentMethods = $sale->payments->pluck('paymentMethod.name')->filter()->unique()->join(', ');
+    $paymentMethods = $sale->payments
+        ->map(fn ($payment) => $payment->paymentMethod?->name ?? 'Sin dato')
+        ->filter()
+        ->unique()
+        ->join(', ');
     $receivedAmount = (float) $sale->payments->sum('received_amount');
     $changeAmount = (float) $sale->payments->sum('change_amount');
     $tipAmount = (float) $sale->payments->sum('tip_amount');
@@ -280,8 +284,14 @@
 
             <div class="meta-row">
                 <span>Pago</span>
-                <strong>{{ $paymentMethods ?: 'Sin pago registrado' }}</strong>
+                <strong>{{ $sale->payment_status === 'credit' ? 'Credito pendiente' : ($paymentMethods ?: 'Sin pago registrado') }}</strong>
             </div>
+            @if($sale->payment_status === 'credit')
+                <div class="meta-row">
+                    <span>Vence</span>
+                    <strong>{{ $sale->credit_due_at ? $sale->credit_due_at->format('d/m/Y') : 'Sin fecha' }}</strong>
+                </div>
+            @endif
         </div>
 
         <div class="rule"></div>
@@ -342,7 +352,12 @@
                 <strong>${{ number_format((float) $sale->total, 2) }}</strong>
             </div>
 
-            @if($receivedAmount > 0)
+            @if($sale->payment_status === 'credit')
+                <div class="summary-row">
+                    <span>Saldo credito</span>
+                    <strong>${{ number_format((float) $sale->total, 2) }}</strong>
+                </div>
+            @elseif($receivedAmount > 0)
                 <div class="summary-row">
                     <span>Recibido</span>
                     <strong>${{ number_format($receivedAmount, 2) }}</strong>
@@ -374,7 +389,7 @@
     </div>
 
     <script>
-        const fallbackCloseUrl = @json($sale->tableOrder ? route('billing.history') : ($sale->delivery ? route('deliveries.index') : route('orders.index')));
+        const fallbackCloseUrl = @json($sale->delivery ? route('deliveries.index') : route('billing.history'));
 
         function handleClose() {
             window.location.href = fallbackCloseUrl;

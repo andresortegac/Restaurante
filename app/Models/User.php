@@ -17,6 +17,13 @@ class User extends Authenticatable
     use HasFactory, Notifiable;
 
     /**
+     * Request-level caches for role and permission checks.
+     */
+    private ?array $roleNameCache = null;
+
+    private ?array $permissionNameCache = null;
+
+    /**
      * The attributes that are mass assignable.
      *
      * @var list<string>
@@ -87,13 +94,13 @@ class User extends Authenticatable
      */
     public function hasRole(string|array $role): bool
     {
-        $this->loadMissing('roles.permissions');
+        $roleNames = $this->roleNamesForChecks();
 
         if (is_array($role)) {
-            return $this->roles->whereIn('name', $role)->isNotEmpty();
+            return ! empty(array_intersect($roleNames, $role));
         }
 
-        return $this->roles->contains('name', $role);
+        return in_array($role, $roleNames, true);
     }
 
     /**
@@ -101,11 +108,7 @@ class User extends Authenticatable
      */
     public function hasPermission(string $permission): bool
     {
-        $this->loadMissing('roles.permissions');
-
-        return $this->roles->contains(function (Role $role) use ($permission) {
-            return $role->permissions->contains('name', $permission);
-        });
+        return in_array($permission, $this->permissionNamesForChecks(), true);
     }
 
     /**
@@ -113,14 +116,7 @@ class User extends Authenticatable
      */
     public function hasAllPermissions(array $permissions): bool
     {
-        $this->loadMissing('roles.permissions');
-
-        foreach ($permissions as $permission) {
-            if (!$this->hasPermission($permission)) {
-                return false;
-            }
-        }
-        return true;
+        return empty(array_diff($permissions, $this->permissionNamesForChecks()));
     }
 
     /**
@@ -128,13 +124,34 @@ class User extends Authenticatable
      */
     public function hasAnyPermission(array $permissions): bool
     {
-        $this->loadMissing('roles.permissions');
+        return ! empty(array_intersect($permissions, $this->permissionNamesForChecks()));
+    }
 
-        foreach ($permissions as $permission) {
-            if ($this->hasPermission($permission)) {
-                return true;
-            }
+    private function roleNamesForChecks(): array
+    {
+        if ($this->roleNameCache === null) {
+            $this->loadMissing('roles.permissions');
+
+            $this->roleNameCache = $this->roles
+                ->pluck('name')
+                ->all();
         }
-        return false;
+
+        return $this->roleNameCache;
+    }
+
+    private function permissionNamesForChecks(): array
+    {
+        if ($this->permissionNameCache === null) {
+            $this->loadMissing('roles.permissions');
+
+            $this->permissionNameCache = $this->roles
+                ->flatMap(fn (Role $role) => $role->permissions->pluck('name'))
+                ->unique()
+                ->values()
+                ->all();
+        }
+
+        return $this->permissionNameCache;
     }
 }

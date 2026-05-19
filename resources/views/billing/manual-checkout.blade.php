@@ -100,15 +100,31 @@
                             </div>
 
                             <div>
+                                <label class="form-label" for="is_credit">Tipo de cobro</label>
+                                <select class="form-select" id="is_credit" name="is_credit">
+                                    <option value="0" @selected(! old('is_credit'))>Pagado ahora</option>
+                                    <option value="1" @selected((string) old('is_credit') === '1')>Credito al cliente</option>
+                                </select>
+                                <div class="form-help mt-1">En credito no entra dinero a caja hasta que el cliente pague.</div>
+                            </div>
+
+                            <div>
                                 <label class="form-label" for="payment_method_id">Metodo de pago</label>
-                                <select class="form-select" id="payment_method_id" name="payment_method_id" required>
-                                    <option value="">Selecciona un metodo</option>
+                                <select class="form-select" id="payment_method_id" name="payment_method_id">
+                                    <option value="" @selected(! old('payment_method_id'))>Sin dato</option>
                                     @foreach($paymentMethods as $paymentMethod)
                                         <option value="{{ $paymentMethod->id }}" data-payment-code="{{ strtoupper((string) $paymentMethod->code) }}" @selected((int) old('payment_method_id') === (int) $paymentMethod->id)>
                                             {{ $paymentMethod->name }}
                                         </option>
                                     @endforeach
                                 </select>
+                                <div class="form-help mt-1">Puedes dejarlo en blanco; se guardara como sin dato.</div>
+                            </div>
+
+                            <div>
+                                <label class="form-label" for="credit_due_at">Vence el credito</label>
+                                <input type="date" class="form-control" id="credit_due_at" name="credit_due_at" value="{{ old('credit_due_at') }}">
+                                <div class="form-help mt-1">Opcional para recordar la fecha de pago.</div>
                             </div>
 
                             <div>
@@ -128,6 +144,11 @@
                             </div>
 
                             <div class="meta-box manual-payment-totals">
+                                <div class="mb-3">
+                                    <span class="summary-kicker d-block">Cliente</span>
+                                    <strong id="manualCustomerLabel">Consumidor final / sin cliente</strong>
+                                    <div class="text-muted small" id="manualCustomerMeta">Selecciona un cliente o escribe un nombre en datos del cobro.</div>
+                                </div>
                                 <div class="d-flex justify-content-between gap-3">
                                     <span class="summary-kicker">Subtotal</span>
                                     <strong id="manualSubtotal">$0.00</strong>
@@ -177,6 +198,11 @@
                                     </option>
                                 @endforeach
                             </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label" for="customer_name">Cliente no registrado</label>
+                            <input type="text" class="form-control" id="customer_name" name="customer_name" value="{{ old('customer_name') }}" placeholder="Nombre para credito o ticket">
+                            <div class="form-help">Usalo si el cliente no esta creado en el sistema.</div>
                         </div>
                         <div class="col-md-4">
                             <label class="form-label" for="notes">Notas internas</label>
@@ -262,12 +288,17 @@ document.addEventListener('DOMContentLoaded', function () {
     const amountReceived = document.getElementById('amount_received');
     const amountHelp = document.getElementById('amountReceivedHelp');
     const tipInput = document.getElementById('tip_amount');
+    const creditMode = document.getElementById('is_credit');
+    const creditDueAt = document.getElementById('credit_due_at');
     const subtotalLabel = document.getElementById('manualSubtotal');
     const dueLabel = document.getElementById('manualAmountDue');
     const changeLabel = document.getElementById('manualChange');
     const documentType = document.getElementById('document_type');
     const documentHelp = document.getElementById('documentTypeHelp');
     const customerSelect = document.getElementById('customer_id');
+    const customerNameInput = document.getElementById('customer_name');
+    const customerLabel = document.getElementById('manualCustomerLabel');
+    const customerMeta = document.getElementById('manualCustomerMeta');
     const selectedItems = new Map();
     let activeCategory = 'all';
 
@@ -284,14 +315,42 @@ document.addEventListener('DOMContentLoaded', function () {
     }[char]));
 
     const selectedMethod = () => paymentMethods.find(method => String(method.id) === String(paymentMethod.value)) || null;
+    const isCreditSale = () => String(creditMode?.value || '0') === '1';
     const isCashPayment = () => {
         const method = selectedMethod();
         return !method || method.code === 'CASH';
     };
 
     const selectedCustomer = () => customers.find(customer => String(customer.id) === String(customerSelect.value)) || null;
+    const typedCustomerName = () => String(customerNameInput?.value || '').trim();
     const findProduct = productId => products.find(product => String(product.id) === String(productId)) || null;
     const placeholderMarkup = icon => '<div class="waiter-image-placeholder"><i class="' + icon + '"></i></div>';
+
+    const syncCustomerSummary = () => {
+        const customer = selectedCustomer();
+        const typedName = typedCustomerName();
+
+        if (customer) {
+            customerLabel.textContent = customer.name;
+            customerMeta.textContent = [
+                customer.document ? 'Documento: ' + customer.document : null,
+                customer.phone ? 'Telefono: ' + customer.phone : null,
+                customer.email ? 'Email: ' + customer.email : null,
+            ].filter(Boolean).join(' | ') || 'Cliente registrado.';
+            return;
+        }
+
+        if (typedName) {
+            customerLabel.textContent = typedName;
+            customerMeta.textContent = 'Cliente escrito manualmente.';
+            return;
+        }
+
+        customerLabel.textContent = 'Consumidor final / sin cliente';
+        customerMeta.textContent = isCreditSale()
+            ? 'Para credito selecciona un cliente o escribe un nombre.'
+            : 'Selecciona un cliente o escribe un nombre en datos del cobro.';
+    };
 
     const syncDocumentHelp = () => {
         if (documentType.value !== 'electronic') {
@@ -313,14 +372,35 @@ document.addEventListener('DOMContentLoaded', function () {
         const method = selectedMethod();
         const exactPayment = Boolean(method) && !isCashPayment();
 
-        if (exactPayment) {
+        if (isCreditSale()) {
+            paymentMethod.value = '';
+            paymentMethod.disabled = true;
+            amountReceived.value = '0.00';
+            amountReceived.readOnly = true;
+            amountReceived.classList.add('bg-light');
+            tipInput.value = '0.00';
+            tipInput.readOnly = true;
+            tipInput.classList.add('bg-light');
+            creditDueAt.disabled = false;
+            amountHelp.textContent = 'Credito pendiente: no se registra dinero recibido ni cambio.';
+        } else if (exactPayment) {
+            paymentMethod.disabled = false;
             amountReceived.value = due.toFixed(2);
             amountReceived.readOnly = true;
             amountReceived.classList.add('bg-light');
+            tipInput.readOnly = false;
+            tipInput.classList.remove('bg-light');
+            creditDueAt.value = '';
+            creditDueAt.disabled = true;
             amountHelp.textContent = 'Para pagos distintos a efectivo, el monto recibido debe coincidir con el total.';
         } else {
+            paymentMethod.disabled = false;
             amountReceived.readOnly = false;
             amountReceived.classList.remove('bg-light');
+            tipInput.readOnly = false;
+            tipInput.classList.remove('bg-light');
+            creditDueAt.value = '';
+            creditDueAt.disabled = true;
             amountHelp.textContent = 'Ingresa el valor recibido para calcular el cambio.';
 
             if (amountReceived.dataset.userEdited !== 'true' && due > 0) {
@@ -331,7 +411,8 @@ document.addEventListener('DOMContentLoaded', function () {
         const received = Math.max(0, Number(amountReceived.value || 0));
         subtotalLabel.textContent = money(subtotal);
         dueLabel.textContent = money(due);
-        changeLabel.textContent = money(isCashPayment() ? Math.max(0, received - due) : 0);
+        changeLabel.textContent = money(!isCreditSale() && isCashPayment() ? Math.max(0, received - due) : 0);
+        syncCustomerSummary();
     };
 
     const syncSelectedItems = () => {
@@ -349,7 +430,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         selectedItemsContainer.innerHTML = entries.map(entry => {
             const mediaMarkup = entry.product.imageUrl
-                ? '<img src="' + escapeHtml(entry.product.imageUrl) + '" alt="' + escapeHtml(entry.product.name) + '">'
+                ? '<img src="' + escapeHtml(entry.product.imageUrl) + '" alt="' + escapeHtml(entry.product.name) + '" loading="lazy" decoding="async">'
                 : placeholderMarkup('fas fa-image');
 
             return (
@@ -436,7 +517,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const productCard = product => {
             const selectedQuantity = selectedItems.get(String(product.id))?.quantity || 0;
             const mediaMarkup = product.imageUrl
-                ? '<img src="' + escapeHtml(product.imageUrl) + '" alt="' + escapeHtml(product.name) + '">'
+                ? '<img src="' + escapeHtml(product.imageUrl) + '" alt="' + escapeHtml(product.name) + '" loading="lazy" decoding="async">'
                 : placeholderMarkup('fas fa-utensils');
 
             return (
@@ -543,8 +624,13 @@ document.addEventListener('DOMContentLoaded', function () {
         syncTotals();
     });
     tipInput.addEventListener('input', syncTotals);
+    creditMode.addEventListener('change', syncTotals);
     documentType.addEventListener('change', syncDocumentHelp);
-    customerSelect.addEventListener('change', syncDocumentHelp);
+    customerSelect.addEventListener('change', function () {
+        syncDocumentHelp();
+        syncCustomerSummary();
+    });
+    customerNameInput.addEventListener('input', syncCustomerSummary);
 
     form.addEventListener('submit', async function (event) {
         event.preventDefault();
@@ -552,6 +638,12 @@ document.addEventListener('DOMContentLoaded', function () {
         if (selectedItems.size === 0) {
             const message = 'Selecciona al menos un producto del menu antes de registrar el cobro.';
             window.Swal ? await Swal.fire({ icon: 'warning', title: 'Faltan productos', text: message, confirmButtonText: 'Aceptar', confirmButtonColor: '#2563eb' }) : alert(message);
+            return;
+        }
+
+        if (isCreditSale() && !selectedCustomer() && !typedCustomerName()) {
+            const message = 'Para registrar un credito debes seleccionar un cliente o escribir su nombre.';
+            window.Swal ? await Swal.fire({ icon: 'warning', title: 'Falta el cliente', text: message, confirmButtonText: 'Aceptar', confirmButtonColor: '#2563eb' }) : alert(message);
             return;
         }
 
@@ -598,6 +690,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     syncDocumentHelp();
+    syncCustomerSummary();
     renderProducts();
     syncSelectedItems();
 });

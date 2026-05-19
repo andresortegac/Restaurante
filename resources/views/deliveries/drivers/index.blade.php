@@ -70,7 +70,7 @@
                                     <td>
                                         <div class="d-flex align-items-center gap-3">
                                             @if($driver->photo_url)
-                                                <img src="{{ $driver->photo_url }}" alt="{{ $driver->name }}" style="width: 56px; height: 56px; object-fit: cover; border-radius: 16px; border: 1px solid #dbe3f1;">
+                                                <img src="{{ $driver->photo_url }}" alt="{{ $driver->name }}" loading="lazy" decoding="async" style="width: 56px; height: 56px; object-fit: cover; border-radius: 16px; border: 1px solid #dbe3f1;">
                                             @else
                                                 <div class="d-flex align-items-center justify-content-center" style="width: 56px; height: 56px; border-radius: 16px; border: 1px dashed #dbe3f1; color: #6b7280;">
                                                     <i class="fas fa-user"></i>

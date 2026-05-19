@@ -15,6 +15,7 @@
                 <span class="summary-chip">{{ number_format($summary['today']) }} hoy</span>
                 <span class="summary-chip">${{ number_format($summary['revenue'], 2) }} vendidos</span>
                 <span class="summary-chip">{{ number_format($summary['electronic']) }} electronicas</span>
+                <span class="summary-chip">${{ number_format($summary['credit'], 2) }} en credito</span>
             </div>
         </section>
 
@@ -26,7 +27,7 @@
                             <label class="form-label" for="search">Buscar</label>
                             <input type="text" class="form-control" id="search" name="search" value="{{ $filters['search'] ?? '' }}" placeholder="Venta, mesa, pedido, cliente, documento o CUFE">
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-2">
                             <label class="form-label" for="document_type">Documento</label>
                             <select class="form-select" id="document_type" name="document_type">
                                 <option value="">Todos</option>
@@ -34,7 +35,15 @@
                                 <option value="electronic" @selected(($filters['document_type'] ?? '') === 'electronic')>Factura electronica</option>
                             </select>
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-2">
+                            <label class="form-label" for="payment_status">Pago</label>
+                            <select class="form-select" id="payment_status" name="payment_status">
+                                <option value="">Todos</option>
+                                <option value="paid" @selected(($filters['payment_status'] ?? '') === 'paid')>Pagado</option>
+                                <option value="credit" @selected(($filters['payment_status'] ?? '') === 'credit')>Credito</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
                             <label class="form-label" for="status">Estado</label>
                             <input type="text" class="form-control" id="status" name="status" value="{{ $filters['status'] ?? '' }}" placeholder="issued, validated, failed...">
                         </div>
@@ -118,10 +127,16 @@
                                         </td>
                                         <td>
                                             @if($primaryPayment)
-                                                <strong>{{ $sale->payments->pluck('paymentMethod.name')->filter()->join(', ') ?: 'Sin pago' }}</strong>
-                                                <div class="text-muted small">Recibido: ${{ number_format((float) $primaryPayment->received_amount, 2) }}</div>
-                                                <div class="text-muted small">Cambio: ${{ number_format((float) $primaryPayment->change_amount, 2) }}</div>
-                                                <div class="text-muted small">Propina: ${{ number_format((float) $primaryPayment->tip_amount, 2) }}</div>
+                                                @if($sale->payment_status === 'credit')
+                                                    <strong class="text-warning">Credito pendiente</strong>
+                                                    <div class="text-muted small">Cliente: {{ $sale->customer?->name ?: $sale->customer_name ?: 'Sin cliente' }}</div>
+                                                    <div class="text-muted small">Vence: {{ $sale->credit_due_at ? $sale->credit_due_at->format('d/m/Y') : 'Sin fecha' }}</div>
+                                                @else
+                                                    <strong>{{ $sale->payments->map(fn ($payment) => $payment->paymentMethod?->name ?? 'Sin dato')->filter()->unique()->join(', ') ?: 'Sin pago' }}</strong>
+                                                    <div class="text-muted small">Recibido: ${{ number_format((float) $primaryPayment->received_amount, 2) }}</div>
+                                                    <div class="text-muted small">Cambio: ${{ number_format((float) $primaryPayment->change_amount, 2) }}</div>
+                                                    <div class="text-muted small">Propina: ${{ number_format((float) $primaryPayment->tip_amount, 2) }}</div>
+                                                @endif
                                             @else
                                                 <span class="text-muted">Sin pago</span>
                                             @endif
@@ -137,6 +152,15 @@
                                                 <a href="{{ route('pos.sales.print', $sale) }}" target="_blank" class="btn btn-sm btn-outline-primary">
                                                     <i class="fas fa-print"></i> Imprimir
                                                 </a>
+                                                @if($sale->payment_status === 'credit')
+                                                    <form method="POST" action="{{ route('billing.credits.pay', $sale) }}">
+                                                        @csrf
+                                                        <input type="hidden" name="amount_received" value="{{ number_format((float) $sale->total, 2, '.', '') }}">
+                                                        <button type="submit" class="btn btn-sm btn-success" onclick="return confirm('Marcar este credito como pagado?');">
+                                                            <i class="fas fa-check"></i> Pagar credito
+                                                        </button>
+                                                    </form>
+                                                @endif
                                                 @if($invoice && $invoice->isElectronic())
                                                     <a href="{{ route('electronic-invoices.show', $invoice) }}" class="btn btn-sm btn-outline-secondary">
                                                         Ver FE

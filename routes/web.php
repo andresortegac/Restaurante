@@ -40,7 +40,9 @@ Route::middleware('auth')->group(function () {
         abort_if($path === '', 404);
         abort_unless(Storage::disk('public')->exists($path), 404);
 
-        return Storage::disk('public')->response($path);
+        return Storage::disk('public')->response($path, null, [
+            'Cache-Control' => 'public, max-age=604800, immutable',
+        ]);
     })->name('media.public');
 
     // Dashboard
@@ -77,6 +79,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/history', [BillingManagementController::class, 'history'])->name('history');
         Route::get('/manual', [BillingManagementController::class, 'showManualCheckout'])->name('manual');
         Route::post('/manual', [BillingManagementController::class, 'processManualCheckout'])->name('manual.store');
+        Route::post('/credits/{sale}/pay', [BillingManagementController::class, 'payCredit'])->name('credits.pay');
         Route::get('/{order}/checkout', [BillingManagementController::class, 'showCheckout'])->name('checkout');
         Route::post('/{order}/checkout', [BillingManagementController::class, 'processCheckout'])->name('checkout.store');
     });

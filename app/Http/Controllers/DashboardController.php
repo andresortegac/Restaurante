@@ -14,8 +14,30 @@ class DashboardController extends Controller
     public function index()
     {
         $user = auth()->user()->loadMissing('roles.permissions');
-        $monthStart = now()->startOfMonth();
+        $now = now();
+        $todayStart = today();
+        $monthStart = $now->copy()->startOfMonth();
         $canViewFinancialStats = $user->hasRole(['Admin', 'Administrador', 'admin', 'administrador']);
+
+        $stats = [
+            'table_orders_today' => TableOrder::query()->where('created_at', '>=', $todayStart)->count(),
+            'deliveries_today' => Delivery::query()->where('created_at', '>=', $todayStart)->count(),
+            'reservations_today' => Reservation::query()->whereBetween('reservation_at', [$todayStart, $todayStart->copy()->endOfDay()])->count(),
+            'occupied_tables' => RestaurantTable::query()->active()->where('status', 'occupied')->count(),
+            'available_tables' => RestaurantTable::query()->active()->where('status', 'free')->count(),
+            'sales_today' => 0.0,
+            'monthly_income' => 0.0,
+            'customers' => Customer::query()->where('is_active', true)->count(),
+        ];
+
+        if ($canViewFinancialStats) {
+            $stats['sales_today'] = (float) Sale::query()
+                ->where('created_at', '>=', $todayStart)
+                ->sum('total');
+            $stats['monthly_income'] = (float) Sale::query()
+                ->whereBetween('created_at', [$monthStart, $now])
+                ->sum('total');
+        }
 
         return view('dashboard', [
             'accountUser' => $user,
@@ -25,18 +47,7 @@ class DashboardController extends Controller
                 ->flatMap(fn ($role) => $role->permissions->pluck('id'))
                 ->unique()
                 ->count(),
-            'stats' => [
-                'table_orders_today' => TableOrder::query()->whereDate('created_at', today())->count(),
-                'deliveries_today' => Delivery::query()->whereDate('created_at', today())->count(),
-                'reservations_today' => Reservation::query()->whereDate('reservation_at', today())->count(),
-                'occupied_tables' => RestaurantTable::query()->active()->where('status', 'occupied')->count(),
-                'available_tables' => RestaurantTable::query()->active()->where('status', 'free')->count(),
-                'sales_today' => (float) Sale::query()->whereDate('created_at', today())->sum('total'),
-                'monthly_income' => (float) Sale::query()
-                    ->whereBetween('created_at', [$monthStart, now()])
-                    ->sum('total'),
-                'customers' => Customer::query()->where('is_active', true)->count(),
-            ],
+            'stats' => $stats,
         ]);
     }
 }

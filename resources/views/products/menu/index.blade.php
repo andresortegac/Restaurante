@@ -134,7 +134,7 @@
                                     <article class="menu-product-card {{ $product->active ? '' : 'is-inactive' }}">
                                         <div class="menu-product-media">
                                             @if($product->image_url)
-                                                <img src="{{ $product->image_url }}" alt="{{ $product->name }}">
+                                                <img src="{{ $product->image_url }}" alt="{{ $product->name }}" loading="lazy" decoding="async">
                                             @else
                                                 <div class="menu-product-placeholder">
                                                     <i class="fas fa-utensils"></i>

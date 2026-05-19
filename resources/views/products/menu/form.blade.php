@@ -100,7 +100,7 @@
 
                             @if($product->image_url)
                                 <div class="mt-3 d-flex flex-wrap align-items-start gap-3">
-                                    <img src="{{ $product->image_url }}" alt="{{ $product->name }}" style="width: 160px; height: 160px; object-fit: cover; border-radius: 18px; border: 1px solid #dbe3f1;">
+                                    <img src="{{ $product->image_url }}" alt="{{ $product->name }}" loading="lazy" decoding="async" style="width: 160px; height: 160px; object-fit: cover; border-radius: 18px; border: 1px solid #dbe3f1;">
                                     <div class="form-check">
                                         <input class="form-check-input" type="checkbox" id="remove_image" name="remove_image" value="1">
                                         <label class="form-check-label" for="remove_image">Quitar imagen actual</label>

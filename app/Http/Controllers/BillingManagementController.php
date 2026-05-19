@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Box;
+use App\Models\BoxAuditLog;
+use App\Models\BoxMovement;
 use App\Models\BoxSession;
 use App\Models\Customer;
 use App\Models\Invoice;
@@ -16,6 +18,7 @@ use App\Services\TableOrderBillingService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class BillingManagementController extends Controller
 {
@@ -196,10 +199,12 @@ class BillingManagementController extends Controller
             'customer_name' => ['nullable', 'string', 'max:255'],
             'notes' => ['nullable', 'string', 'max:1000'],
             'document_type' => ['nullable', 'in:ticket,electronic'],
-            'payment_method_id' => ['required', 'exists:payment_methods,id'],
+            'payment_method_id' => ['nullable', 'exists:payment_methods,id'],
             'amount_received' => ['required', 'numeric', 'min:0'],
             'tip_amount' => ['nullable', 'numeric', 'min:0'],
             'reference' => ['nullable', 'string', 'max:255'],
+            'is_credit' => ['nullable', 'boolean'],
+            'credit_due_at' => ['nullable', 'date', 'after_or_equal:today'],
             'items' => ['required', 'array', 'min:1'],
             'items.*.product_id' => ['nullable', 'exists:products,id'],
             'items.*.name' => ['required', 'string', 'max:255'],
@@ -251,6 +256,7 @@ class BillingManagementController extends Controller
             'search' => ['nullable', 'string', 'max:255'],
             'document_type' => ['nullable', 'in:ticket,electronic'],
             'status' => ['nullable', 'string', 'max:50'],
+            'payment_status' => ['nullable', 'in:paid,credit'],
         ]);
 
         $salesQuery = Sale::query()
@@ -276,6 +282,7 @@ class BillingManagementController extends Controller
             })
             ->when($filters['document_type'] ?? null, fn ($query, string $documentType) => $query->whereHas('invoice', fn ($invoiceQuery) => $invoiceQuery->where('invoice_type', $documentType)))
             ->when($filters['status'] ?? null, fn ($query, string $status) => $query->whereHas('invoice', fn ($invoiceQuery) => $invoiceQuery->where('status', $status)))
+            ->when($filters['payment_status'] ?? null, fn ($query, string $paymentStatus) => $query->where('payment_status', $paymentStatus))
             ->latest();
 
         $sales = $salesQuery
@@ -294,8 +301,149 @@ class BillingManagementController extends Controller
                 'electronic' => Invoice::query()
                     ->where('invoice_type', Invoice::TYPE_ELECTRONIC)
                     ->count(),
+                'credit' => (float) (clone $summaryBaseQuery)->where('payment_status', 'credit')->sum('total'),
             ],
+            'paymentMethods' => $this->paymentMethods(),
         ]);
+    }
+
+    public function payCredit(Request $request, Sale $sale)
+    {
+        if ($response = $this->denyIfUnauthorized(['billing.charge'])) {
+            return $response;
+        }
+
+        if ($sale->payment_status !== 'credit') {
+            return redirect()
+                ->route('billing.history')
+                ->with('info', 'Esta venta no tiene credito pendiente.');
+        }
+
+        $validated = $request->validate([
+            'payment_method_id' => ['nullable', 'exists:payment_methods,id'],
+            'amount_received' => ['required', 'numeric', 'min:' . (float) $sale->total],
+            'reference' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $paymentMethod = null;
+
+        if (! empty($validated['payment_method_id'])) {
+            $paymentMethod = PaymentMethod::query()
+                ->whereKey($validated['payment_method_id'])
+                ->where('active', true)
+                ->first();
+        }
+
+        $userId = Auth::id();
+
+        DB::transaction(function () use ($sale, $validated, $paymentMethod, $userId): void {
+            $box = Box::query()
+                ->where('status', 'open')
+                ->where('user_id', $userId)
+                ->orderByDesc('opened_at')
+                ->lockForUpdate()
+                ->first();
+
+            if (! $box) {
+                $box = Box::query()
+                    ->where('status', 'open')
+                    ->orderByDesc('opened_at')
+                    ->lockForUpdate()
+                    ->first();
+            }
+
+            if (! $box) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'amount_received' => 'No hay una caja abierta para registrar el pago del credito.',
+                ]);
+            }
+
+            $boxSession = BoxSession::query()
+                ->where('box_id', $box->id)
+                ->where('status', 'open')
+                ->orderByDesc('opened_at')
+                ->lockForUpdate()
+                ->first();
+
+            if (! $boxSession) {
+                $boxSession = BoxSession::query()->create([
+                    'box_id' => $box->id,
+                    'user_id' => $box->user_id ?? $userId,
+                    'opening_balance' => (float) $box->opening_balance,
+                    'status' => 'open',
+                    'opened_at' => $box->opened_at ?? now(),
+                ]);
+            }
+
+            $payment = $sale->payments()->first();
+            $amountReceived = round((float) $validated['amount_received'], 2);
+            $changeAmount = round(max(0, $amountReceived - (float) $sale->total), 2);
+
+            if ($payment) {
+                $payment->update([
+                    'payment_method_id' => $paymentMethod?->id,
+                    'received_amount' => $amountReceived,
+                    'change_amount' => $changeAmount,
+                    'reference' => $validated['reference'] ?? $payment->reference,
+                    'status' => 'completed',
+                ]);
+            } else {
+                $payment = $sale->payments()->create([
+                    'payment_method_id' => $paymentMethod?->id,
+                    'amount' => $sale->total,
+                    'received_amount' => $amountReceived,
+                    'change_amount' => $changeAmount,
+                    'tip_amount' => 0,
+                    'reference' => $validated['reference'] ?? null,
+                    'status' => 'completed',
+                ]);
+            }
+
+            $movementTotal = (float) BoxMovement::query()
+                ->where('box_session_id', $boxSession->id)
+                ->lockForUpdate()
+                ->sum('amount');
+            $balanceBefore = round((float) $box->opening_balance + $movementTotal, 2);
+            $balanceAfter = round($balanceBefore + (float) $sale->total, 2);
+            $description = 'Pago de credito #' . $sale->id . ' | Cliente ' . ($sale->customer?->name ?: $sale->customer_name ?: 'Sin cliente');
+
+            $box->movements()->create([
+                'box_session_id' => $boxSession->id,
+                'sale_id' => $sale->id,
+                'payment_id' => $payment->id,
+                'user_id' => $userId,
+                'movement_type' => 'credit_payment',
+                'amount' => $sale->total,
+                'balance_before' => $balanceBefore,
+                'balance_after' => $balanceAfter,
+                'description' => $description,
+                'occurred_at' => now(),
+            ]);
+
+            BoxAuditLog::query()->create([
+                'box_id' => $box->id,
+                'box_session_id' => $boxSession->id,
+                'user_id' => $userId,
+                'action' => 'credit_payment',
+                'description' => $description,
+                'metadata' => [
+                    'sale_id' => $sale->id,
+                    'payment_id' => $payment->id,
+                    'amount' => (float) $sale->total,
+                ],
+                'occurred_at' => now(),
+            ]);
+
+            $sale->update([
+                'status' => 'completed',
+                'payment_status' => 'paid',
+                'credit_due_at' => null,
+            ]);
+        });
+
+        return redirect()
+            ->route('billing.history', ['payment_status' => 'credit'])
+            ->with('success', 'Credito marcado como pagado correctamente.');
     }
 
     private function activeBox(): ?Box

@@ -382,6 +382,153 @@ class BillingManagementTest extends TestCase
         ]);
     }
 
+    public function test_manual_billing_can_be_registered_without_payment_method(): void
+    {
+        $user = $this->createAdminUser();
+
+        $box = Box::create([
+            'name' => 'Caja manual sin metodo',
+            'code' => 'BOX-MANUAL-NO-METHOD',
+            'user_id' => $user->id,
+            'opening_balance' => 50000,
+            'status' => 'open',
+            'opened_at' => now(),
+        ]);
+
+        $response = $this
+            ->actingAs($user)
+            ->postJson(route('billing.manual.store'), [
+                'origin_type' => 'table',
+                'origin_reference' => 'Venta sin metodo',
+                'customer_name' => 'Cliente manual',
+                'document_type' => 'ticket',
+                'payment_method_id' => null,
+                'amount_received' => 18000,
+                'items' => [
+                    [
+                        'name' => 'Cuenta sin metodo',
+                        'quantity' => 1,
+                        'unit_price' => 18000,
+                    ],
+                ],
+            ]);
+
+        $response->assertOk();
+
+        $sale = Sale::query()->firstOrFail();
+
+        $this->assertDatabaseHas('payments', [
+            'sale_id' => $sale->id,
+            'payment_method_id' => null,
+            'amount' => 18000,
+            'received_amount' => 18000,
+            'change_amount' => 0,
+        ]);
+
+        $this->assertDatabaseHas('box_movements', [
+            'sale_id' => $sale->id,
+            'movement_type' => 'manual_payment',
+            'amount' => 18000,
+            'balance_before' => 50000,
+            'balance_after' => 68000,
+        ]);
+    }
+
+    public function test_manual_billing_can_register_and_pay_customer_credit(): void
+    {
+        $user = $this->createAdminUser();
+
+        $box = Box::create([
+            'name' => 'Caja creditos',
+            'code' => 'BOX-CREDIT',
+            'user_id' => $user->id,
+            'opening_balance' => 10000,
+            'status' => 'open',
+            'opened_at' => now(),
+        ]);
+
+        $customer = Customer::create([
+            'name' => 'Cliente Credito',
+            'document_number' => '900123',
+            'is_active' => true,
+        ]);
+
+        $response = $this
+            ->actingAs($user)
+            ->postJson(route('billing.manual.store'), [
+                'origin_type' => 'table',
+                'customer_id' => $customer->id,
+                'document_type' => 'ticket',
+                'is_credit' => true,
+                'credit_due_at' => today()->addDays(8)->toDateString(),
+                'amount_received' => 0,
+                'items' => [
+                    [
+                        'name' => 'Cuenta a credito',
+                        'quantity' => 1,
+                        'unit_price' => 32000,
+                    ],
+                ],
+            ]);
+
+        $response->assertOk();
+
+        $sale = Sale::query()->firstOrFail();
+
+        $this->assertDatabaseHas('sales', [
+            'id' => $sale->id,
+            'customer_id' => $customer->id,
+            'status' => 'credit',
+            'payment_status' => 'credit',
+            'total' => 32000,
+        ]);
+
+        $this->assertDatabaseHas('payments', [
+            'sale_id' => $sale->id,
+            'payment_method_id' => null,
+            'received_amount' => 0,
+            'status' => 'pending',
+        ]);
+
+        $this->assertDatabaseHas('box_movements', [
+            'sale_id' => $sale->id,
+            'movement_type' => 'manual_payment',
+            'amount' => 0,
+            'balance_before' => 10000,
+            'balance_after' => 10000,
+        ]);
+
+        $payResponse = $this
+            ->actingAs($user)
+            ->post(route('billing.credits.pay', $sale), [
+                'amount_received' => 32000,
+            ]);
+
+        $payResponse
+            ->assertRedirect(route('billing.history', ['payment_status' => 'credit']));
+
+        $this->assertDatabaseHas('sales', [
+            'id' => $sale->id,
+            'status' => 'completed',
+            'payment_status' => 'paid',
+            'credit_due_at' => null,
+        ]);
+
+        $this->assertDatabaseHas('payments', [
+            'sale_id' => $sale->id,
+            'received_amount' => 32000,
+            'status' => 'completed',
+        ]);
+
+        $this->assertDatabaseHas('box_movements', [
+            'sale_id' => $sale->id,
+            'movement_type' => 'credit_payment',
+            'amount' => 32000,
+            'balance_before' => 10000,
+            'balance_after' => 42000,
+        ]);
+    }
+
     private function createAdminUser(): User
     {
         $user = User::factory()->create();

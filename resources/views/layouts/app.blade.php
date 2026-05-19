@@ -6,6 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>{{ str_replace('RestaurantePOS', config('app.name', 'Solomo & Pomo'), trim($__env->yieldContent('title', config('app.name', 'Solomo & Pomo') . ' - Sistema de Gestión'))) }}</title>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
     
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -21,8 +23,13 @@
     <link rel="stylesheet" href="{{ asset('css/dashboard/dashboard.css') }}">
     <link rel="stylesheet" href="{{ asset('css/products/management.css') }}">
     <link rel="stylesheet" href="{{ asset('css/tables/management.css') }}">
+    @stack('styles')
 </head>
 <body>
+    @php
+        $currentUser = Auth::user()?->loadMissing('roles.permissions');
+    @endphp
+
     <!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-dark">
         <div class="container-fluid">
@@ -36,7 +43,7 @@
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item dropdown">
                         <a class="nav-link user-dropdown dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
-                            <i class="fas fa-user-circle"></i> {{ Auth::user()->name }}
+                            <i class="fas fa-user-circle"></i> {{ $currentUser->name }}
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
                             <li><a class="dropdown-item" href="{{ route('dashboard') }}"><i class="fas fa-home"></i> Dashboard</a></li>
@@ -305,6 +312,7 @@
     <script src="{{ asset('js/layouts/sidebar.js') }}"></script>
 
     @yield('scripts')
+    @stack('scripts')
 
     <!-- Alertas del sistema -->
     @include('components.alerts')

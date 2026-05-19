@@ -141,7 +141,7 @@
                             <div class="col-12">
                                 <label class="form-label d-block">Evidencia de entrega</label>
                                 <a href="{{ $delivery->delivery_proof_image_url }}" target="_blank" rel="noopener noreferrer">
-                                    <img src="{{ $delivery->delivery_proof_image_url }}" alt="Evidencia del domicilio" style="width: 180px; height: 180px; object-fit: cover; border-radius: 18px; border: 1px solid #dbe3f1;">
+                                    <img src="{{ $delivery->delivery_proof_image_url }}" alt="Evidencia del domicilio" loading="lazy" decoding="async" style="width: 180px; height: 180px; object-fit: cover; border-radius: 18px; border: 1px solid #dbe3f1;">
                                 </a>
                             </div>
                         @endif
@@ -518,7 +518,7 @@
                 productGrid.innerHTML = visibleProducts.map(product => {
                     const selectedQuantity = selectedItems.get(String(product.id))?.quantity || 0;
                     const mediaMarkup = product.imageUrl
-                        ? '<img src="' + escapeHtml(product.imageUrl) + '" alt="' + escapeHtml(product.name) + '">'
+                        ? '<img src="' + escapeHtml(product.imageUrl) + '" alt="' + escapeHtml(product.name) + '" loading="lazy" decoding="async">'
                         : placeholderMarkup('fas fa-utensils');
 
                     return '' +
@@ -552,7 +552,7 @@
 
                 draftItemsContainer.innerHTML = entries.map(entry => {
                     const mediaMarkup = entry.product.imageUrl
-                        ? '<img src="' + escapeHtml(entry.product.imageUrl) + '" alt="' + escapeHtml(entry.product.name) + '">'
+                        ? '<img src="' + escapeHtml(entry.product.imageUrl) + '" alt="' + escapeHtml(entry.product.name) + '" loading="lazy" decoding="async">'
                         : placeholderMarkup('fas fa-image');
 
                     return '' +

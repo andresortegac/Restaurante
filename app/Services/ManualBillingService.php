@@ -26,6 +26,7 @@ class ManualBillingService
     {
         $documentType = $payload['document_type'] ?? Invoice::TYPE_TICKET;
         $originType = $payload['origin_type'] ?? 'table';
+        $isCredit = (bool) ($payload['is_credit'] ?? false);
 
         $customer = null;
 
@@ -37,15 +38,25 @@ class ManualBillingService
             $this->saleDocumentService->assertElectronicInvoiceRequirements($customer);
         }
 
-        $paymentMethod = PaymentMethod::query()
-            ->whereKey($payload['payment_method_id'])
-            ->where('active', true)
-            ->first();
-
-        if (! $paymentMethod) {
+        if ($isCredit && ! $customer && ! filled($payload['customer_name'] ?? null)) {
             throw ValidationException::withMessages([
-                'payment_method_id' => 'Selecciona un metodo de pago activo.',
+                'customer_id' => 'Selecciona o escribe el cliente para registrar un credito.',
             ]);
+        }
+
+        $paymentMethod = null;
+
+        if (! empty($payload['payment_method_id'])) {
+            $paymentMethod = PaymentMethod::query()
+                ->whereKey($payload['payment_method_id'])
+                ->where('active', true)
+                ->first();
+
+            if (! $paymentMethod) {
+                throw ValidationException::withMessages([
+                    'payment_method_id' => 'Selecciona un metodo de pago activo.',
+                ]);
+            }
         }
 
         $tipAmount = round((float) ($payload['tip_amount'] ?? 0), 2);
@@ -62,7 +73,7 @@ class ManualBillingService
 
         $sale = null;
 
-        DB::transaction(function () use ($payload, $paymentMethod, $items, $tipAmount, $amountReceived, $userId, $originType, $customer, &$sale): void {
+        DB::transaction(function () use ($payload, $paymentMethod, $items, $tipAmount, $amountReceived, $userId, $originType, $customer, $isCredit, &$sale): void {
             $box = Box::query()
                 ->where('status', 'open')
                 ->where('user_id', $userId)
@@ -106,7 +117,9 @@ class ManualBillingService
                 'box_id' => $box->id,
                 'customer_id' => $customer?->id,
                 'customer_name' => $payload['customer_name'] ?? $customer?->name,
-                'status' => 'completed',
+                'status' => $isCredit ? 'credit' : 'completed',
+                'payment_status' => $isCredit ? 'credit' : 'paid',
+                'credit_due_at' => $isCredit ? ($payload['credit_due_at'] ?? null) : null,
                 'notes' => $this->saleNotes($payload, $originType),
             ]);
 
@@ -155,30 +168,32 @@ class ManualBillingService
             $amountDue = round((float) $sale->total + $tipAmount, 2);
             $isCashPayment = $this->isCashPaymentMethod($paymentMethod);
 
-            if ($amountReceived < $amountDue) {
+            if (! $isCredit && $amountReceived < $amountDue) {
                 throw ValidationException::withMessages([
                     'amount_received' => 'El monto recibido no cubre el total mas la propina.',
                 ]);
             }
 
-            if (! $isCashPayment && abs($amountReceived - $amountDue) > 0.009) {
+            if (! $isCredit && ! $isCashPayment && abs($amountReceived - $amountDue) > 0.009) {
                 throw ValidationException::withMessages([
                     'amount_received' => 'Para pagos distintos a efectivo, el monto recibido debe ser igual al total mas la propina.',
                 ]);
             }
 
-            $changeAmount = $isCashPayment
+            $changeAmount = $isCredit
+                ? 0.0
+                : ($isCashPayment
                 ? round(max(0, $amountReceived - $amountDue), 2)
-                : 0.0;
+                : 0.0);
 
             $payment = $sale->payments()->create([
-                'payment_method_id' => $paymentMethod->id,
+                'payment_method_id' => $paymentMethod?->id,
                 'amount' => $sale->total,
-                'received_amount' => $amountReceived,
+                'received_amount' => $isCredit ? 0 : $amountReceived,
                 'change_amount' => $changeAmount,
-                'tip_amount' => $tipAmount,
+                'tip_amount' => $isCredit ? 0 : $tipAmount,
                 'reference' => $payload['reference'] ?? null,
-                'status' => 'completed',
+                'status' => $isCredit ? 'pending' : 'completed',
             ]);
 
             $movementTotal = (float) BoxMovement::query()
@@ -186,9 +201,11 @@ class ManualBillingService
                 ->lockForUpdate()
                 ->sum('amount');
             $balanceBefore = round((float) $box->opening_balance + $movementTotal, 2);
-            $boxImpact = $this->boxImpactAmount((float) $sale->total, $tipAmount, $paymentMethod);
+            $boxImpact = $isCredit
+                ? 0.0
+                : $this->boxImpactAmount((float) $sale->total, $tipAmount, $paymentMethod);
             $balanceAfter = round($balanceBefore + $boxImpact, 2);
-            $description = $this->movementDescription($sale, $originType, $paymentMethod, $boxImpact);
+            $description = $this->movementDescription($sale, $originType, $paymentMethod, $boxImpact, $isCredit);
 
             $box->movements()->create([
                 'box_session_id' => $boxSession->id,
@@ -214,6 +231,7 @@ class ManualBillingService
                     'origin_type' => $originType,
                     'payment_id' => $payment->id,
                     'amount' => $boxImpact,
+                    'is_credit' => $isCredit,
                 ],
                 'occurred_at' => now(),
             ]);
@@ -250,12 +268,16 @@ class ManualBillingService
         ])->filter()->implode(' | ');
     }
 
-    private function isCashPaymentMethod(PaymentMethod $paymentMethod): bool
+    private function isCashPaymentMethod(?PaymentMethod $paymentMethod): bool
     {
+        if (! $paymentMethod) {
+            return true;
+        }
+
         return strtoupper((string) $paymentMethod->code) === 'CASH';
     }
 
-    private function boxImpactAmount(float $saleTotal, float $tipAmount, PaymentMethod $paymentMethod): float
+    private function boxImpactAmount(float $saleTotal, float $tipAmount, ?PaymentMethod $paymentMethod): float
     {
         if (! $this->isCashPaymentMethod($paymentMethod)) {
             return 0.0;
@@ -264,12 +286,12 @@ class ManualBillingService
         return round($saleTotal + $tipAmount, 2);
     }
 
-    private function movementDescription(Sale $sale, string $originType, PaymentMethod $paymentMethod, float $boxImpact): string
+    private function movementDescription(Sale $sale, string $originType, ?PaymentMethod $paymentMethod, float $boxImpact, bool $isCredit = false): string
     {
         $parts = [
             'Cobro manual #' . $sale->id,
             $originType === 'delivery' ? 'Domicilio' : 'Mesa',
-            'Metodo ' . $paymentMethod->name,
+            $isCredit ? 'Credito' : 'Metodo ' . ($paymentMethod?->name ?? 'Sin dato'),
             $boxImpact > 0
                 ? 'Impacto en caja $' . number_format($boxImpact, 2, '.', '')
                 : 'Sin impacto en caja',
