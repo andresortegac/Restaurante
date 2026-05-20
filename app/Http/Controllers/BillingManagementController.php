@@ -195,6 +195,7 @@ class BillingManagementController extends Controller
                 ->get(),
             'customers' => Customer::query()
                 ->withSum(['pendingCredits as pending_credit_total' => fn ($query) => $query->where('status', 'pending')], 'balance')
+                ->where('is_active', true)
                 ->orderBy('name')
                 ->limit(200)
                 ->get(['id', 'name', 'document_number', 'billing_identification', 'email', 'phone', 'billing_address']),

@@ -303,6 +303,33 @@ class BillingManagementTest extends TestCase
         $response->assertSee('TKT-202605-000001');
     }
 
+    public function test_manual_billing_page_hides_removed_sections_and_fields(): void
+    {
+        $user = $this->createAdminUser();
+
+        Box::create([
+            'name' => 'Caja manual vista',
+            'code' => 'BOX-MANUAL-VIEW',
+            'user_id' => $user->id,
+            'opening_balance' => 50000,
+            'status' => 'open',
+            'opened_at' => now(),
+        ]);
+
+        $response = $this
+            ->actingAs($user)
+            ->get(route('billing.manual'));
+
+        $response->assertOk();
+        $response->assertViewIs('billing.manual-checkout');
+        $response->assertDontSee('Registra cuentas antiguas o cobros que no nacieron desde una mesa o un domicilio creado en el sistema.');
+        $response->assertDontSee('Caja activa');
+        $response->assertDontSee('Datos del cobro');
+        $response->assertDontSee('Referencia del pago');
+        $response->assertDontSee('Vence el credito');
+        $response->assertDontSee('Propina');
+    }
+
     public function test_manual_billing_registers_table_charge_by_default(): void
     {
         $user = $this->createAdminUser();
@@ -435,6 +462,41 @@ class BillingManagementTest extends TestCase
         ]);
     }
 
+    public function test_manual_billing_credit_requires_registered_customer(): void
+    {
+        $user = $this->createAdminUser();
+
+        Box::create([
+            'name' => 'Caja creditos sin cliente',
+            'code' => 'BOX-CREDIT-REQUIRES-CUSTOMER',
+            'user_id' => $user->id,
+            'opening_balance' => 10000,
+            'status' => 'open',
+            'opened_at' => now(),
+        ]);
+
+        $response = $this
+            ->actingAs($user)
+            ->postJson(route('billing.manual.store'), [
+                'origin_type' => 'table',
+                'customer_name' => 'Cliente solo escrito',
+                'document_type' => 'ticket',
+                'is_credit' => true,
+                'amount_received' => 0,
+                'items' => [
+                    [
+                        'name' => 'Cuenta a credito sin cliente',
+                        'quantity' => 1,
+                        'unit_price' => 32000,
+                    ],
+                ],
+            ]);
+
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors(['customer_id']);
+        $response->assertJsonPath('errors.customer_id.0', 'Selecciona un cliente creado para registrar el credito.');
+    }
+
     public function test_manual_billing_can_register_and_pay_customer_credit(): void
     {
         $user = $this->createAdminUser();
@@ -461,7 +523,6 @@ class BillingManagementTest extends TestCase
                 'customer_id' => $customer->id,
                 'document_type' => 'ticket',
                 'is_credit' => true,
-                'credit_due_at' => today()->addDays(8)->toDateString(),
                 'amount_received' => 0,
                 'items' => [
                     [
@@ -481,6 +542,7 @@ class BillingManagementTest extends TestCase
             'customer_id' => $customer->id,
             'status' => 'credit',
             'payment_status' => 'credit',
+            'credit_due_at' => null,
             'total' => 32000,
         ]);
 

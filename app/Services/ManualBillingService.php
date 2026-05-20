@@ -32,16 +32,25 @@ class ManualBillingService
         $customer = null;
 
         if (! empty($payload['customer_id'])) {
-            $customer = Customer::query()->find($payload['customer_id']);
+            $customer = Customer::query()
+                ->whereKey($payload['customer_id'])
+                ->where('is_active', true)
+                ->first();
+
+            if (! $customer) {
+                throw ValidationException::withMessages([
+                    'customer_id' => 'Selecciona un cliente activo para continuar con el cobro.',
+                ]);
+            }
         }
 
         if ($documentType === Invoice::TYPE_ELECTRONIC) {
             $this->saleDocumentService->assertElectronicInvoiceRequirements($customer);
         }
 
-        if ($isCredit && ! $customer && ! filled($payload['customer_name'] ?? null)) {
+        if ($isCredit && ! $customer) {
             throw ValidationException::withMessages([
-                'customer_id' => 'Selecciona o escribe el cliente para registrar un credito.',
+                'customer_id' => 'Selecciona un cliente creado para registrar el credito.',
             ]);
         }
 
@@ -119,7 +128,7 @@ class ManualBillingService
                 'user_id' => $userId,
                 'box_id' => $box->id,
                 'customer_id' => $customer?->id,
-                'customer_name' => $payload['customer_name'] ?? $customer?->name,
+                'customer_name' => $customer?->name ?: ($payload['customer_name'] ?? null),
                 'status' => $isCredit ? 'credit' : 'completed',
                 'payment_status' => $isCredit ? 'credit' : 'paid',
                 'credit_due_at' => $isCredit ? ($payload['credit_due_at'] ?? null) : null,

@@ -4,7 +4,6 @@
 
 @section('content')
 @php
-    $initialOriginType = old('origin_type', 'table');
     $initialDocumentType = old('document_type', 'ticket');
     $oldItems = collect(old('items', [['product_id' => '', 'name' => '', 'quantity' => 1, 'unit_price' => 0]]))->values();
     $paymentMethodOptions = $paymentMethods->map(fn ($method) => [
@@ -57,7 +56,6 @@
         <div>
             <span class="module-kicker">Caja / Facturacion</span>
             <h1>Cobro manual</h1>
-            <p>Registra cuentas antiguas o cobros que no nacieron desde una mesa o un domicilio creado en el sistema.</p>
         </div>
         <div class="summary-group">
             <span class="summary-chip">Mesa por defecto</span>
@@ -70,11 +68,13 @@
 
     <form method="POST" action="{{ route('billing.manual.store') }}" id="manualBillingForm" accept-charset="UTF-8">
         @csrf
+        <input type="hidden" name="origin_type" value="table">
 
         <div class="billing-manual-stack">
             <div class="card module-card service-card">
-                <div class="card-header">
+                <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-3">
                     <h5 class="mb-0">Registrar pago</h5>
+                    <a href="{{ route('billing.history') }}" class="btn btn-outline-secondary btn-sm">Ver ventas</a>
                 </div>
                 <div class="card-body">
                     @if(!$activeBox)
@@ -85,12 +85,6 @@
                         </div>
                     @else
                         <div class="manual-payment-grid">
-                            <div class="meta-box">
-                                <div class="summary-kicker">Caja activa</div>
-                                <div class="fw-bold">{{ $activeBox->name }}</div>
-                                <div class="seat-note">Saldo estimado: ${{ number_format($activeBox->currentBalance(), 2) }}</div>
-                            </div>
-
                             <div>
                                 <label class="form-label" for="document_type">Documento a emitir</label>
                                 <select class="form-select" id="document_type" name="document_type">
@@ -110,6 +104,19 @@
                             </div>
 
                             <div>
+                                <label class="form-label" for="customer_id">Cliente registrado</label>
+                                <select class="form-select" id="customer_id" name="customer_id">
+                                    <option value="">Consumidor final / sin cliente</option>
+                                    @foreach($customers as $customer)
+                                        <option value="{{ $customer->id }}" @selected((int) old('customer_id') === (int) $customer->id)>
+                                            {{ $customer->name }}{{ $customer->document_number ? ' - ' . $customer->document_number : '' }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <div class="form-help mt-1" id="customerFieldHelp">Opcional para tickets pagados ahora.</div>
+                            </div>
+
+                            <div>
                                 <label class="form-label" for="payment_method_id">Metodo de pago</label>
                                 <select class="form-select" id="payment_method_id" name="payment_method_id">
                                     <option value="" @selected(! old('payment_method_id'))>Sin dato</option>
@@ -123,32 +130,16 @@
                             </div>
 
                             <div>
-                                <label class="form-label" for="credit_due_at">Vence el credito</label>
-                                <input type="date" class="form-control" id="credit_due_at" name="credit_due_at" value="{{ old('credit_due_at') }}">
-                                <div class="form-help mt-1">Opcional para recordar la fecha de pago.</div>
-                            </div>
-
-                            <div>
-                                <label class="form-label" for="tip_amount">Propina</label>
-                                <input type="number" class="form-control" id="tip_amount" name="tip_amount" min="0" step="0.01" value="{{ number_format((float) old('tip_amount', 0), 2, '.', '') }}">
-                            </div>
-
-                            <div>
                                 <label class="form-label" for="amount_received">Monto recibido</label>
                                 <input type="number" class="form-control" id="amount_received" name="amount_received" min="0" step="0.01" value="{{ number_format((float) old('amount_received', 0), 2, '.', '') }}" required>
                                 <div class="form-help mt-1" id="amountReceivedHelp">Ingresa el valor recibido para calcular el cambio.</div>
-                            </div>
-
-                            <div>
-                                <label class="form-label" for="reference">Referencia del pago</label>
-                                <input type="text" class="form-control" id="reference" name="reference" value="{{ old('reference') }}" placeholder="Comprobante, ultimos digitos o nota">
                             </div>
 
                             <div class="meta-box manual-payment-totals">
                                 <div class="mb-3">
                                     <span class="summary-kicker d-block">Cliente</span>
                                     <strong id="manualCustomerLabel">Consumidor final / sin cliente</strong>
-                                    <div class="text-muted small" id="manualCustomerMeta">Selecciona un cliente o escribe un nombre en datos del cobro.</div>
+                                    <div class="text-muted small" id="manualCustomerMeta">Selecciona un cliente si quieres asociar el cobro.</div>
                                 </div>
                                 <div class="d-flex justify-content-between gap-3">
                                     <span class="summary-kicker">Subtotal</span>
@@ -169,47 +160,6 @@
                             <button type="submit" class="btn btn-success">Registrar cobro manual</button>
                         </div>
                     @endif
-                </div>
-            </div>
-
-            <div class="card module-card service-card">
-                <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-3">
-                    <div>
-                        <h5 class="mb-1">Datos del cobro</h5>
-                        <p class="table-note mb-0">Solo se guarda la informacion necesaria para clasificar y documentar el cobro.</p>
-                    </div>
-                    <a href="{{ route('billing.history') }}" class="btn btn-outline-secondary btn-sm">Ver ventas</a>
-                </div>
-                <div class="card-body">
-                    <div class="row g-3">
-                        <div class="col-md-4">
-                            <label class="form-label" for="origin_type">Tipo de cobro</label>
-                            <select class="form-select" id="origin_type" name="origin_type" required>
-                                <option value="table" @selected($initialOriginType === 'table')>Pedido de mesa</option>
-                                <option value="delivery" @selected($initialOriginType === 'delivery')>Domicilio</option>
-                            </select>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label" for="customer_id">Cliente registrado</label>
-                            <select class="form-select" id="customer_id" name="customer_id">
-                                <option value="">Consumidor final / sin cliente</option>
-                                @foreach($customers as $customer)
-                                    <option value="{{ $customer->id }}" @selected((int) old('customer_id') === (int) $customer->id)>
-                                        {{ $customer->name }}{{ $customer->document_number ? ' - ' . $customer->document_number : '' }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label" for="customer_name">Cliente no registrado</label>
-                            <input type="text" class="form-control" id="customer_name" name="customer_name" value="{{ old('customer_name') }}" placeholder="Nombre para credito o ticket">
-                            <div class="form-help">Usalo si el cliente no esta creado en el sistema.</div>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label" for="notes">Notas internas</label>
-                            <textarea class="form-control" id="notes" name="notes" rows="1" placeholder="Detalle adicional">{{ old('notes') }}</textarea>
-                        </div>
-                    </div>
                 </div>
             </div>
 
@@ -288,16 +238,14 @@ document.addEventListener('DOMContentLoaded', function () {
     const paymentMethod = document.getElementById('payment_method_id');
     const amountReceived = document.getElementById('amount_received');
     const amountHelp = document.getElementById('amountReceivedHelp');
-    const tipInput = document.getElementById('tip_amount');
     const creditMode = document.getElementById('is_credit');
-    const creditDueAt = document.getElementById('credit_due_at');
     const subtotalLabel = document.getElementById('manualSubtotal');
     const dueLabel = document.getElementById('manualAmountDue');
     const changeLabel = document.getElementById('manualChange');
     const documentType = document.getElementById('document_type');
     const documentHelp = document.getElementById('documentTypeHelp');
     const customerSelect = document.getElementById('customer_id');
-    const customerNameInput = document.getElementById('customer_name');
+    const customerFieldHelp = document.getElementById('customerFieldHelp');
     const customerLabel = document.getElementById('manualCustomerLabel');
     const customerMeta = document.getElementById('manualCustomerMeta');
     const selectedItems = new Map();
@@ -323,13 +271,12 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     const selectedCustomer = () => customers.find(customer => String(customer.id) === String(customerSelect.value)) || null;
-    const typedCustomerName = () => String(customerNameInput?.value || '').trim();
     const findProduct = productId => products.find(product => String(product.id) === String(productId)) || null;
     const placeholderMarkup = icon => '<div class="waiter-image-placeholder"><i class="' + icon + '"></i></div>';
+    const requiresRegisteredCustomer = () => isCreditSale() || documentType.value === 'electronic';
 
     const syncCustomerSummary = (projectedAmount = null) => {
         const customer = selectedCustomer();
-        const typedName = typedCustomerName();
 
         if (customer) {
             customerLabel.textContent = customer.name;
@@ -351,16 +298,30 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        if (typedName) {
-            customerLabel.textContent = typedName;
-            customerMeta.textContent = 'Cliente escrito manualmente.';
+        customerLabel.textContent = 'Consumidor final / sin cliente';
+        customerMeta.textContent = requiresRegisteredCustomer()
+            ? 'Selecciona un cliente creado para continuar con este cobro.'
+            : 'Selecciona un cliente si quieres asociar el cobro.';
+    };
+
+    const syncCustomerFieldState = () => {
+        if (!customerFieldHelp) {
             return;
         }
 
-        customerLabel.textContent = 'Consumidor final / sin cliente';
-        customerMeta.textContent = isCreditSale()
-            ? 'Para credito selecciona un cliente o escribe un nombre.'
-            : 'Selecciona un cliente o escribe un nombre en datos del cobro.';
+        customerSelect.required = requiresRegisteredCustomer();
+
+        if (isCreditSale()) {
+            customerFieldHelp.textContent = 'Obligatorio para enviar el cobro a credito.';
+            return;
+        }
+
+        if (documentType.value === 'electronic') {
+            customerFieldHelp.textContent = 'Obligatorio para emitir factura electronica.';
+            return;
+        }
+
+        customerFieldHelp.textContent = 'Opcional para tickets pagados ahora.';
     };
 
     const syncDocumentHelp = () => {
@@ -378,8 +339,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const syncTotals = () => {
         const entries = Array.from(selectedItems.values());
         const subtotal = entries.reduce((sum, entry) => sum + (entry.quantity * entry.unitPrice), 0);
-        const tip = Math.max(0, Number(tipInput.value || 0));
-        const due = subtotal + tip;
+        const due = subtotal;
         const method = selectedMethod();
         const exactPayment = Boolean(method) && !isCashPayment();
 
@@ -389,29 +349,17 @@ document.addEventListener('DOMContentLoaded', function () {
             amountReceived.value = '0.00';
             amountReceived.readOnly = true;
             amountReceived.classList.add('bg-light');
-            tipInput.value = '0.00';
-            tipInput.readOnly = true;
-            tipInput.classList.add('bg-light');
-            creditDueAt.disabled = false;
             amountHelp.textContent = 'Credito pendiente: no se registra dinero recibido ni cambio.';
         } else if (exactPayment) {
             paymentMethod.disabled = false;
             amountReceived.value = due.toFixed(2);
             amountReceived.readOnly = true;
             amountReceived.classList.add('bg-light');
-            tipInput.readOnly = false;
-            tipInput.classList.remove('bg-light');
-            creditDueAt.value = '';
-            creditDueAt.disabled = true;
             amountHelp.textContent = 'Para pagos distintos a efectivo, el monto recibido debe coincidir con el total.';
         } else {
             paymentMethod.disabled = false;
             amountReceived.readOnly = false;
             amountReceived.classList.remove('bg-light');
-            tipInput.readOnly = false;
-            tipInput.classList.remove('bg-light');
-            creditDueAt.value = '';
-            creditDueAt.disabled = true;
             amountHelp.textContent = 'Ingresa el valor recibido para calcular el cambio.';
 
             if (amountReceived.dataset.userEdited !== 'true' && due > 0) {
@@ -634,14 +582,22 @@ document.addEventListener('DOMContentLoaded', function () {
         amountReceived.dataset.userEdited = 'true';
         syncTotals();
     });
-    tipInput.addEventListener('input', syncTotals);
-    creditMode.addEventListener('change', syncTotals);
-    documentType.addEventListener('change', syncDocumentHelp);
-    customerSelect.addEventListener('change', function () {
+    creditMode.addEventListener('change', function () {
+        amountReceived.dataset.userEdited = 'false';
+        syncCustomerFieldState();
+        syncDocumentHelp();
+        syncTotals();
+    });
+    documentType.addEventListener('change', function () {
+        syncCustomerFieldState();
         syncDocumentHelp();
         syncCustomerSummary();
     });
-    customerNameInput.addEventListener('input', syncCustomerSummary);
+    customerSelect.addEventListener('change', function () {
+        syncCustomerFieldState();
+        syncDocumentHelp();
+        syncCustomerSummary();
+    });
 
     form.addEventListener('submit', async function (event) {
         event.preventDefault();
@@ -652,8 +608,14 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        if (isCreditSale() && !selectedCustomer() && !typedCustomerName()) {
-            const message = 'Para registrar un credito debes seleccionar un cliente o escribir su nombre.';
+        if (isCreditSale() && !selectedCustomer()) {
+            const message = 'Para registrar un credito debes seleccionar un cliente creado.';
+            window.Swal ? await Swal.fire({ icon: 'warning', title: 'Falta el cliente', text: message, confirmButtonText: 'Aceptar', confirmButtonColor: '#2563eb' }) : alert(message);
+            return;
+        }
+
+        if (documentType.value === 'electronic' && !selectedCustomer()) {
+            const message = 'Selecciona un cliente creado para emitir factura electronica.';
             window.Swal ? await Swal.fire({ icon: 'warning', title: 'Falta el cliente', text: message, confirmButtonText: 'Aceptar', confirmButtonColor: '#2563eb' }) : alert(message);
             return;
         }
@@ -700,6 +662,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+    syncCustomerFieldState();
     syncDocumentHelp();
     syncCustomerSummary();
     renderProducts();
