@@ -132,6 +132,12 @@ Route::middleware('auth')->group(function () {
         Route::get('/', [CustomerManagementController::class, 'index'])->name('index');
         Route::get('/create', [CustomerManagementController::class, 'create'])->name('create');
         Route::post('/', [CustomerManagementController::class, 'store'])->name('store');
+        Route::prefix('credits')->name('credits.')->group(function () {
+            Route::get('/', [CustomerManagementController::class, 'credits'])->name('index');
+            Route::get('/{customer}', [CustomerManagementController::class, 'showCredit'])->name('show');
+            Route::post('/{customer}', [CustomerManagementController::class, 'storeCredit'])->name('store');
+            Route::post('/{customer}/{credit}/pay', [CustomerManagementController::class, 'payCredit'])->name('pay');
+        });
         Route::get('/{customer}/edit', [CustomerManagementController::class, 'edit'])->name('edit');
         Route::put('/{customer}', [CustomerManagementController::class, 'update'])->name('update');
         Route::delete('/{customer}', [CustomerManagementController::class, 'destroy'])->name('destroy');

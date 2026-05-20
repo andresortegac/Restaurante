@@ -12,7 +12,7 @@
         <div class="welcome-section">
             <h1><i class="fas fa-wave-hand"></i> Bienvenido, {{ $accountUser->name }}!</h1>
             <p>
-                Has iniciado sesión correctamente en el Sistema de Gestión de Restaurantes.
+                Has iniciado sesion correctamente en el Sistema de Gestion de Restaurantes.
                 Aqui puedes consultar el estado operativo del negocio y seguir el movimiento del dia en tiempo real.
             </p>
         </div>

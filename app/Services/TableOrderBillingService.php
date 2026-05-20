@@ -6,6 +6,7 @@ use App\Models\Box;
 use App\Models\BoxAuditLog;
 use App\Models\BoxMovement;
 use App\Models\BoxSession;
+use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\PaymentMethod;
 use App\Models\RestaurantTable;
@@ -18,37 +19,68 @@ use Throwable;
 class TableOrderBillingService
 {
     public function __construct(
-        private readonly SaleDocumentService $saleDocumentService
+        private readonly SaleDocumentService $saleDocumentService,
+        private readonly CustomerCreditService $customerCreditService
     ) {
     }
 
     public function checkout(TableOrder $order, array $payload, int $userId): array
     {
         $documentType = $payload['document_type'] ?? Invoice::TYPE_TICKET;
+        $isCredit = (bool) ($payload['is_credit'] ?? false);
+        $customerSelectionProvided = array_key_exists('customer_id', $payload);
+        $selectedCustomerId = $customerSelectionProvided && ! blank($payload['customer_id'] ?? null)
+            ? (int) $payload['customer_id']
+            : null;
 
         $order->loadMissing('customer');
 
+        $selectedCustomer = null;
+
+        if ($selectedCustomerId) {
+            $selectedCustomer = Customer::query()
+                ->whereKey($selectedCustomerId)
+                ->where('is_active', true)
+                ->first();
+
+            if (! $selectedCustomer) {
+                throw ValidationException::withMessages([
+                    'customer_id' => 'Selecciona un cliente activo para continuar con el cobro.',
+                ]);
+            }
+        }
+
+        $billingCustomer = $customerSelectionProvided
+            ? $selectedCustomer
+            : $order->customer;
+
         if ($documentType === Invoice::TYPE_ELECTRONIC) {
-            $this->saleDocumentService->assertElectronicInvoiceRequirements($order->customer);
+            $this->saleDocumentService->assertElectronicInvoiceRequirements($billingCustomer);
         }
 
-        $paymentMethod = PaymentMethod::query()
-            ->whereKey($payload['payment_method_id'])
-            ->where('active', true)
-            ->first();
+        $paymentMethod = null;
 
-        if (! $paymentMethod) {
-            throw ValidationException::withMessages([
-                'payment_method_id' => 'Selecciona un método de pago activo.',
-            ]);
+        if (! $isCredit) {
+            $paymentMethod = PaymentMethod::query()
+                ->whereKey($payload['payment_method_id'] ?? null)
+                ->where('active', true)
+                ->first();
+
+            if (! $paymentMethod) {
+                throw ValidationException::withMessages([
+                    'payment_method_id' => 'Selecciona un metodo de pago activo.',
+                ]);
+            }
         }
 
-        $tipAmount = round((float) ($payload['tip_amount'] ?? 0), 2);
+        $tipAmount = $isCredit
+            ? 0.0
+            : round((float) ($payload['tip_amount'] ?? 0), 2);
         $amountReceived = round((float) $payload['amount_received'], 2);
         $sale = null;
         $table = null;
 
-        DB::transaction(function () use ($order, $paymentMethod, $payload, $tipAmount, $amountReceived, $userId, &$sale, &$table): void {
+        DB::transaction(function () use ($order, $paymentMethod, $payload, $tipAmount, $amountReceived, $userId, $isCredit, $customerSelectionProvided, &$sale, &$table): void {
             $currentOrder = TableOrder::query()
                 ->with(['items.product.taxRate', 'table', 'sale', 'customer'])
                 ->lockForUpdate()
@@ -65,6 +97,33 @@ class TableOrderBillingService
             if ($currentOrder->sale) {
                 throw ValidationException::withMessages([
                     'payment_method_id' => 'Este pedido ya tiene una venta registrada.',
+                ]);
+            }
+
+            $selectedCustomer = null;
+
+            if ($customerSelectionProvided && ! blank($payload['customer_id'] ?? null)) {
+                $selectedCustomer = Customer::query()
+                    ->whereKey((int) $payload['customer_id'])
+                    ->where('is_active', true)
+                    ->lockForUpdate()
+                    ->first();
+
+                if (! $selectedCustomer) {
+                    throw ValidationException::withMessages([
+                        'customer_id' => 'Selecciona un cliente activo para continuar con el cobro.',
+                    ]);
+                }
+            }
+
+            if ($customerSelectionProvided) {
+                $currentOrder->customer_id = $selectedCustomer?->id;
+                $currentOrder->customer_name = $selectedCustomer?->name;
+            }
+
+            if ($isCredit && ! $currentOrder->customer_id) {
+                throw ValidationException::withMessages([
+                    'customer_id' => 'Selecciona un cliente antes de enviar la cuenta a credito.',
                 ]);
             }
 
@@ -110,21 +169,23 @@ class TableOrderBillingService
             $amountDue = round((float) $currentOrder->total + $tipAmount, 2);
             $isCashPayment = $this->isCashPaymentMethod($paymentMethod);
 
-            if ($amountReceived < $amountDue) {
+            if (! $isCredit && $amountReceived < $amountDue) {
                 throw ValidationException::withMessages([
-                    'amount_received' => 'El monto recibido no cubre el total más la propina.',
+                    'amount_received' => 'El monto recibido no cubre el total a cobrar.',
                 ]);
             }
 
-            if (! $isCashPayment && abs($amountReceived - $amountDue) > 0.009) {
+            if (! $isCredit && ! $isCashPayment && abs($amountReceived - $amountDue) > 0.009) {
                 throw ValidationException::withMessages([
-                    'amount_received' => 'Para pagos distintos a efectivo, el monto recibido debe ser igual al total más la propina.',
+                    'amount_received' => 'Para pagos distintos a efectivo, el monto recibido debe ser igual al total a cobrar.',
                 ]);
             }
 
-            $changeAmount = $isCashPayment
-                ? round(max(0, $amountReceived - $amountDue), 2)
-                : 0.0;
+            $changeAmount = $isCredit
+                ? 0.0
+                : ($isCashPayment
+                    ? round(max(0, $amountReceived - $amountDue), 2)
+                    : 0.0);
 
             $saleNotes = collect([
                 'Pedido ' . $currentOrder->order_number,
@@ -138,7 +199,9 @@ class TableOrderBillingService
                 'table_order_id' => $currentOrder->id,
                 'customer_id' => $currentOrder->customer_id,
                 'customer_name' => $currentOrder->customer_name,
-                'status' => 'completed',
+                'status' => $isCredit ? 'credit' : 'completed',
+                'payment_status' => $isCredit ? 'credit' : 'paid',
+                'credit_due_at' => null,
                 'notes' => $saleNotes !== '' ? $saleNotes : null,
             ]);
 
@@ -155,13 +218,13 @@ class TableOrderBillingService
             $sale->calculateTotal();
 
             $payment = $sale->payments()->create([
-                'payment_method_id' => $paymentMethod->id,
+                'payment_method_id' => $paymentMethod?->id,
                 'amount' => $sale->total,
-                'received_amount' => $amountReceived,
+                'received_amount' => $isCredit ? 0 : $amountReceived,
                 'change_amount' => $changeAmount,
-                'tip_amount' => $tipAmount,
+                'tip_amount' => $isCredit ? 0 : $tipAmount,
                 'reference' => $payload['reference'] ?? null,
-                'status' => 'completed',
+                'status' => $isCredit ? 'pending' : 'completed',
             ]);
 
             $movementTotal = (float) BoxMovement::query()
@@ -169,8 +232,11 @@ class TableOrderBillingService
                 ->lockForUpdate()
                 ->sum('amount');
             $balanceBefore = round((float) $box->opening_balance + $movementTotal, 2);
-            $boxImpact = $this->boxImpactAmount((float) $sale->total, $tipAmount, $paymentMethod);
+            $boxImpact = $isCredit
+                ? 0.0
+                : $this->boxImpactAmount((float) $sale->total, $tipAmount, $paymentMethod);
             $balanceAfter = round($balanceBefore + $boxImpact, 2);
+            $description = $this->movementDescription($currentOrder, $table, $paymentMethod, $boxImpact, $isCredit);
 
             $box->movements()->create([
                 'box_session_id' => $boxSession->id,
@@ -181,7 +247,7 @@ class TableOrderBillingService
                 'amount' => $boxImpact,
                 'balance_before' => $balanceBefore,
                 'balance_after' => $balanceAfter,
-                'description' => $this->movementDescription($currentOrder, $table, $paymentMethod, $boxImpact),
+                'description' => $description,
                 'occurred_at' => now(),
             ]);
 
@@ -190,16 +256,30 @@ class TableOrderBillingService
                 'box_session_id' => $boxSession->id,
                 'user_id' => $userId,
                 'action' => 'table_order_payment',
-                'description' => $this->movementDescription($currentOrder, $table, $paymentMethod, $boxImpact),
+                'description' => $description,
                 'metadata' => [
                     'sale_id' => $sale->id,
                     'payment_id' => $payment->id,
                     'amount' => $boxImpact,
+                    'is_credit' => $isCredit,
                 ],
                 'occurred_at' => now(),
             ]);
 
-            $currentOrder->update(['status' => 'paid']);
+            if ($isCredit) {
+                $this->customerCreditService->registerCreditForSale(
+                    $sale,
+                    'table_order',
+                    $currentOrder->order_number,
+                    'Cuenta enviada a credito desde el pedido ' . $currentOrder->order_number
+                );
+            }
+
+            $currentOrder->update([
+                'status' => 'paid',
+                'customer_id' => $currentOrder->customer_id,
+                'customer_name' => $currentOrder->customer_name,
+            ]);
 
             if ($table) {
                 $table->update(['status' => 'free']);
@@ -226,12 +306,16 @@ class TableOrderBillingService
         ];
     }
 
-    private function isCashPaymentMethod(PaymentMethod $paymentMethod): bool
+    private function isCashPaymentMethod(?PaymentMethod $paymentMethod): bool
     {
+        if (! $paymentMethod) {
+            return true;
+        }
+
         return strtoupper((string) $paymentMethod->code) === 'CASH';
     }
 
-    private function boxImpactAmount(float $saleTotal, float $tipAmount, PaymentMethod $paymentMethod): float
+    private function boxImpactAmount(float $saleTotal, float $tipAmount, ?PaymentMethod $paymentMethod): float
     {
         if (! $this->isCashPaymentMethod($paymentMethod)) {
             return 0.0;
@@ -240,12 +324,17 @@ class TableOrderBillingService
         return round($saleTotal + $tipAmount, 2);
     }
 
-    private function movementDescription(TableOrder $order, ?RestaurantTable $table, PaymentMethod $paymentMethod, float $boxImpact): string
-    {
+    private function movementDescription(
+        TableOrder $order,
+        ?RestaurantTable $table,
+        ?PaymentMethod $paymentMethod,
+        float $boxImpact,
+        bool $isCredit = false
+    ): string {
         $parts = [
             'Cobro del pedido ' . $order->order_number,
             $table ? 'Mesa ' . $table->name : null,
-            'Método ' . $paymentMethod->name,
+            $isCredit ? 'Credito al cliente' : 'Metodo ' . ($paymentMethod?->name ?? 'Sin dato'),
             $boxImpact > 0
                 ? 'Impacto en caja $' . number_format($boxImpact, 2, '.', '')
                 : 'Sin impacto en caja',

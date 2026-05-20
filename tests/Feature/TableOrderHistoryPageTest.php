@@ -99,6 +99,8 @@ class TableOrderHistoryPageTest extends TestCase
 
         $detailResponse->assertOk();
         $detailResponse->assertDontSee('Cuando esta mesa tenga pedidos registrados, apareceran en este panel.');
+        $detailResponse->assertSee('Volver');
+        $detailResponse->assertDontSee('Volver a mesas');
     }
 
     private function createAdminUser(): User

@@ -83,7 +83,7 @@ class CashManagementController extends Controller
 
         $box = Box::query()->create([
             'name' => $validated['name'],
-            'description' => $validated['description'],
+            'description' => filled($validated['description'] ?? null) ? $validated['description'] : null,
             'code' => $this->generateUniqueBoxCode($validated['name']),
             'status' => 'closed',
             'user_id' => null,
@@ -110,7 +110,7 @@ class CashManagementController extends Controller
 
         $automaticIncome = $currentSession
             ? (float) $currentSession->movements()
-                ->whereIn('movement_type', ['sale_income', 'table_order_payment'])
+                ->whereIn('movement_type', ['sale_income', 'table_order_payment', 'credit_payment', 'customer_credit_payment'])
                 ->where('amount', '>', 0)
                 ->sum('amount')
             : 0;
@@ -180,7 +180,7 @@ class CashManagementController extends Controller
 
         $box->update([
             'name' => $validated['name'],
-            'description' => $validated['description'],
+            'description' => filled($validated['description'] ?? null) ? $validated['description'] : null,
             'code' => $box->code ?: $this->generateUniqueBoxCode($validated['name'], $box->id),
         ]);
 
@@ -423,6 +423,8 @@ class CashManagementController extends Controller
             'manual_expense' => 'Egreso manual',
             'sale_income' => 'Venta POS',
             'table_order_payment' => 'Cobro de mesa',
+            'credit_payment' => 'Pago de credito',
+            'customer_credit_payment' => 'Pago de cartera',
         ];
 
         return view('cash-management.history', [
@@ -436,6 +438,8 @@ class CashManagementController extends Controller
                 'manual_expense',
                 'sale_income',
                 'table_order_payment',
+                'credit_payment',
+                'customer_credit_payment',
             ],
             'actionLabels' => $actionLabels,
             'summary' => [
@@ -551,7 +555,7 @@ class CashManagementController extends Controller
 
         return $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'description' => ['required', 'string', 'max:500'],
+            'description' => ['nullable', 'string', 'max:500'],
         ]);
     }
 

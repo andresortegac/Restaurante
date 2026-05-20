@@ -15,7 +15,7 @@
                 return [
                     'key' => 'category-' . $category->id,
                     'title' => $category->name,
-                    'description' => $category->description ?: 'Categoria disponible para el menu grafico.',
+                    'description' => $category->description ?: 'Categoría disponible para el menú gráfico.',
                     'is_active' => $category->is_active,
                     'products' => $products->where('category_id', $category->id)->values(),
                 ];
@@ -29,7 +29,7 @@
             $menuSections = $menuSections->push([
                 'key' => 'uncategorized',
                 'title' => 'Sin categoria',
-                'description' => 'Productos pendientes por clasificar dentro del menu.',
+                'description' => 'Productos pendientes por clasificar dentro del menú.',
                 'is_active' => true,
                 'products' => $uncategorizedProducts,
             ]);
@@ -39,9 +39,8 @@
     <div class="module-page">
         <section class="module-hero">
             <div>
-                <span class="module-kicker">Gestion de Productos / RF-20</span>
+                <span class="module-kicker">Gestion de Productos</span>
                 <h1>Menu grafico y orden visual</h1>
-                <p>Administra la carta que vera el mesero: organiza productos por categoria, define su orden de aparicion y manten el catalogo listo para una seleccion tactil rapida.</p>
             </div>
             <div class="summary-group">
                 <span class="summary-chip">{{ $products->count() }} productos</span>
@@ -56,7 +55,6 @@
         <div class="module-toolbar">
             <div>
                 <h5 class="mb-1">Carta publicada</h5>
-                <p class="table-note mb-0">La vista se ordena primero por categoria y luego por el orden visual de cada producto.</p>
             </div>
             <div class="menu-toolbar-actions">
                 @if($canViewCategories)

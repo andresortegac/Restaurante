@@ -26,7 +26,6 @@
             <div>
                 <span class="module-kicker">Gestion de Mesas</span>
                 <h1>{{ $restaurantTable->name }}</h1>
-                <p>Consulta la configuracion de la mesa y su estado actual. La operacion de pedidos, traslados, cuentas e impresion de cocina se realiza desde el modulo <strong>Pedidos</strong>.</p>
             </div>
             <div class="summary-group">
                 <span class="summary-chip">Codigo {{ $restaurantTable->code }}</span>
@@ -83,7 +82,6 @@
                                     <div class="table-note mt-2">Cliente: {{ $openOrder->customer?->name ?: $openOrder->customer_name ?: 'Sin cliente' }}</div>
                                 @else
                                     <div class="fw-bold">Sin pedido en curso</div>
-                                    <div class="seat-note">La mesa esta disponible para iniciar servicio.</div>
                                 @endif
                             </div>
                         </div>
@@ -95,32 +93,13 @@
                         </div>
                     </div>
 
-                    @if($canManageOrders)
-                        <div class="detail-actions mt-4">
+                    <div class="detail-actions mt-4">
+                        @if($canManageOrders)
                             <a href="{{ route('orders.show', $restaurantTable) }}" class="btn btn-primary">
                                 {{ $openOrder ? 'Ir al pedido de esta mesa' : 'Tomar pedido desde pedidos' }}
                             </a>
-                        </div>
-                    @endif
-                </div>
-            </div>
-
-            <div class="card module-card service-card">
-                <div class="card-header">
-                    <h5 class="mb-0">Acciones</h5>
-                </div>
-                <div class="card-body">
-                    <div class="detail-actions">
-                        <a href="{{ route('tables.index') }}" class="btn btn-outline-secondary">Volver a mesas</a>
-                        <a href="{{ route('tables.history.show', $restaurantTable) }}" class="btn btn-outline-secondary">Ver historial</a>
-
-                        @if($canEditTable)
-                            <a href="{{ route('tables.edit', $restaurantTable) }}" class="btn btn-outline-primary">Editar mesa</a>
                         @endif
-
-                        @if($canManageOrders)
-                            <a href="{{ route('orders.show', $restaurantTable) }}" class="btn btn-primary">Abrir pedidos</a>
-                        @endif
+                        <a href="{{ route('tables.index') }}" class="btn btn-outline-secondary">Volver</a>
                     </div>
                 </div>
             </div>

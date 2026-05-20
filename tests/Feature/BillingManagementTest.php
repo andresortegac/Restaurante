@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Box;
 use App\Models\Customer;
+use App\Models\CustomerCredit;
 use App\Models\ElectronicInvoiceSetting;
 use App\Models\PaymentMethod;
 use App\Models\Product;
@@ -501,10 +502,45 @@ class BillingManagementTest extends TestCase
         $payResponse = $this
             ->actingAs($user)
             ->post(route('billing.credits.pay', $sale), [
-                'amount_received' => 32000,
+                'amount_received' => 12000,
             ]);
 
         $payResponse
+            ->assertRedirect(route('billing.history', ['payment_status' => 'credit']));
+
+        $this->assertDatabaseHas('sales', [
+            'id' => $sale->id,
+            'status' => 'credit',
+            'payment_status' => 'credit',
+        ]);
+
+        $this->assertDatabaseHas('payments', [
+            'sale_id' => $sale->id,
+            'received_amount' => 12000,
+            'status' => 'pending',
+        ]);
+
+        $this->assertDatabaseHas('customer_credits', [
+            'sale_id' => $sale->id,
+            'balance' => 20000,
+            'status' => 'pending',
+        ]);
+
+        $this->assertDatabaseHas('box_movements', [
+            'sale_id' => $sale->id,
+            'movement_type' => 'credit_payment',
+            'amount' => 12000,
+            'balance_before' => 10000,
+            'balance_after' => 22000,
+        ]);
+
+        $finalPayResponse = $this
+            ->actingAs($user)
+            ->post(route('billing.credits.pay', $sale), [
+                'amount_received' => 20000,
+            ]);
+
+        $finalPayResponse
             ->assertRedirect(route('billing.history', ['payment_status' => 'credit']));
 
         $this->assertDatabaseHas('sales', [
@@ -520,12 +556,209 @@ class BillingManagementTest extends TestCase
             'status' => 'completed',
         ]);
 
+        $this->assertDatabaseHas('customer_credits', [
+            'sale_id' => $sale->id,
+            'balance' => 0,
+            'status' => 'paid',
+        ]);
+
         $this->assertDatabaseHas('box_movements', [
             'sale_id' => $sale->id,
             'movement_type' => 'credit_payment',
-            'amount' => 32000,
-            'balance_before' => 10000,
+            'amount' => 20000,
+            'balance_before' => 22000,
             'balance_after' => 42000,
+        ]);
+    }
+
+    public function test_billing_checkout_can_send_table_order_to_customer_credit_without_affecting_cash(): void
+    {
+        $user = $this->createAdminUser();
+
+        Box::create([
+            'name' => 'Caja cartera mesas',
+            'code' => 'BOX-CREDIT-TABLE',
+            'user_id' => $user->id,
+            'opening_balance' => 25000,
+            'status' => 'open',
+            'opened_at' => now(),
+        ]);
+
+        $customer = Customer::create([
+            'name' => 'Cliente Cartera Mesa',
+            'document_number' => '100200300',
+            'is_active' => true,
+        ]);
+
+        $table = RestaurantTable::create([
+            'name' => 'Mesa credito 4',
+            'code' => 'M-24',
+            'area' => 'Salon',
+            'capacity' => 4,
+            'status' => 'occupied',
+            'is_active' => true,
+        ]);
+
+        $order = TableOrder::create([
+            'restaurant_table_id' => $table->id,
+            'order_number' => 'PED-CREDIT-TABLE-001',
+            'customer_id' => $customer->id,
+            'customer_name' => $customer->name,
+            'status' => 'open',
+            'opened_by_user_id' => $user->id,
+        ]);
+
+        $order->items()->create([
+            'product_name' => 'Cuenta enviada a credito',
+            'unit_price' => 28000,
+            'quantity' => 1,
+            'subtotal' => 28000,
+            'split_group' => 1,
+        ]);
+        $order->recalculateTotals();
+
+        $response = $this
+            ->actingAs($user)
+            ->postJson(route('billing.checkout.store', $order), [
+                'is_credit' => true,
+                'amount_received' => 0,
+                'document_type' => 'ticket',
+            ]);
+
+        $response->assertOk();
+
+        $sale = Sale::query()->firstOrFail();
+
+        $this->assertDatabaseHas('sales', [
+            'id' => $sale->id,
+            'customer_id' => $customer->id,
+            'table_order_id' => $order->id,
+            'status' => 'credit',
+            'payment_status' => 'credit',
+            'credit_due_at' => null,
+        ]);
+
+        $this->assertDatabaseHas('payments', [
+            'sale_id' => $sale->id,
+            'received_amount' => 0,
+            'status' => 'pending',
+        ]);
+
+        $this->assertDatabaseHas('box_movements', [
+            'sale_id' => $sale->id,
+            'movement_type' => 'table_order_payment',
+            'amount' => 0,
+            'balance_before' => 25000,
+            'balance_after' => 25000,
+        ]);
+
+        $this->assertDatabaseHas('customer_credits', [
+            'sale_id' => $sale->id,
+            'customer_id' => $customer->id,
+            'source_type' => 'table_order',
+            'balance' => 28000,
+            'status' => 'pending',
+        ]);
+
+        $this->assertDatabaseHas('table_orders', [
+            'id' => $order->id,
+            'status' => 'paid',
+        ]);
+
+        $this->assertDatabaseHas('restaurant_tables', [
+            'id' => $table->id,
+            'status' => 'free',
+        ]);
+    }
+
+    public function test_billing_checkout_can_assign_customer_during_credit_collection_when_order_has_no_customer(): void
+    {
+        $user = $this->createAdminUser();
+
+        Box::create([
+            'name' => 'Caja credito sin cliente previo',
+            'code' => 'BOX-CREDIT-NO-CUSTOMER',
+            'user_id' => $user->id,
+            'opening_balance' => 25000,
+            'status' => 'open',
+            'opened_at' => now(),
+        ]);
+
+        $customer = Customer::create([
+            'name' => 'Cliente vinculado en cobro',
+            'document_number' => '99887766',
+            'is_active' => true,
+        ]);
+
+        $table = RestaurantTable::create([
+            'name' => 'Mesa credito 5',
+            'code' => 'M-25',
+            'area' => 'Salon',
+            'capacity' => 4,
+            'status' => 'occupied',
+            'is_active' => true,
+        ]);
+
+        $order = TableOrder::create([
+            'restaurant_table_id' => $table->id,
+            'order_number' => 'PED-CREDIT-TABLE-002',
+            'status' => 'open',
+            'opened_by_user_id' => $user->id,
+        ]);
+
+        $order->items()->create([
+            'product_name' => 'Cuenta sin cliente inicial',
+            'unit_price' => 31000,
+            'quantity' => 1,
+            'subtotal' => 31000,
+            'split_group' => 1,
+        ]);
+        $order->recalculateTotals();
+
+        $response = $this
+            ->actingAs($user)
+            ->postJson(route('billing.checkout.store', $order), [
+                'customer_id' => $customer->id,
+                'is_credit' => true,
+                'amount_received' => 0,
+                'document_type' => 'ticket',
+            ]);
+
+        $response->assertOk();
+
+        $sale = Sale::query()->firstOrFail();
+
+        $this->assertDatabaseHas('sales', [
+            'id' => $sale->id,
+            'customer_id' => $customer->id,
+            'customer_name' => $customer->name,
+            'table_order_id' => $order->id,
+            'status' => 'credit',
+            'payment_status' => 'credit',
+            'credit_due_at' => null,
+        ]);
+
+        $this->assertDatabaseHas('table_orders', [
+            'id' => $order->id,
+            'customer_id' => $customer->id,
+            'customer_name' => $customer->name,
+            'status' => 'paid',
+        ]);
+
+        $this->assertDatabaseHas('customer_credits', [
+            'sale_id' => $sale->id,
+            'customer_id' => $customer->id,
+            'source_type' => 'table_order',
+            'balance' => 31000,
+            'status' => 'pending',
+        ]);
+
+        $this->assertDatabaseHas('box_movements', [
+            'sale_id' => $sale->id,
+            'movement_type' => 'table_order_payment',
+            'amount' => 0,
+            'balance_before' => 25000,
+            'balance_after' => 25000,
         ]);
     }
 

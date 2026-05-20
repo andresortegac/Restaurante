@@ -48,6 +48,7 @@
         'email' => $customer->email,
         'phone' => $customer->phone,
         'address' => $customer->billing_address,
+        'pendingCreditTotal' => (float) ($customer->pending_credit_total ?? 0),
     ])->values();
 @endphp
 
@@ -61,7 +62,7 @@
         <div class="summary-group">
             <span class="summary-chip">Mesa por defecto</span>
             <span class="summary-chip">Ticket o factura electronica</span>
-            <span class="summary-chip">Con movimiento de caja</span>
+            <span class="summary-chip">Pago inmediato o credito</span>
         </div>
     </section>
 
@@ -326,17 +327,27 @@ document.addEventListener('DOMContentLoaded', function () {
     const findProduct = productId => products.find(product => String(product.id) === String(productId)) || null;
     const placeholderMarkup = icon => '<div class="waiter-image-placeholder"><i class="' + icon + '"></i></div>';
 
-    const syncCustomerSummary = () => {
+    const syncCustomerSummary = (projectedAmount = null) => {
         const customer = selectedCustomer();
         const typedName = typedCustomerName();
 
         if (customer) {
             customerLabel.textContent = customer.name;
-            customerMeta.textContent = [
+            const details = [
                 customer.document ? 'Documento: ' + customer.document : null,
                 customer.phone ? 'Telefono: ' + customer.phone : null,
                 customer.email ? 'Email: ' + customer.email : null,
-            ].filter(Boolean).join(' | ') || 'Cliente registrado.';
+            ].filter(Boolean);
+
+            if (customer.pendingCreditTotal > 0) {
+                details.push('Saldo actual: ' + money(customer.pendingCreditTotal));
+            }
+
+            if (isCreditSale() && projectedAmount && projectedAmount > 0) {
+                details.push('Quedara en: ' + money(customer.pendingCreditTotal + projectedAmount));
+            }
+
+            customerMeta.textContent = details.join(' | ') || 'Cliente registrado.';
             return;
         }
 
@@ -412,7 +423,7 @@ document.addEventListener('DOMContentLoaded', function () {
         subtotalLabel.textContent = money(subtotal);
         dueLabel.textContent = money(due);
         changeLabel.textContent = money(!isCreditSale() && isCashPayment() ? Math.max(0, received - due) : 0);
-        syncCustomerSummary();
+        syncCustomerSummary(due);
     };
 
     const syncSelectedItems = () => {

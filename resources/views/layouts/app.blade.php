@@ -78,6 +78,7 @@
                 $isTablesCatalogRoute = request()->routeIs('tables.index') || request()->routeIs('tables.show') || request()->routeIs('tables.edit');
                 $isTableHistoryRoute = request()->routeIs('tables.history.*');
                 $isCustomersRoute = request()->routeIs('customers.*');
+                $isCustomerCreditsRoute = request()->routeIs('customers.credits.*');
                 $isDeliveriesRoute = request()->routeIs('deliveries.*');
                 $isElectronicInvoicesRoute = request()->routeIs('electronic-invoices.*');
                 $isReservationsRoute = request()->routeIs('reservations.*');
@@ -269,6 +270,7 @@
                     </a>
                     <ul class="sidebar-submenu {{ $isCustomersRoute ? 'show' : '' }}">
                         <li><a href="{{ route('customers.index') }}" class="{{ request()->routeIs('customers.index') ? 'active' : '' }}"><i class="fas fa-list"></i> Listar</a></li>
+                        <li><a href="{{ route('customers.credits.index') }}" class="{{ $isCustomerCreditsRoute ? 'active' : '' }}"><i class="fas fa-wallet"></i> Creditos y cartera</a></li>
                         @if(Auth::user()->hasRole('Admin') || Auth::user()->hasPermission('customers.create'))
                         <li><a href="{{ route('customers.create') }}" class="{{ request()->routeIs('customers.create') ? 'active' : '' }}"><i class="fas fa-plus"></i> Nuevo</a></li>
                         @endif

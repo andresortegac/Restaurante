@@ -51,6 +51,29 @@ class CashManagementTest extends TestCase
         ]);
     }
 
+    public function test_admin_can_create_box_without_operational_description(): void
+    {
+        $user = User::factory()->create();
+        $adminRole = Role::create([
+            'name' => 'Admin',
+            'description' => 'Administrador',
+        ]);
+        $user->roles()->attach($adminRole);
+
+        $this->actingAs($user)
+            ->post(route('cash-management.store'), [
+                'name' => 'Caja rapida',
+                'description' => '',
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('boxes', [
+            'name' => 'Caja rapida',
+            'description' => null,
+            'status' => 'closed',
+        ]);
+    }
+
     public function test_admin_can_open_move_and_close_a_box_session(): void
     {
         $user = User::factory()->create();

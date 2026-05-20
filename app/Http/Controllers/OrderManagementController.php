@@ -321,11 +321,13 @@ class OrderManagementController extends Controller
         }
 
         $validated = $request->validate([
-            'payment_method_id' => ['required', 'exists:payment_methods,id'],
+            'customer_id' => ['nullable', 'exists:customers,id'],
+            'payment_method_id' => ['nullable', 'exists:payment_methods,id'],
             'amount_received' => ['required', 'numeric', 'min:0'],
             'tip_amount' => ['nullable', 'numeric', 'min:0'],
             'reference' => ['nullable', 'string', 'max:255'],
             'document_type' => ['nullable', 'in:ticket,electronic'],
+            'is_credit' => ['nullable', 'boolean'],
         ]);
         $result = $this->billingService->checkout($order, $validated, Auth::id());
         $sale = $result['sale'];

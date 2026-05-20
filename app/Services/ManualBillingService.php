@@ -18,7 +18,8 @@ use Throwable;
 class ManualBillingService
 {
     public function __construct(
-        private readonly SaleDocumentService $saleDocumentService
+        private readonly SaleDocumentService $saleDocumentService,
+        private readonly CustomerCreditService $customerCreditService
     ) {
     }
 
@@ -59,7 +60,9 @@ class ManualBillingService
             }
         }
 
-        $tipAmount = round((float) ($payload['tip_amount'] ?? 0), 2);
+        $tipAmount = $isCredit
+            ? 0.0
+            : round((float) ($payload['tip_amount'] ?? 0), 2);
         $amountReceived = round((float) $payload['amount_received'], 2);
         $items = collect($payload['items'] ?? [])
             ->filter(fn (array $item) => filled($item['name'] ?? null) && (float) ($item['quantity'] ?? 0) > 0)
@@ -235,6 +238,16 @@ class ManualBillingService
                 ],
                 'occurred_at' => now(),
             ]);
+
+            if ($isCredit && $customer) {
+                $this->customerCreditService->registerCreditForSale(
+                    $sale,
+                    'manual_charge',
+                    $payload['origin_reference'] ?? null,
+                    'Saldo enviado a credito desde cobro manual #' . $sale->id,
+                    $payload['credit_due_at'] ?? null
+                );
+            }
         });
 
         $sale->load(['items.product', 'payments.paymentMethod', 'customer', 'user', 'box']);

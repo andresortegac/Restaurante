@@ -16,7 +16,6 @@
             <div>
                 <span class="module-kicker">Gestion de Mesas</span>
                 <h1>Configuracion de mesas</h1>
-                <p>Crea, edita y organiza las mesas del salon. La toma de pedidos para meseros ahora se realiza desde el modulo lateral de <strong>Pedidos</strong>.</p>
             </div>
             <div class="summary-group">
                 <span class="summary-chip">{{ $summary['total'] }} mesas activas</span>
@@ -55,7 +54,6 @@
         <div class="module-toolbar">
             <div>
                 <h5 class="mb-1">Catalogo del salon</h5>
-                <p class="table-note mb-0">Cada tarjeta muestra la configuracion de la mesa y un acceso rapido al flujo de pedidos cuando el usuario tiene permisos.</p>
             </div>
             <div class="table-card-actions">
                 @if($canManageOrders)

@@ -3,9 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\Customer;
+use App\Models\CustomerCredit;
+use App\Services\CustomerCreditService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 
 class CustomerManagementController extends Controller
@@ -23,6 +26,7 @@ class CustomerManagementController extends Controller
 
         $customers = Customer::query()
             ->withCount(['tableOrders', 'sales'])
+            ->withSum(['pendingCredits as pending_credit_total' => fn ($query) => $query->where('status', 'pending')], 'balance')
             ->when($filters['search'] ?? null, function ($query, string $search) {
                 $query->where(function ($nestedQuery) use ($search) {
                     $nestedQuery
@@ -44,8 +48,134 @@ class CustomerManagementController extends Controller
                 'total' => Customer::query()->count(),
                 'active' => Customer::query()->where('is_active', true)->count(),
                 'inactive' => Customer::query()->where('is_active', false)->count(),
+                'customersWithCredit' => CustomerCredit::query()
+                    ->where('status', 'pending')
+                    ->distinct('customer_id')
+                    ->count('customer_id'),
+                'creditPending' => (float) CustomerCredit::query()
+                    ->where('status', 'pending')
+                    ->sum('balance'),
             ],
         ]);
+    }
+
+    public function credits(Request $request)
+    {
+        if ($response = $this->denyIfUnauthorized(['customers.view'])) {
+            return $response;
+        }
+
+        $filters = $request->validate([
+            'search' => ['nullable', 'string', 'max:255'],
+            'balance' => ['nullable', 'in:all,pending'],
+        ]);
+
+        $customers = Customer::query()
+            ->withCount(['pendingCredits'])
+            ->withSum(['pendingCredits as pending_credit_total' => fn ($query) => $query->where('status', 'pending')], 'balance')
+            ->when($filters['search'] ?? null, function ($query, string $search) {
+                $query->where(function ($nestedQuery) use ($search) {
+                    $nestedQuery
+                        ->where('name', 'like', '%' . $search . '%')
+                        ->orWhere('document_number', 'like', '%' . $search . '%')
+                        ->orWhere('phone', 'like', '%' . $search . '%')
+                        ->orWhere('email', 'like', '%' . $search . '%');
+                });
+            })
+            ->when(($filters['balance'] ?? 'pending') === 'pending', fn ($query) => $query->has('pendingCredits'))
+            ->orderByDesc('pending_credit_total')
+            ->orderBy('name')
+            ->paginate(15)
+            ->withQueryString();
+
+        return view('customers.credits.index', [
+            'customers' => $customers,
+            'filters' => $filters,
+            'summary' => [
+                'customersWithCredit' => CustomerCredit::query()
+                    ->where('status', 'pending')
+                    ->distinct('customer_id')
+                    ->count('customer_id'),
+                'pendingCredits' => CustomerCredit::query()->where('status', 'pending')->count(),
+                'creditPending' => (float) CustomerCredit::query()->where('status', 'pending')->sum('balance'),
+            ],
+        ]);
+    }
+
+    public function showCredit(Customer $customer)
+    {
+        if ($response = $this->denyIfUnauthorized(['customers.view'])) {
+            return $response;
+        }
+
+        $customer->loadCount([
+            'pendingCredits',
+            'credits as paid_credits_count' => fn ($query) => $query->where('status', 'paid'),
+        ])->loadSum([
+            'pendingCredits as pending_credit_total' => fn ($query) => $query->where('status', 'pending'),
+        ], 'balance');
+
+        $credits = $customer->credits()
+            ->with(['sale.tableOrder.table', 'paymentMethod', 'createdBy'])
+            ->latest()
+            ->paginate(15);
+
+        return view('customers.credits.show', [
+            'customer' => $customer,
+            'credits' => $credits,
+            'summary' => [
+                'pending' => (float) ($customer->pending_credit_total ?? 0),
+                'pendingCount' => (int) ($customer->pending_credits_count ?? 0),
+                'paidCount' => (int) ($customer->paid_credits_count ?? 0),
+            ],
+        ]);
+    }
+
+    public function storeCredit(Request $request, Customer $customer, CustomerCreditService $customerCreditService): RedirectResponse|Response
+    {
+        if ($response = $this->denyIfUnauthorized(['customers.edit'])) {
+            return $response;
+        }
+
+        $validated = $request->validate([
+            'description' => ['required', 'string', 'max:255'],
+            'amount' => ['required', 'numeric', 'gt:0'],
+        ]);
+
+        $customerCreditService->assignPendingBalance($customer, $validated, Auth::id());
+
+        return redirect()
+            ->route('customers.credits.show', $customer)
+            ->with('success', 'Saldo pendiente asignado correctamente.');
+    }
+
+    public function payCredit(Request $request, Customer $customer, CustomerCredit $credit, CustomerCreditService $customerCreditService): RedirectResponse|Response
+    {
+        if ($response = $this->denyIfUnauthorized(['customers.edit'])) {
+            return $response;
+        }
+
+        if ((int) $credit->customer_id !== (int) $customer->id) {
+            abort(404);
+        }
+
+        if ($credit->status !== 'pending') {
+            return redirect()
+                ->route('customers.credits.show', $customer)
+                ->with('info', 'Este saldo ya fue pagado.');
+        }
+
+        $validated = $request->validate([
+            'payment_method_id' => ['nullable', 'exists:payment_methods,id'],
+            'amount_received' => ['required', 'numeric', 'gt:0', 'max:' . (float) $credit->balance],
+            'reference' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $customerCreditService->payAssignedCredit($credit, $validated, Auth::id());
+
+        return redirect()
+            ->route('customers.credits.show', $customer)
+            ->with('success', 'Saldo cobrado correctamente.');
     }
 
     public function create()

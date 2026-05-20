@@ -78,6 +78,11 @@ class Sale extends Model
         return $this->hasOne(Invoice::class);
     }
 
+    public function customerCredit()
+    {
+        return $this->hasOne(CustomerCredit::class);
+    }
+
     public function addItem($productId, $quantity, $unitPrice, ?string $productName = null)
     {
         return $this->items()->create([

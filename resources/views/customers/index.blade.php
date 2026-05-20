@@ -14,12 +14,13 @@
             <div>
                 <span class="module-kicker">Clientes / CRM basico</span>
                 <h1>Clientes del restaurante</h1>
-                <p>Administra el directorio de clientes para seleccionarlos rapidamente al tomar pedidos en mesa.</p>
             </div>
             <div class="summary-group">
                 <span class="summary-chip">{{ $summary['total'] }} registrados</span>
                 <span class="summary-chip">{{ $summary['active'] }} activos</span>
                 <span class="summary-chip">{{ $summary['inactive'] }} inactivos</span>
+                <span class="summary-chip">{{ $summary['customersWithCredit'] }} con saldo</span>
+                <span class="summary-chip">${{ number_format($summary['creditPending'], 2) }} pendiente</span>
             </div>
         </section>
 
@@ -59,6 +60,7 @@
                                 <th>Cliente</th>
                                 <th>Contacto</th>
                                 <th>Movimientos</th>
+                                <th>Saldo pendiente</th>
                                 <th>Estado</th>
                                 <th class="text-end">Acciones</th>
                             </tr>
@@ -79,20 +81,31 @@
                                         <div class="table-note">{{ $customer->sales_count }} ventas</div>
                                     </td>
                                     <td>
+                                        <strong>${{ number_format((float) ($customer->pending_credit_total ?? 0), 2) }}</strong>
+                                        <div class="table-note">
+                                            @if((float) ($customer->pending_credit_total ?? 0) > 0)
+                                                Cartera activa
+                                            @else
+                                                Sin cartera pendiente
+                                            @endif
+                                        </div>
+                                    </td>
+                                    <td>
                                         <span class="badge rounded-pill {{ $customer->is_active ? 'bg-success' : 'bg-secondary' }}">
                                             {{ $customer->is_active ? 'Activo' : 'Inactivo' }}
                                         </span>
                                     </td>
                                     <td>
                                         <div class="table-actions justify-content-end">
+                                            <a href="{{ route('customers.credits.show', $customer) }}" class="btn btn-outline-secondary btn-sm px-3">Cartera</a>
                                             @if($canEditCustomer)
-                                                <a href="{{ route('customers.edit', $customer) }}" class="btn btn-outline-primary btn-sm">Editar</a>
+                                                <a href="{{ route('customers.edit', $customer) }}" class="btn btn-outline-primary btn-sm px-3">Editar</a>
                                             @endif
                                             @if($canDeleteCustomer)
-                                                <form method="POST" action="{{ route('customers.destroy', $customer) }}" onsubmit="return confirm('Deseas eliminar este cliente?');">
+                                                <form method="POST" action="{{ route('customers.destroy', $customer) }}" class="m-0 w-100" onsubmit="return confirm('Deseas eliminar este cliente?');">
                                                     @csrf
                                                     @method('DELETE')
-                                                    <button type="submit" class="btn btn-outline-danger btn-sm">Eliminar</button>
+                                                    <button type="submit" class="btn btn-outline-danger btn-sm px-3 w-100">Eliminar</button>
                                                 </form>
                                             @endif
                                         </div>
@@ -100,7 +113,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="5" class="text-center py-4 text-muted">Todavia no hay clientes registrados.</td>
+                                    <td colspan="6" class="text-center py-4 text-muted">Todavia no hay clientes registrados.</td>
                                 </tr>
                             @endforelse
                         </tbody>

@@ -40,6 +40,16 @@ class Customer extends Model
         return $this->hasMany(Sale::class);
     }
 
+    public function credits(): HasMany
+    {
+        return $this->hasMany(CustomerCredit::class);
+    }
+
+    public function pendingCredits(): HasMany
+    {
+        return $this->hasMany(CustomerCredit::class)->where('status', 'pending');
+    }
+
     public function reservations(): HasMany
     {
         return $this->hasMany(Reservation::class);

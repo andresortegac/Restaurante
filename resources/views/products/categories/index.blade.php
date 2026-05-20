@@ -15,7 +15,6 @@
             <div>
                 <span class="module-kicker">Gestion de Productos / Categorias</span>
                 <h1>Categorias del menu</h1>
-                <p>Administra las categorias en una vista propia para no quitar espacio al catalogo de productos. Desde aqui puedes crear, ordenar, ocultar y actualizar las secciones visibles para meseros.</p>
             </div>
             <div class="summary-group">
                 <span class="summary-chip">{{ $categories->count() }} categorias</span>
@@ -30,7 +29,6 @@
         <div class="module-toolbar">
             <div>
                 <h5 class="mb-1">Panel de categorias</h5>
-                <p class="table-note mb-0">Las categorias ordenan el menu grafico y controlan que grupos aparecen durante la toma de pedidos.</p>
             </div>
             <a href="{{ route('products.menu.index') }}" class="btn btn-outline-secondary">
                 <i class="fas fa-book-open"></i> Volver al menu
@@ -67,7 +65,6 @@
                                         <label class="form-label" for="category_create_description">Descripcion</label>
                                         <textarea class="form-control" id="category_create_description" name="description" rows="3">{{ old('description') }}</textarea>
                                     </div>
-                                    <div class="form-help">Si desactivas una categoria, sus productos dejan de mostrarse en la toma de pedidos.</div>
                                     <div class="form-actions">
                                         <button type="submit" class="btn btn-primary">Crear categoria</button>
                                     </div>

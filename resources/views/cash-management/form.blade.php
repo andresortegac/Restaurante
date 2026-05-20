@@ -36,8 +36,8 @@
                                 </div>
                                 <div class="col-md-7">
                                     <label class="form-label" for="description">Descripcion operativa</label>
-                                    <input type="text" class="form-control" id="description" name="description" value="{{ old('description', $box->description) }}" placeholder="Ej: Punto principal del salon, caja de barra, cobros de domicilios" required>
-                                    <div class="form-help">Esta descripcion reemplaza el codigo interno visible y ayuda a identificar para que se usa la caja.</div>
+                                    <input type="text" class="form-control" id="description" name="description" value="{{ old('description', $box->description) }}" placeholder="Ej: Punto principal del salon, caja de barra, cobros de domicilios">
+                                    <div class="form-help">Opcional. Si la llenas, ayuda a identificar para que se usa la caja.</div>
                                 </div>
                             </div>
 

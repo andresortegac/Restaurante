@@ -12,6 +12,7 @@ use App\Models\PaymentMethod;
 use App\Models\Product;
 use App\Models\Sale;
 use App\Models\TableOrder;
+use App\Services\CustomerCreditService;
 use App\Services\ManualBillingService;
 use App\Services\SaleDocumentService;
 use App\Services\TableOrderBillingService;
@@ -25,7 +26,8 @@ class BillingManagementController extends Controller
     public function __construct(
         private readonly TableOrderBillingService $billingService,
         private readonly ManualBillingService $manualBillingService,
-        private readonly SaleDocumentService $saleDocumentService
+        private readonly SaleDocumentService $saleDocumentService,
+        private readonly CustomerCreditService $customerCreditService
     ) {
     }
 
@@ -89,6 +91,7 @@ class BillingManagementController extends Controller
 
         $order->load([
             'customer',
+            'customer.pendingCredits',
             'table',
             'items.product',
             'openedBy',
@@ -109,7 +112,20 @@ class BillingManagementController extends Controller
             'splitSummary' => collect(),
             'activeBox' => $this->activeBox(),
             'paymentMethods' => $this->paymentMethods(),
+            'customers' => Customer::query()
+                ->withSum(['pendingCredits as pending_credit_total' => fn ($query) => $query->where('status', 'pending')], 'balance')
+                ->where(function ($query) use ($order) {
+                    $query->where('is_active', true);
+
+                    if ($order->customer_id) {
+                        $query->orWhereKey($order->customer_id);
+                    }
+                })
+                ->orderBy('name')
+                ->limit(200)
+                ->get(['id', 'name', 'document_number', 'billing_identification', 'email', 'phone']),
             'billingReadiness' => $billingReadiness,
+            'customerPendingCreditTotal' => (float) ($order->customer?->pendingCredits()->sum('balance') ?? 0),
         ]);
     }
 
@@ -120,11 +136,11 @@ class BillingManagementController extends Controller
         }
 
         $validated = $request->validate([
-            'payment_method_id' => ['required', 'exists:payment_methods,id'],
+            'customer_id' => ['nullable', 'exists:customers,id'],
+            'payment_method_id' => ['nullable', 'exists:payment_methods,id'],
             'amount_received' => ['required', 'numeric', 'min:0'],
-            'tip_amount' => ['nullable', 'numeric', 'min:0'],
-            'reference' => ['nullable', 'string', 'max:255'],
             'document_type' => ['nullable', 'in:ticket,electronic'],
+            'is_credit' => ['nullable', 'boolean'],
         ]);
 
         $result = $this->billingService->checkout($order, $validated, Auth::id());
@@ -178,6 +194,7 @@ class BillingManagementController extends Controller
                 ->orderedForMenu()
                 ->get(),
             'customers' => Customer::query()
+                ->withSum(['pendingCredits as pending_credit_total' => fn ($query) => $query->where('status', 'pending')], 'balance')
                 ->orderBy('name')
                 ->limit(200)
                 ->get(['id', 'name', 'document_number', 'billing_identification', 'email', 'phone', 'billing_address']),
@@ -260,7 +277,7 @@ class BillingManagementController extends Controller
         ]);
 
         $salesQuery = Sale::query()
-            ->with(['user', 'box', 'invoice', 'payments.paymentMethod', 'tableOrder.table', 'customer', 'delivery'])
+            ->with(['user', 'box', 'invoice', 'payments.paymentMethod', 'tableOrder.table', 'customer', 'delivery', 'customerCredit'])
             ->withCount('items')
             ->when($filters['search'] ?? null, function ($query, string $search) {
                 $query->where(function ($nestedQuery) use ($search) {
@@ -301,7 +318,9 @@ class BillingManagementController extends Controller
                 'electronic' => Invoice::query()
                     ->where('invoice_type', Invoice::TYPE_ELECTRONIC)
                     ->count(),
-                'credit' => (float) (clone $summaryBaseQuery)->where('payment_status', 'credit')->sum('total'),
+                'credit' => (float) \App\Models\CustomerCredit::query()
+                    ->where('status', 'pending')
+                    ->sum('balance'),
             ],
             'paymentMethods' => $this->paymentMethods(),
         ]);
@@ -319,9 +338,11 @@ class BillingManagementController extends Controller
                 ->with('info', 'Esta venta no tiene credito pendiente.');
         }
 
+        $remainingBalance = (float) ($sale->customerCredit?->balance ?? $sale->total);
+
         $validated = $request->validate([
             'payment_method_id' => ['nullable', 'exists:payment_methods,id'],
-            'amount_received' => ['required', 'numeric', 'min:' . (float) $sale->total],
+            'amount_received' => ['required', 'numeric', 'gt:0', 'max:' . $remainingBalance],
             'reference' => ['nullable', 'string', 'max:255'],
         ]);
 
@@ -337,6 +358,21 @@ class BillingManagementController extends Controller
         $userId = Auth::id();
 
         DB::transaction(function () use ($sale, $validated, $paymentMethod, $userId): void {
+            $currentSale = Sale::query()
+                ->with(['customerCredit', 'payments', 'customer'])
+                ->lockForUpdate()
+                ->findOrFail($sale->id);
+
+            $currentCredit = $currentSale->customerCredit;
+            $remainingBalance = round((float) ($currentCredit?->balance ?? $currentSale->total), 2);
+            $appliedAmount = round((float) $validated['amount_received'], 2);
+
+            if ($appliedAmount <= 0 || $appliedAmount > $remainingBalance) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'amount_received' => 'El abono debe ser mayor a cero y no puede superar el saldo pendiente.',
+                ]);
+            }
+
             $box = Box::query()
                 ->where('status', 'open')
                 ->where('user_id', $userId)
@@ -375,27 +411,28 @@ class BillingManagementController extends Controller
                 ]);
             }
 
-            $payment = $sale->payments()->first();
-            $amountReceived = round((float) $validated['amount_received'], 2);
-            $changeAmount = round(max(0, $amountReceived - (float) $sale->total), 2);
+            $payment = $currentSale->payments->first();
+            $newRemainingBalance = round(max(0, $remainingBalance - $appliedAmount), 2);
+            $totalReceived = round((float) ($payment?->received_amount ?? 0) + $appliedAmount, 2);
+            $paymentStatus = $newRemainingBalance <= 0 ? 'completed' : 'pending';
 
             if ($payment) {
                 $payment->update([
                     'payment_method_id' => $paymentMethod?->id,
-                    'received_amount' => $amountReceived,
-                    'change_amount' => $changeAmount,
+                    'received_amount' => $totalReceived,
+                    'change_amount' => 0,
                     'reference' => $validated['reference'] ?? $payment->reference,
-                    'status' => 'completed',
+                    'status' => $paymentStatus,
                 ]);
             } else {
-                $payment = $sale->payments()->create([
+                $payment = $currentSale->payments()->create([
                     'payment_method_id' => $paymentMethod?->id,
-                    'amount' => $sale->total,
-                    'received_amount' => $amountReceived,
-                    'change_amount' => $changeAmount,
+                    'amount' => $currentSale->total,
+                    'received_amount' => $appliedAmount,
+                    'change_amount' => 0,
                     'tip_amount' => 0,
                     'reference' => $validated['reference'] ?? null,
-                    'status' => 'completed',
+                    'status' => $paymentStatus,
                 ]);
             }
 
@@ -404,16 +441,17 @@ class BillingManagementController extends Controller
                 ->lockForUpdate()
                 ->sum('amount');
             $balanceBefore = round((float) $box->opening_balance + $movementTotal, 2);
-            $balanceAfter = round($balanceBefore + (float) $sale->total, 2);
-            $description = 'Pago de credito #' . $sale->id . ' | Cliente ' . ($sale->customer?->name ?: $sale->customer_name ?: 'Sin cliente');
+            $balanceAfter = round($balanceBefore + $appliedAmount, 2);
+            $description = ($newRemainingBalance <= 0 ? 'Pago final de credito #' : 'Abono a credito #') . $currentSale->id
+                . ' | Cliente ' . ($currentSale->customer?->name ?: $currentSale->customer_name ?: 'Sin cliente');
 
             $box->movements()->create([
                 'box_session_id' => $boxSession->id,
-                'sale_id' => $sale->id,
+                'sale_id' => $currentSale->id,
                 'payment_id' => $payment->id,
                 'user_id' => $userId,
                 'movement_type' => 'credit_payment',
-                'amount' => $sale->total,
+                'amount' => $appliedAmount,
                 'balance_before' => $balanceBefore,
                 'balance_after' => $balanceAfter,
                 'description' => $description,
@@ -427,23 +465,37 @@ class BillingManagementController extends Controller
                 'action' => 'credit_payment',
                 'description' => $description,
                 'metadata' => [
-                    'sale_id' => $sale->id,
+                    'sale_id' => $currentSale->id,
                     'payment_id' => $payment->id,
-                    'amount' => (float) $sale->total,
+                    'amount' => $appliedAmount,
+                    'remaining_balance' => $newRemainingBalance,
                 ],
                 'occurred_at' => now(),
             ]);
 
-            $sale->update([
-                'status' => 'completed',
-                'payment_status' => 'paid',
-                'credit_due_at' => null,
+            if ($currentCredit) {
+                $currentCredit->update([
+                    'balance' => $newRemainingBalance,
+                    'status' => $newRemainingBalance <= 0 ? 'paid' : 'pending',
+                    'payment_method_id' => $paymentMethod?->id,
+                    'paid_reference' => $validated['reference'] ?? null,
+                    'paid_at' => $newRemainingBalance <= 0 ? now() : null,
+                ]);
+            }
+
+            $currentSale->update([
+                'status' => $newRemainingBalance <= 0 ? 'completed' : 'credit',
+                'payment_status' => $newRemainingBalance <= 0 ? 'paid' : 'credit',
+                'credit_due_at' => $newRemainingBalance <= 0 ? null : $currentSale->credit_due_at,
             ]);
         });
 
-        return redirect()
-            ->route('billing.history', ['payment_status' => 'credit'])
-            ->with('success', 'Credito marcado como pagado correctamente.');
+        return ($request->boolean('redirect_back')
+            ? redirect()->back()
+            : redirect()->route('billing.history', ['payment_status' => 'credit']))
+            ->with('success', $remainingBalance > (float) $validated['amount_received']
+                ? 'Abono registrado correctamente.'
+                : 'Credito marcado como pagado correctamente.');
     }
 
     private function activeBox(): ?Box

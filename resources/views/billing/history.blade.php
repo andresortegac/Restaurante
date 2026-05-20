@@ -87,6 +87,7 @@
                                     @php
                                         $primaryPayment = $sale->payments->first();
                                         $invoice = $sale->invoice;
+                                        $remainingCreditBalance = (float) ($sale->customerCredit?->balance ?? $sale->total);
                                     @endphp
                                     <tr>
                                         <td>
@@ -130,7 +131,8 @@
                                                 @if($sale->payment_status === 'credit')
                                                     <strong class="text-warning">Credito pendiente</strong>
                                                     <div class="text-muted small">Cliente: {{ $sale->customer?->name ?: $sale->customer_name ?: 'Sin cliente' }}</div>
-                                                    <div class="text-muted small">Vence: {{ $sale->credit_due_at ? $sale->credit_due_at->format('d/m/Y') : 'Sin fecha' }}</div>
+                                                    <div class="text-muted small">Saldo pendiente: ${{ number_format($remainingCreditBalance, 2) }}</div>
+                                                    <div class="text-muted small">Abonado: ${{ number_format(max(0, (float) $sale->total - $remainingCreditBalance), 2) }}</div>
                                                 @else
                                                     <strong>{{ $sale->payments->map(fn ($payment) => $payment->paymentMethod?->name ?? 'Sin dato')->filter()->unique()->join(', ') ?: 'Sin pago' }}</strong>
                                                     <div class="text-muted small">Recibido: ${{ number_format((float) $primaryPayment->received_amount, 2) }}</div>
@@ -153,10 +155,10 @@
                                                     <i class="fas fa-print"></i> Imprimir
                                                 </a>
                                                 @if($sale->payment_status === 'credit')
-                                                    <form method="POST" action="{{ route('billing.credits.pay', $sale) }}">
+                                                    <form method="POST" action="{{ route('billing.credits.pay', $sale) }}" class="d-flex align-items-center gap-2 m-0" data-credit-payment-form data-credit-label="credito #{{ $sale->id }}">
                                                         @csrf
-                                                        <input type="hidden" name="amount_received" value="{{ number_format((float) $sale->total, 2, '.', '') }}">
-                                                        <button type="submit" class="btn btn-sm btn-success" onclick="return confirm('Marcar este credito como pagado?');">
+                                                        <input type="number" name="amount_received" class="form-control form-control-sm" min="0.01" max="{{ number_format($remainingCreditBalance, 2, '.', '') }}" step="0.01" value="{{ number_format($remainingCreditBalance, 2, '.', '') }}" style="width: 120px;">
+                                                        <button type="submit" class="btn btn-sm btn-success">
                                                             <i class="fas fa-check"></i> Pagar credito
                                                         </button>
                                                     </form>
@@ -181,4 +183,53 @@
             </div>
         </div>
     </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('[data-credit-payment-form]').forEach(function (form) {
+            form.addEventListener('submit', async function (event) {
+                event.preventDefault();
+
+                const amountInput = form.querySelector('input[name="amount_received"]');
+                const amount = Number(amountInput?.value || 0);
+                const label = form.dataset.creditLabel || 'este credito';
+
+                if (!amount || amount <= 0) {
+                    if (window.Swal) {
+                        await Swal.fire({
+                            icon: 'warning',
+                            title: 'Falta el abono',
+                            text: 'Ingresa un valor valido para registrar el pago.',
+                            confirmButtonText: 'Aceptar',
+                            confirmButtonColor: '#2563eb',
+                        });
+                    } else {
+                        alert('Ingresa un valor valido para registrar el pago.');
+                    }
+
+                    return;
+                }
+
+                if (window.Swal) {
+                    const result = await Swal.fire({
+                        icon: 'question',
+                        title: 'Confirmar pago',
+                        text: 'Se registrara un abono de $' + amount.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' para ' + label + '.',
+                        showCancelButton: true,
+                        confirmButtonText: 'Registrar',
+                        cancelButtonText: 'Cancelar',
+                        confirmButtonColor: '#198754',
+                        cancelButtonColor: '#6c757d',
+                    });
+
+                    if (!result.isConfirmed) {
+                        return;
+                    }
+                }
+
+                form.submit();
+            });
+        });
+    });
+    </script>
 @endsection
