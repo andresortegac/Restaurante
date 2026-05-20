@@ -3,41 +3,87 @@
 @section('title', 'Cartera de ' . $customer->name . ' - RestaurantePOS')
 
 @section('content')
-    @php
-        $sourceLabels = [
-            'manual_assignment' => 'Saldo manual',
-            'manual_charge' => 'Cobro manual',
-            'table_order' => 'Cuenta por cobrar',
-        ];
-    @endphp
-
     <div class="module-page">
         <section class="module-hero">
             <div>
                 <span class="module-kicker">Clientes / Cartera</span>
                 <h1>{{ $customer->name }}</h1>
-                <p>Administra los saldos pendientes del cliente y registra nuevos cargos sin afectar caja hasta el recaudo.</p>
+                <p>Cobra la deuda del cliente desde un solo resumen y deja el detalle completo en el historial de credito.</p>
             </div>
             <div class="summary-group">
                 <span class="summary-chip">${{ number_format($summary['pending'], 2) }} pendiente</span>
-                <span class="summary-chip">{{ $summary['pendingCount'] }} cuentas activas</span>
-                <span class="summary-chip">{{ $summary['paidCount'] }} pagadas</span>
+                <span class="summary-chip">{{ $summary['pendingCount'] }} creditos pendientes</span>
+                <span class="summary-chip">{{ $summary['paidCount'] }} creditos pagados</span>
             </div>
         </section>
 
         @include('products.partials.form-errors')
 
         <div class="row g-4">
-            <div class="col-lg-4">
+            <div class="col-lg-7">
                 <div class="card module-card service-card">
                     <div class="card-header d-flex justify-content-between align-items-center gap-3">
                         <div>
-                            <h5 class="mb-1">Asignar saldo pendiente</h5>
-                            <p class="table-note mb-0">Usa esta opcion para registrar una deuda manual del cliente.</p>
+                            <h5 class="mb-1">Cobrar deuda del cliente</h5>
+                            <p class="table-note mb-0">El pago se aplica automaticamente a los creditos pendientes mas antiguos.</p>
                         </div>
-                        <a href="{{ route('customers.credits.index') }}" class="btn btn-outline-secondary btn-sm">Volver</a>
+                        <div class="d-flex align-items-center gap-2">
+                            <a href="{{ route('customers.credits.history', $customer) }}" class="btn btn-outline-primary btn-sm">Ver historial del credito</a>
+                            <a href="{{ route('customers.credits.index') }}" class="btn btn-outline-secondary btn-sm">Volver</a>
+                        </div>
                     </div>
                     <div class="card-body">
+                        @if($summary['pending'] > 0)
+                            <div class="mb-4">
+                                <div class="table-note text-uppercase">Deuda total</div>
+                                <div class="display-6 fw-semibold mb-2">${{ number_format($summary['pending'], 2) }}</div>
+                                <p class="mb-0">Puedes cobrar el valor completo o registrar un abono parcial sin perder el historial del cliente.</p>
+                            </div>
+
+                            <form method="POST" action="{{ route('customers.credits.collect', $customer) }}" data-customer-credit-collection-form data-full-amount="{{ number_format($summary['pending'], 2, '.', '') }}">
+                                @csrf
+                                <input type="hidden" name="payment_mode" value="{{ old('payment_mode', 'partial') }}">
+
+                                <div class="mb-3">
+                                    <label class="form-label" for="amount_received">Valor a cobrar</label>
+                                    <input
+                                        type="number"
+                                        class="form-control"
+                                        id="amount_received"
+                                        name="amount_received"
+                                        min="0.01"
+                                        max="{{ number_format($summary['pending'], 2, '.', '') }}"
+                                        step="0.01"
+                                        value="{{ old('amount_received', number_format($summary['pending'], 2, '.', '')) }}"
+                                        required
+                                    >
+                                    <div class="form-help mt-1">Si registras un abono, el sistema descuenta primero las deudas mas antiguas.</div>
+                                </div>
+
+                                <div class="d-flex flex-wrap gap-2">
+                                    <button type="submit" class="btn btn-success" data-payment-mode="full">Pagar deuda completa</button>
+                                    <button type="submit" class="btn btn-outline-success" data-payment-mode="partial">Registrar abono</button>
+                                </div>
+                            </form>
+                        @else
+                            <div class="empty-state py-4">
+                                <i class="fas fa-check-circle"></i>
+                                <h5 class="mb-2">Sin deuda pendiente</h5>
+                                <p class="mb-0">Este cliente no tiene saldos por cobrar en este momento.</p>
+                            </div>
+                        @endif
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-5">
+                <div class="card module-card service-card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Asignar saldo pendiente</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="table-note">Usa esta opcion para registrar una deuda manual del cliente.</p>
+
                         <form method="POST" action="{{ route('customers.credits.store', $customer) }}">
                             @csrf
 
@@ -68,152 +114,75 @@
                     </div>
                 </div>
             </div>
-
-            <div class="col-lg-8">
-                <div class="card module-card service-card">
-                    <div class="card-header">
-                        <h5 class="mb-0">Cuentas del cliente</h5>
-                    </div>
-                    <div class="card-body">
-                        @if($credits->isEmpty())
-                            <div class="empty-state py-4">
-                                <i class="fas fa-wallet"></i>
-                                <h5 class="mb-2">Sin movimientos de cartera</h5>
-                                <p class="mb-0">Cuando registres creditos manuales o envies ventas a credito, apareceran aqui.</p>
-                            </div>
-                        @else
-                            <div class="table-responsive">
-                                <table class="table align-middle">
-                                    <thead>
-                                        <tr>
-                                            <th>Concepto</th>
-                                            <th>Origen</th>
-                                            <th>Estado</th>
-                                            <th>Monto</th>
-                                            <th>Saldo</th>
-                                            <th class="text-end">Acciones</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach($credits as $credit)
-                                            <tr>
-                                                <td>
-                                                    <strong>{{ $credit->description ?: 'Saldo pendiente' }}</strong>
-                                                    <div class="table-note">{{ $credit->sale_id ? 'Venta #' . $credit->sale_id : 'Registro manual' }}</div>
-                                                </td>
-                                                <td>
-                                                    <strong>{{ $sourceLabels[$credit->source_type] ?? 'Cartera' }}</strong>
-                                                    <div class="table-note">
-                                                        @if($credit->sale?->tableOrder?->order_number)
-                                                            {{ $credit->sale->tableOrder->order_number }}{{ $credit->sale->tableOrder->table?->name ? ' | ' . $credit->sale->tableOrder->table->name : '' }}
-                                                        @elseif($credit->createdBy?->name)
-                                                            Registrado por {{ $credit->createdBy->name }}
-                                                        @else
-                                                            Sin referencia adicional
-                                                        @endif
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <span class="badge rounded-pill {{ $credit->status === 'pending' ? 'bg-warning text-dark' : 'bg-success' }}">
-                                                        {{ $credit->status === 'pending' ? 'Pendiente' : 'Pagado' }}
-                                                    </span>
-                                                    <div class="table-note">
-                                                        {{ $credit->created_at?->format('d/m/Y H:i') }}
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <strong>${{ number_format((float) $credit->amount, 2) }}</strong>
-                                                    @if((float) $credit->amount > (float) $credit->balance)
-                                                        <div class="table-note">Abonado: ${{ number_format((float) $credit->amount - (float) $credit->balance, 2) }}</div>
-                                                    @endif
-                                                </td>
-                                                <td>
-                                                    <strong>${{ number_format((float) $credit->balance, 2) }}</strong>
-                                                    @if($credit->paid_at)
-                                                        <div class="table-note">Pagado {{ $credit->paid_at->format('d/m/Y H:i') }}</div>
-                                                    @endif
-                                                </td>
-                                                <td>
-                                                    <div class="table-actions justify-content-end">
-                                                        @if($credit->status === 'pending' && $credit->sale_id)
-                                                            <form method="POST" action="{{ route('billing.credits.pay', $credit->sale) }}" class="d-flex align-items-center gap-2 m-0" data-credit-payment-form data-credit-label="{{ $credit->description ?: 'Saldo pendiente' }}">
-                                                                @csrf
-                                                                <input type="number" name="amount_received" class="form-control form-control-sm" min="0.01" max="{{ number_format((float) $credit->balance, 2, '.', '') }}" step="0.01" value="{{ number_format((float) $credit->balance, 2, '.', '') }}" style="width: 120px;">
-                                                                <input type="hidden" name="redirect_back" value="1">
-                                                                <button type="submit" class="btn btn-success btn-sm">Cobrar</button>
-                                                            </form>
-                                                        @elseif($credit->status === 'pending')
-                                                            <form method="POST" action="{{ route('customers.credits.pay', [$customer, $credit]) }}" class="d-flex align-items-center gap-2 m-0" data-credit-payment-form data-credit-label="{{ $credit->description ?: 'Saldo pendiente' }}">
-                                                                @csrf
-                                                                <input type="number" name="amount_received" class="form-control form-control-sm" min="0.01" max="{{ number_format((float) $credit->balance, 2, '.', '') }}" step="0.01" value="{{ number_format((float) $credit->balance, 2, '.', '') }}" style="width: 120px;">
-                                                                <button type="submit" class="btn btn-success btn-sm">Cobrar</button>
-                                                            </form>
-                                                        @else
-                                                            <span class="text-muted small">Sin acciones</span>
-                                                        @endif
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        @endforeach
-                                    </tbody>
-                                </table>
-                            </div>
-
-                            <div class="mt-3">
-                                {{ $credits->links() }}
-                            </div>
-                        @endif
-                    </div>
-                </div>
-            </div>
         </div>
     </div>
 
     <script>
     document.addEventListener('DOMContentLoaded', function () {
-        document.querySelectorAll('[data-credit-payment-form]').forEach(function (form) {
-            form.addEventListener('submit', async function (event) {
-                event.preventDefault();
+        const form = document.querySelector('[data-customer-credit-collection-form]');
 
-                const amountInput = form.querySelector('input[name="amount_received"]');
-                const amount = Number(amountInput?.value || 0);
-                const label = form.dataset.creditLabel || 'este saldo';
+        if (!form) {
+            return;
+        }
 
-                if (!amount || amount <= 0) {
-                    if (window.Swal) {
-                        await Swal.fire({
-                            icon: 'warning',
-                            title: 'Falta el abono',
-                            text: 'Ingresa un valor valido para registrar el cobro.',
-                            confirmButtonText: 'Aceptar',
-                            confirmButtonColor: '#2563eb',
-                        });
-                    } else {
-                        alert('Ingresa un valor valido para registrar el cobro.');
-                    }
+        form.addEventListener('submit', async function (event) {
+            event.preventDefault();
 
+            const submitter = event.submitter;
+            const paymentModeInput = form.querySelector('input[name="payment_mode"]');
+            const amountInput = form.querySelector('input[name="amount_received"]');
+            const fullAmount = Number(form.dataset.fullAmount || 0);
+            const paymentMode = submitter?.dataset.paymentMode || 'partial';
+
+            if (paymentModeInput) {
+                paymentModeInput.value = paymentMode;
+            }
+
+            if (paymentMode === 'full' && amountInput && fullAmount > 0) {
+                amountInput.value = fullAmount.toFixed(2);
+            }
+
+            const amount = Number(amountInput?.value || 0);
+
+            if (!amount || amount <= 0) {
+                if (window.Swal) {
+                    await Swal.fire({
+                        icon: 'warning',
+                        title: 'Falta el valor',
+                        text: 'Ingresa un valor valido para registrar el cobro.',
+                        confirmButtonText: 'Aceptar',
+                        confirmButtonColor: '#2563eb',
+                    });
+                } else {
+                    alert('Ingresa un valor valido para registrar el cobro.');
+                }
+
+                return;
+            }
+
+            const isFullPayment = fullAmount > 0 && Math.abs(amount - fullAmount) < 0.01;
+            const confirmText = isFullPayment
+                ? 'Se cobrara la deuda completa del cliente por $' + amount.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '.'
+                : 'Se registrara un abono de $' + amount.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' para la deuda del cliente.';
+
+            if (window.Swal) {
+                const result = await Swal.fire({
+                    icon: 'question',
+                    title: isFullPayment ? 'Confirmar pago total' : 'Confirmar abono',
+                    text: confirmText,
+                    showCancelButton: true,
+                    confirmButtonText: 'Registrar',
+                    cancelButtonText: 'Cancelar',
+                    confirmButtonColor: '#198754',
+                    cancelButtonColor: '#6c757d',
+                });
+
+                if (!result.isConfirmed) {
                     return;
                 }
+            }
 
-                if (window.Swal) {
-                    const result = await Swal.fire({
-                        icon: 'question',
-                        title: 'Confirmar cobro',
-                        text: 'Se registrara un abono de $' + amount.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' para ' + label + '.',
-                        showCancelButton: true,
-                        confirmButtonText: 'Registrar',
-                        cancelButtonText: 'Cancelar',
-                        confirmButtonColor: '#198754',
-                        cancelButtonColor: '#6c757d',
-                    });
-
-                    if (!result.isConfirmed) {
-                        return;
-                    }
-                }
-
-                form.submit();
-            });
+            form.submit();
         });
     });
     </script>

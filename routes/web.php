@@ -134,7 +134,9 @@ Route::middleware('auth')->group(function () {
         Route::post('/', [CustomerManagementController::class, 'store'])->name('store');
         Route::prefix('credits')->name('credits.')->group(function () {
             Route::get('/', [CustomerManagementController::class, 'credits'])->name('index');
+            Route::get('/{customer}/history', [CustomerManagementController::class, 'showCreditHistory'])->name('history');
             Route::get('/{customer}', [CustomerManagementController::class, 'showCredit'])->name('show');
+            Route::post('/{customer}/collect', [CustomerManagementController::class, 'collectCredit'])->name('collect');
             Route::post('/{customer}', [CustomerManagementController::class, 'storeCredit'])->name('store');
             Route::post('/{customer}/{credit}/pay', [CustomerManagementController::class, 'payCredit'])->name('pay');
         });

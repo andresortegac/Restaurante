@@ -108,26 +108,29 @@ class CustomerManagementController extends Controller
             return $response;
         }
 
-        $customer->loadCount([
-            'pendingCredits',
-            'credits as paid_credits_count' => fn ($query) => $query->where('status', 'paid'),
-        ])->loadSum([
-            'pendingCredits as pending_credit_total' => fn ($query) => $query->where('status', 'pending'),
-        ], 'balance');
-
-        $credits = $customer->credits()
-            ->with(['sale.tableOrder.table', 'paymentMethod', 'createdBy'])
-            ->latest()
-            ->paginate(15);
+        $this->loadCustomerCreditSummary($customer);
 
         return view('customers.credits.show', [
             'customer' => $customer,
+            'summary' => $this->customerCreditSummary($customer),
+        ]);
+    }
+
+    public function showCreditHistory(Customer $customer)
+    {
+        if ($response = $this->denyIfUnauthorized(['customers.view'])) {
+            return $response;
+        }
+
+        $this->loadCustomerCreditSummary($customer);
+
+        $credits = $this->customerCreditsQuery($customer)
+            ->paginate(15);
+
+        return view('customers.credits.history', [
+            'customer' => $customer,
             'credits' => $credits,
-            'summary' => [
-                'pending' => (float) ($customer->pending_credit_total ?? 0),
-                'pendingCount' => (int) ($customer->pending_credits_count ?? 0),
-                'paidCount' => (int) ($customer->paid_credits_count ?? 0),
-            ],
+            'summary' => $this->customerCreditSummary($customer),
         ]);
     }
 
@@ -176,6 +179,43 @@ class CustomerManagementController extends Controller
         return redirect()
             ->route('customers.credits.show', $customer)
             ->with('success', 'Saldo cobrado correctamente.');
+    }
+
+    public function collectCredit(Request $request, Customer $customer, CustomerCreditService $customerCreditService): RedirectResponse|Response
+    {
+        if ($response = $this->denyIfUnauthorized(['customers.edit'])) {
+            return $response;
+        }
+
+        $totalPending = round((float) $customer->pendingCredits()->sum('balance'), 2);
+
+        if ($totalPending <= 0) {
+            return redirect()
+                ->route('customers.credits.show', $customer)
+                ->with('info', 'Este cliente no tiene deuda pendiente.');
+        }
+
+        $paymentMode = (string) $request->input('payment_mode', 'partial');
+
+        if ($paymentMode === 'full') {
+            $request->merge([
+                'amount_received' => $totalPending,
+            ]);
+        }
+
+        $validated = $request->validate([
+            'payment_mode' => ['nullable', 'in:full,partial'],
+            'amount_received' => ['required', 'numeric', 'gt:0', 'max:' . $totalPending],
+            'reference' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $result = $customerCreditService->payCustomerBalance($customer, $validated, Auth::id());
+
+        return redirect()
+            ->route('customers.credits.show', $customer)
+            ->with('success', $result['remaining_pending'] <= 0
+                ? 'La deuda del cliente fue cobrada completamente.'
+                : 'Abono registrado correctamente.');
     }
 
     public function create()
@@ -309,6 +349,33 @@ class CustomerManagementController extends Controller
     private function customerPermissions(): array
     {
         return ['customers.view', 'customers.create', 'customers.edit', 'customers.delete'];
+    }
+
+    private function loadCustomerCreditSummary(Customer $customer): void
+    {
+        $customer->loadCount([
+            'pendingCredits',
+            'credits as paid_credits_count' => fn ($query) => $query->where('status', 'paid'),
+        ])->loadSum([
+            'pendingCredits as pending_credit_total' => fn ($query) => $query->where('status', 'pending'),
+        ], 'balance');
+    }
+
+    private function customerCreditsQuery(Customer $customer)
+    {
+        return $customer->credits()
+            ->with(['sale.tableOrder.table', 'paymentMethod', 'createdBy'])
+            ->latest()
+            ->orderByDesc('id');
+    }
+
+    private function customerCreditSummary(Customer $customer): array
+    {
+        return [
+            'pending' => (float) ($customer->pending_credit_total ?? 0),
+            'pendingCount' => (int) ($customer->pending_credits_count ?? 0),
+            'paidCount' => (int) ($customer->paid_credits_count ?? 0),
+        ];
     }
 
     private function denyIfUnauthorized(array $permissions): ?Response
