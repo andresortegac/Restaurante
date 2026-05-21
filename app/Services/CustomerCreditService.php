@@ -71,7 +71,7 @@ class CustomerCreditService
             'created_by_user_id' => $userId,
             'source_type' => 'manual_assignment',
             'source_reference' => $payload['source_reference'] ?? null,
-            'description' => $payload['description'],
+            'description' => $payload['description'] ?? 'Saldo pendiente manual del cliente ' . $customer->name,
             'amount' => round((float) $payload['amount'], 2),
             'balance' => round((float) $payload['amount'], 2),
             'status' => 'pending',

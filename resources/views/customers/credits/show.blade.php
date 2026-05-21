@@ -8,7 +8,6 @@
             <div>
                 <span class="module-kicker">Clientes / Cartera</span>
                 <h1>{{ $customer->name }}</h1>
-                <p>Administra por separado la cartera pendiente y el saldo a favor del cliente desde un solo resumen.</p>
             </div>
             <div class="summary-group">
                 <span class="summary-chip">${{ number_format($summary['pending'], 2) }} pendiente</span>
@@ -26,7 +25,6 @@
                     <div class="card-header d-flex justify-content-between align-items-center gap-3">
                         <div>
                             <h5 class="mb-1">Cobrar deuda del cliente</h5>
-                            <p class="table-note mb-0">El pago se aplica automaticamente a los creditos pendientes mas antiguos.</p>
                         </div>
                         <div class="d-flex align-items-center gap-2">
                             <a href="{{ route('customers.credits.history', $customer) }}" class="btn btn-outline-primary btn-sm">Ver historial del credito</a>
@@ -83,13 +81,11 @@
                     <div class="card-header d-flex justify-content-between align-items-center gap-3">
                         <div>
                             <h5 class="mb-1">Saldo a favor</h5>
-                            <p class="table-note mb-0">Este saldo se descuenta automaticamente en cobros manuales y cuentas de mesa.</p>
                         </div>
                         <span class="summary-chip">${{ number_format($summary['available'], 2) }}</span>
                     </div>
                     <div class="card-body">
-                        <p class="table-note">Estos movimientos no entran ni salen de caja. Solo actualizan el saldo disponible del cliente.</p>
-
+                        
                         <form method="POST" action="{{ route('customers.credits.balance.store', $customer) }}">
                             @csrf
 
@@ -102,16 +98,11 @@
                             </div>
 
                             <div class="mb-3">
-                                <label class="form-label" for="balance_description">Concepto</label>
-                                <input type="text" class="form-control" id="balance_description" name="description" value="{{ old('description') }}" placeholder="Ej: anticipo del cliente, ajuste manual" required>
-                            </div>
-
-                            <div class="mb-3">
                                 <label class="form-label" for="balance_amount">Valor</label>
                                 <input type="number" class="form-control" id="balance_amount" name="amount" min="0.01" step="0.01" value="{{ old('amount') }}" required>
                             </div>
 
-                            <button type="submit" class="btn btn-primary w-100">Guardar movimiento de saldo a favor</button>
+                            <button type="submit" class="btn btn-primary w-100">Guardar saldo a favor</button>
                         </form>
                     </div>
                 </div>
@@ -121,15 +112,9 @@
                         <h5 class="mb-0">Asignar saldo pendiente</h5>
                     </div>
                     <div class="card-body">
-                        <p class="table-note">Usa esta opcion para registrar una deuda manual del cliente.</p>
-
+                        
                         <form method="POST" action="{{ route('customers.credits.store', $customer) }}">
                             @csrf
-
-                            <div class="mb-3">
-                                <label class="form-label" for="description">Concepto</label>
-                                <input type="text" class="form-control" id="description" name="description" value="{{ old('description') }}" placeholder="Ej: saldo anterior, acuerdo de pago" required>
-                            </div>
 
                             <div class="mb-3">
                                 <label class="form-label" for="amount">Valor pendiente</label>

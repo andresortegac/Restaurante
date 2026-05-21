@@ -173,7 +173,7 @@ class CustomerManagementController extends Controller
         }
 
         $validated = $request->validate([
-            'description' => ['required', 'string', 'max:255'],
+            'description' => ['nullable', 'string', 'max:255'],
             'amount' => ['required', 'numeric', 'gt:0'],
         ]);
 
@@ -192,7 +192,7 @@ class CustomerManagementController extends Controller
 
         $validated = $request->validate([
             'operation' => ['required', 'in:add,remove'],
-            'description' => ['required', 'string', 'max:255'],
+            'description' => ['nullable', 'string', 'max:255'],
             'amount' => ['required', 'numeric', 'gt:0'],
         ]);
 

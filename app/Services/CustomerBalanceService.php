@@ -47,7 +47,7 @@ class CustomerBalanceService
                 'sale_id' => null,
                 'created_by_user_id' => $userId,
                 'movement_type' => $operation === 'remove' ? 'manual_removal' : 'manual_addition',
-                'description' => $payload['description'],
+                'description' => $payload['description'] ?? $this->defaultManualDescription($currentCustomer, $operation),
                 'amount' => $signedAmount,
                 'balance_before' => $balanceBefore,
                 'balance_after' => $balanceAfter,
@@ -95,5 +95,12 @@ class CustomerBalanceService
             'balance_before' => $balanceBefore,
             'balance_after' => $balanceAfter,
         ];
+    }
+
+    private function defaultManualDescription(Customer $customer, string $operation): string
+    {
+        return $operation === 'remove'
+            ? 'Descuento manual de saldo a favor del cliente ' . $customer->name
+            : 'Ingreso manual de saldo a favor del cliente ' . $customer->name;
     }
 }
