@@ -164,8 +164,8 @@
                                         </td>
                                         <td>{{ number_format($order->items_count) }}</td>
                                         <td>
-                                            <strong>${{ number_format((float) $order->total, 2) }}</strong>
-                                            <div class="table-note">Subtotal ${{ number_format((float) $order->subtotal, 2) }}</div>
+                                            <strong>${{ money($order->total) }}</strong>
+                                            <div class="table-note">Subtotal ${{ money($order->subtotal) }}</div>
                                         </td>
                                         <td>
                                             <span class="badge rounded-pill {{ $statusClasses[$order->status] ?? 'text-bg-secondary' }}">

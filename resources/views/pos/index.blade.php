@@ -296,7 +296,7 @@ function confirmAction(title, text, confirmButtonText = 'Aceptar') {
 }
 
 async function showSaleSuccess(sale) {
-    const total = Number(sale.total ?? 0).toFixed(2);
+    const total = Math.round(Number(sale.total ?? 0)).toLocaleString('es-CO');
 
     if (window.Swal) {
         const result = await Swal.fire({
@@ -344,7 +344,7 @@ function renderProducts(productList = products) {
         <div class="product-card" onclick="selectProduct(${product.id})">
             <div class="product-image"><i class="fas fa-utensils"></i></div>
             <h6 style="margin: 8px 0; font-size: 12px;">${product.name}</h6>
-            <p style="margin: 0; color: #007bff; font-weight: bold;">$${parseFloat(product.price).toFixed(2)}</p>
+            <p style="margin: 0; color: #007bff; font-weight: bold;">$${Math.round(parseFloat(product.price || 0)).toLocaleString('es-CO')}</p>
             <small style="color: #999;">${usesStockControl(product) ? `Stock: ${product.stock}` : 'Disponible'}</small>
             <div style="margin-top: 6px; font-size: 11px; color: #666;">Producto</div>
         </div>
@@ -449,7 +449,7 @@ function renderCart() {
         <div class="cart-item">
             <div>
                 <div class="cart-item-name">${item.name}</div>
-                <small>$${parseFloat(item.price).toFixed(2)} c/u</small>
+                <small>$${Math.round(parseFloat(item.price || 0)).toLocaleString('es-CO')} c/u</small>
             </div>
             <div class="cart-item-controls">
                 <button class="btn btn-sm btn-outline-secondary" onclick="updateQuantity(${item.id}, ${item.quantity - 1})">-</button>
@@ -491,10 +491,10 @@ function updateTotals() {
         return sum + lineSubtotal + (lineSubtotal * (rate / 100));
     }, 0) - discount;
 
-    document.getElementById('subtotal').textContent = '$' + subtotal.toFixed(2);
-    document.getElementById('discount').textContent = '$' + discount.toFixed(2);
-    document.getElementById('tax').textContent = '$' + tax.toFixed(2);
-    document.getElementById('total').textContent = '$' + total.toFixed(2);
+    document.getElementById('subtotal').textContent = '$' + Math.round(subtotal).toLocaleString('es-CO');
+    document.getElementById('discount').textContent = '$' + Math.round(discount).toLocaleString('es-CO');
+    document.getElementById('tax').textContent = '$' + Math.round(tax).toLocaleString('es-CO');
+    document.getElementById('total').textContent = '$' + Math.round(total).toLocaleString('es-CO');
 }
 
 async function clearCart() {

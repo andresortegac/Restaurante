@@ -20,9 +20,9 @@ class DeliveryItem extends Model
     ];
 
     protected $casts = [
-        'unit_price' => 'decimal:2',
+        'unit_price' => 'integer',
         'quantity' => 'integer',
-        'subtotal' => 'decimal:2',
+        'subtotal' => 'integer',
     ];
 
     public function delivery(): BelongsTo

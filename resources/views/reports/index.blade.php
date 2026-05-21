@@ -97,21 +97,21 @@
                 <div class="order-summary-card h-100">
                     <div class="summary-kicker">Ventas del periodo</div>
                     <div class="summary-value">{{ number_format($summary['sales_count']) }}</div>
-                    <div class="table-note">Ticket promedio ${{ number_format($summary['average_ticket'], 2) }}</div>
+                    <div class="table-note">Ticket promedio ${{ money($summary['average_ticket']) }}</div>
                 </div>
             </div>
             <div class="col-sm-6 col-xl-3">
                 <div class="order-summary-card h-100">
                     <div class="summary-kicker">Ingreso neto</div>
-                    <div class="summary-value">${{ number_format($summary['net_revenue'], 2) }}</div>
-                    <div class="table-note">Descuentos ${{ number_format($summary['discounts'], 2) }}</div>
+                    <div class="summary-value">${{ money($summary['net_revenue']) }}</div>
+                    <div class="table-note">Descuentos ${{ money($summary['discounts']) }}</div>
                 </div>
             </div>
             <div class="col-sm-6 col-xl-3">
                 <div class="order-summary-card h-100">
                     <div class="summary-kicker">Caja del periodo</div>
-                    <div class="summary-value">${{ number_format($summary['cash_income'] - $summary['cash_expense'], 2) }}</div>
-                    <div class="table-note">Ingresos ${{ number_format($summary['cash_income'], 2) }} | Egresos ${{ number_format($summary['cash_expense'], 2) }}</div>
+                    <div class="summary-value">${{ money($summary['cash_income'] - $summary['cash_expense']) }}</div>
+                    <div class="table-note">Ingresos ${{ money($summary['cash_income']) }} | Egresos ${{ money($summary['cash_expense']) }}</div>
                 </div>
             </div>
             <div class="col-sm-6 col-xl-3">
@@ -174,8 +174,8 @@
                                                 <td>{{ $sale->user?->name ?? 'Sin usuario' }}</td>
                                                 <td>{{ $sale->paymentMethodSummary() ?: 'Sin pago' }}</td>
                                                 <td>
-                                                    <strong>${{ number_format((float) $sale->total, 2) }}</strong>
-                                                    <div class="table-note">Desc. ${{ number_format((float) $sale->discount_amount, 2) }}</div>
+                                                    <strong>${{ money($sale->total) }}</strong>
+                                                    <div class="table-note">Desc. ${{ money($sale->discount_amount) }}</div>
                                                 </td>
                                                 <td>
                                                     @if($sale->invoice)
@@ -241,8 +241,8 @@
                         <div class="table-note">Clientes atendidos: {{ number_format($summary['customers_served']) }}</div>
                         <div class="table-note">Domicilios completados: {{ number_format($summary['deliveries_completed']) }}</div>
                         <div class="table-note">Domicilios en curso: {{ number_format($summary['deliveries_active']) }}</div>
-                        <div class="table-note">Ventas brutas: ${{ number_format($summary['gross_sales'], 2) }}</div>
-                        <div class="table-note">Descuentos: ${{ number_format($summary['discounts'], 2) }}</div>
+                        <div class="table-note">Ventas brutas: ${{ money($summary['gross_sales']) }}</div>
+                        <div class="table-note">Descuentos: ${{ money($summary['discounts']) }}</div>
                     </div>
                 </div>
             </div>

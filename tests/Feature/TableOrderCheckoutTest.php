@@ -110,25 +110,25 @@ class TableOrderCheckoutTest extends TestCase
             'user_id' => $user->id,
             'customer_name' => 'Carlos Mesa',
             'status' => 'completed',
-            'subtotal' => '20.00',
-            'tax_amount' => '3.20',
-            'total' => '23.20',
+            'subtotal' => 20,
+            'tax_amount' => 3,
+            'total' => 23,
         ]);
 
         $this->assertDatabaseHas('sale_items', [
             'product_id' => $product->id,
             'product_name' => 'Bandeja especial',
             'quantity' => 2,
-            'unit_price' => '10.00',
-            'subtotal' => '20.00',
+            'unit_price' => 10,
+            'subtotal' => 20,
         ]);
 
         $this->assertDatabaseHas('payments', [
             'payment_method_id' => $paymentMethod->id,
-            'amount' => '23.20',
-            'received_amount' => '30.00',
-            'change_amount' => '5.00',
-            'tip_amount' => '1.80',
+            'amount' => 23,
+            'received_amount' => 30,
+            'change_amount' => 5,
+            'tip_amount' => 2,
             'reference' => 'Pago José Niño ñandú',
             'status' => 'completed',
         ]);
@@ -137,9 +137,9 @@ class TableOrderCheckoutTest extends TestCase
             'box_id' => $box->id,
             'user_id' => $user->id,
             'movement_type' => 'table_order_payment',
-            'amount' => '25.00',
-            'balance_before' => '100.00',
-            'balance_after' => '125.00',
+            'amount' => 25,
+            'balance_before' => 100,
+            'balance_after' => 125,
         ]);
 
         $this->assertDatabaseHas('table_orders', [
@@ -241,9 +241,9 @@ class TableOrderCheckoutTest extends TestCase
         $this->assertDatabaseHas('sales', [
             'table_order_id' => $order->id,
             'box_id' => $box->id,
-            'subtotal' => '20.00',
-            'tax_amount' => '0.00',
-            'total' => '20.00',
+            'subtotal' => 20,
+            'tax_amount' => 0,
+            'total' => 20,
         ]);
     }
 }

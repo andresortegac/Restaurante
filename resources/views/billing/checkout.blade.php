@@ -43,7 +43,7 @@
         <div class="summary-group">
             <span class="summary-chip">{{ $restaurantTable?->name ?? 'Mesa no disponible' }}</span>
             <span class="summary-chip">{{ $restaurantTable?->area ?: 'Salon principal' }}</span>
-            <span class="summary-chip">Total ${{ number_format($baseTotal, 2) }}</span>
+            <span class="summary-chip">Total ${{ money($baseTotal) }}</span>
         </div>
     </section>
 
@@ -77,19 +77,19 @@
                         <div class="col-md-4">
                             <div class="order-summary-card h-100">
                                 <div class="summary-kicker">Subtotal</div>
-                                <div class="h3 mb-0">${{ number_format((float) $order->subtotal, 2) }}</div>
+                                <div class="h3 mb-0">${{ money($order->subtotal) }}</div>
                             </div>
                         </div>
                         <div class="col-md-4">
                             <div class="order-summary-card h-100">
                                 <div class="summary-kicker">Impuesto</div>
-                                <div class="h3 mb-0">${{ number_format((float) $order->tax_amount, 2) }}</div>
+                                <div class="h3 mb-0">${{ money($order->tax_amount) }}</div>
                             </div>
                         </div>
                         <div class="col-md-4">
                             <div class="order-summary-card h-100">
                                 <div class="summary-kicker">Total del pedido</div>
-                                <div class="h3 mb-0">${{ number_format($baseTotal, 2) }}</div>
+                                <div class="h3 mb-0">${{ money($baseTotal) }}</div>
                             </div>
                         </div>
                     </div>
@@ -112,8 +112,8 @@
                                             <div class="table-note">{{ $item->notes ?: 'Sin observaciones' }}</div>
                                         </td>
                                         <td>{{ $item->quantity }}</td>
-                                        <td>${{ number_format((float) $item->unit_price, 2) }}</td>
-                                        <td class="text-end">${{ number_format((float) $item->subtotal, 2) }}</td>
+                                        <td>${{ money($item->unit_price) }}</td>
+                                        <td class="text-end">${{ money($item->subtotal) }}</td>
                                     </tr>
                                 @endforeach
                             </tbody>
@@ -184,26 +184,26 @@
 
                             <div class="mb-3">
                                 <label class="form-label" for="amount_received">Monto recibido</label>
-                                <input type="number" class="form-control" id="amount_received" name="amount_received" min="0" step="0.01" value="{{ number_format($initialReceived, 2, '.', '') }}" required>
+                                <input type="number" class="form-control" id="amount_received" name="amount_received" min="0" step="1" value="{{ money_input($initialReceived) }}" required>
                                 <div class="form-help mt-1" id="amountReceivedHelp"></div>
                             </div>
 
                             <div class="meta-box mb-3">
                                 <div class="d-flex justify-content-between gap-3">
                                     <span class="summary-kicker">Total pedido</span>
-                                    <strong>${{ number_format($baseTotal, 2) }}</strong>
+                                    <strong>${{ money($baseTotal) }}</strong>
                                 </div>
                                 <div class="d-flex justify-content-between gap-3 mt-2">
                                     <span class="summary-kicker">Total a cobrar</span>
-                                    <strong id="checkoutAmountDue">${{ number_format($baseTotal, 2) }}</strong>
+                                    <strong id="checkoutAmountDue">${{ money($baseTotal) }}</strong>
                                 </div>
                                 <div class="d-flex justify-content-between gap-3 mt-2">
                                     <span class="summary-kicker">Saldo a favor aplicado</span>
-                                    <strong id="checkoutAppliedBalance">$0.00</strong>
+                                    <strong id="checkoutAppliedBalance">$0</strong>
                                 </div>
                                 <div class="d-flex justify-content-between gap-3 mt-2">
                                     <span class="summary-kicker">Cambio a devolver</span>
-                                    <strong id="checkoutChange">${{ number_format($initialChange, 2) }}</strong>
+                                    <strong id="checkoutChange">${{ money($initialChange) }}</strong>
                                 </div>
                             </div>
 
@@ -242,10 +242,8 @@ document.addEventListener('DOMContentLoaded', function () {
         return;
     }
 
-    const money = value => '$' + Number(value || 0).toLocaleString('es-CO', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-    });
+    const money = value => '$' + Math.round(Number(value || 0)).toLocaleString('es-CO');
+    const moneyInput = value => String(Math.max(0, Math.round(Number(value || 0))));
 
     const selectedMethod = () => paymentMethods.find(method => String(method.id) === String(methodSelect.value)) || null;
     const selectedCustomer = () => customers.find(customer => String(customer.id) === String(customerSelect.value)) || null;
@@ -323,7 +321,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (isCreditSale()) {
             methodSelect.value = '';
             methodSelect.disabled = true;
-            amountReceivedInput.value = '0.00';
+            amountReceivedInput.value = '0';
             amountReceivedInput.readOnly = true;
             amountReceivedInput.classList.add('bg-light');
             amountReceivedHelp.textContent = 'Esta cuenta quedara pendiente y no registrara ingreso en caja por ahora.';
@@ -334,7 +332,7 @@ document.addEventListener('DOMContentLoaded', function () {
         } else if (amountDue <= 0) {
             methodSelect.value = '';
             methodSelect.disabled = true;
-            amountReceivedInput.value = '0.00';
+            amountReceivedInput.value = '0';
             amountReceivedInput.readOnly = true;
             amountReceivedInput.classList.add('bg-light');
             amountReceivedHelp.textContent = 'El saldo a favor cubre toda la cuenta. No entra dinero a caja.';
@@ -344,7 +342,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         } else if (requiresExactAmount) {
             methodSelect.disabled = false;
-            amountReceivedInput.value = amountDue.toFixed(2);
+            amountReceivedInput.value = moneyInput(amountDue);
             amountReceivedInput.readOnly = true;
             amountReceivedInput.classList.add('bg-light');
             amountReceivedHelp.textContent = appliedBalance > 0
@@ -358,7 +356,7 @@ document.addEventListener('DOMContentLoaded', function () {
             methodSelect.disabled = false;
 
             if (amountReceivedInput.dataset.userEdited !== 'true' || Number(amountReceivedInput.value || 0) < amountDue) {
-                amountReceivedInput.value = amountDue.toFixed(2);
+                amountReceivedInput.value = moneyInput(amountDue);
             }
 
             amountReceivedInput.readOnly = false;

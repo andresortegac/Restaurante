@@ -105,9 +105,9 @@
                 <div class="card-body">
                     @if($openOrder)
                         <div class="row g-3">
-                            <div class="col-md-4"><div class="order-summary-card h-100"><div class="summary-kicker">Subtotal</div><div class="h3 mb-0">${{ number_format((float) $openOrder->subtotal, 2) }}</div></div></div>
-                            <div class="col-md-4"><div class="order-summary-card h-100"><div class="summary-kicker">Impuesto</div><div class="h3 mb-0">${{ number_format((float) $openOrder->tax_amount, 2) }}</div></div></div>
-                            <div class="col-md-4"><div class="order-summary-card h-100"><div class="summary-kicker">Total</div><div class="h3 mb-0">${{ number_format((float) $openOrder->total, 2) }}</div></div></div>
+                            <div class="col-md-4"><div class="order-summary-card h-100"><div class="summary-kicker">Subtotal</div><div class="h3 mb-0">${{ money($openOrder->subtotal) }}</div></div></div>
+                            <div class="col-md-4"><div class="order-summary-card h-100"><div class="summary-kicker">Impuesto</div><div class="h3 mb-0">${{ money($openOrder->tax_amount) }}</div></div></div>
+                            <div class="col-md-4"><div class="order-summary-card h-100"><div class="summary-kicker">Total</div><div class="h3 mb-0">${{ money($openOrder->total) }}</div></div></div>
                         </div>
 
                         <div class="row g-3 mt-1">
@@ -137,8 +137,8 @@
                                         <tr>
                                             <td><strong>{{ $item->product_name }}</strong><div class="table-note">Producto del menu</div></td>
                                             <td>{{ $item->quantity }}</td>
-                                            <td>${{ number_format((float) $item->unit_price, 2) }}</td>
-                                            <td class="text-end">${{ number_format((float) $item->subtotal, 2) }}</td>
+                                            <td>${{ money($item->unit_price) }}</td>
+                                            <td class="text-end">${{ money($item->subtotal) }}</td>
                                         </tr>
                                     @endforeach
                                 </tbody>
@@ -176,7 +176,7 @@
                                 </div>
                                 <div class="meta-box">
                                     <div class="summary-kicker">Subtotal nuevo</div>
-                                    <div class="fw-bold" id="draftSubtotal">$0.00</div>
+                                    <div class="fw-bold" id="draftSubtotal">$0</div>
                                 </div>
                             </div>
 
@@ -369,7 +369,7 @@ document.addEventListener('DOMContentLoaded', function () {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
-    const money = value => '$' + Number(value || 0).toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const money = value => '$' + Math.round(Number(value || 0)).toLocaleString('es-CO');
     const typeLabel = () => 'Producto';
     const placeholderMarkup = icon => '<div class="waiter-image-placeholder"><i class="' + icon + '"></i></div>';
     const findCategory = categoryId => categories.find(category => category.id === categoryId);

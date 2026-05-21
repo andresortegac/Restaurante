@@ -27,8 +27,8 @@ class CustomerCredit extends Model
     ];
 
     protected $casts = [
-        'amount' => 'decimal:2',
-        'balance' => 'decimal:2',
+        'amount' => 'integer',
+        'balance' => 'integer',
         'due_at' => 'date',
         'paid_at' => 'datetime',
     ];

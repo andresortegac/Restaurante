@@ -18,8 +18,8 @@
                 <span class="summary-chip">{{ $summary['boxes'] }} cajas</span>
                 <span class="summary-chip">{{ $summary['openSessions'] }} abiertas</span>
                 <span class="summary-chip">{{ $summary['closedToday'] }} cierres hoy</span>
-                <span class="summary-chip">${{ number_format($summary['todayIncome'], 2) }} ingresos hoy</span>
-                <span class="summary-chip">${{ number_format($summary['todayExpense'], 2) }} egresos hoy</span>
+                <span class="summary-chip">${{ money($summary['todayIncome']) }} ingresos hoy</span>
+                <span class="summary-chip">${{ money($summary['todayExpense']) }} egresos hoy</span>
             </div>
         </section>
 
@@ -134,7 +134,7 @@
                                                 </a>
                                             @endif
                                             @if($box->activeSession)
-                                                <span class="summary-chip cash-box-balance-chip">${{ number_format($box->activeSession->currentBalance(), 2) }}</span>
+                                                <span class="summary-chip cash-box-balance-chip">${{ money($box->activeSession->currentBalance()) }}</span>
                                             @endif
                                         </div>
                                     </article>
@@ -157,10 +157,10 @@
                                     <div>
                                         <strong>{{ $session->box->name }}</strong>
                                         <div class="table-note">{{ $session->user?->name ?? 'Sin responsable' }}</div>
-                                        <div class="table-note">Base: ${{ number_format($session->opening_balance, 2) }}</div>
+                                        <div class="table-note">Base: ${{ money($session->opening_balance) }}</div>
                                     </div>
                                     <div class="d-flex flex-column align-items-end gap-2">
-                                        <span class="summary-chip">${{ number_format($session->currentBalance(), 2) }}</span>
+                                        <span class="summary-chip">${{ money($session->currentBalance()) }}</span>
                                         <a href="{{ route('cash-management.show', $session->box) }}" class="btn btn-sm btn-outline-primary">Ver cierre</a>
                                         <a href="{{ route('cash-management.movements.create', $session->box) }}" class="btn btn-sm btn-outline-secondary">Movimiento manual</a>
                                     </div>

@@ -32,7 +32,7 @@ class DeliveryCheckoutService
             ]);
         }
 
-        $amountReceived = round((float) $payload['amount_received'], 2);
+        $amountReceived = money_value($payload['amount_received']);
         $sale = null;
 
         DB::transaction(function () use ($delivery, $paymentMethod, $payload, $amountReceived, $userId, &$sale): void {
@@ -91,7 +91,7 @@ class DeliveryCheckoutService
                 ]);
             }
 
-            $totalCharge = round((float) $currentDelivery->total_charge, 2);
+            $totalCharge = money_value($currentDelivery->total_charge);
             $isCashPayment = $this->isCashPaymentMethod($paymentMethod);
 
             if ($amountReceived < $totalCharge) {
@@ -107,7 +107,7 @@ class DeliveryCheckoutService
             }
 
             $changeAmount = $isCashPayment
-                ? round(max(0, $amountReceived - $totalCharge), 2)
+                ? money_value(max(0, $amountReceived - $totalCharge))
                 : 0.0;
 
             $saleNotes = collect([
@@ -164,9 +164,9 @@ class DeliveryCheckoutService
                 ->where('box_session_id', $boxSession->id)
                 ->lockForUpdate()
                 ->sum('amount');
-            $balanceBefore = round((float) $box->opening_balance + $movementTotal, 2);
+            $balanceBefore = money_value((float) $box->opening_balance + $movementTotal);
             $boxImpact = $this->boxImpactAmount($totalCharge, $paymentMethod);
-            $balanceAfter = round($balanceBefore + $boxImpact, 2);
+            $balanceAfter = money_value($balanceBefore + $boxImpact);
 
             $box->movements()->create([
                 'box_session_id' => $boxSession->id,
@@ -224,7 +224,7 @@ class DeliveryCheckoutService
             return 0.0;
         }
 
-        return round($totalCharge, 2);
+        return money_value($totalCharge);
     }
 
     private function movementDescription(Delivery $delivery, PaymentMethod $paymentMethod, float $boxImpact): string
@@ -233,7 +233,7 @@ class DeliveryCheckoutService
             'Cobro del domicilio ' . $delivery->delivery_number,
             'Metodo ' . $paymentMethod->name,
             $boxImpact > 0
-                ? 'Impacto en caja $' . number_format($boxImpact, 2, '.', '')
+                ? 'Impacto en caja $' . money($boxImpact)
                 : 'Sin impacto en caja',
         ];
 

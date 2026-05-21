@@ -29,7 +29,7 @@ class Product extends Model
     ];
 
     protected $casts = [
-        'price' => 'decimal:2',
+        'price' => 'integer',
         'stock' => 'integer',
         'tracks_stock' => 'boolean',
         'category_id' => 'integer',

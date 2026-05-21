@@ -227,7 +227,7 @@
                                                         @if($coupon->discount->type === 'percentage')
                                                             {{ number_format($coupon->discount->value, 2) }}%
                                                         @else
-                                                            ${{ number_format($coupon->discount->value, 2) }}
+                                                            ${{ money($coupon->discount->value) }}
                                                         @endif
                                                     </small>
                                                 </td>

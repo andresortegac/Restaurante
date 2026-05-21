@@ -301,10 +301,10 @@
                             <span class="item-qty">{{ $item->quantity }}x</span>
                             {{ $item->product_name ?: ($item->product?->name ?? 'Producto eliminado') }}
                         </div>
-                        <div class="item-total">${{ number_format((float) $item->subtotal, 2) }}</div>
+                        <div class="item-total">${{ money($item->subtotal) }}</div>
                     </div>
                     @if((float) $item->quantity > 1)
-                        <div class="item-sub">${{ number_format((float) $item->unit_price, 2) }} c/u</div>
+                        <div class="item-sub">${{ money($item->unit_price) }} c/u</div>
                     @endif
                 </div>
             @endforeach
@@ -315,7 +315,7 @@
         <div class="summary">
             <div class="summary-row">
                 <span>Subtotal</span>
-                <strong>${{ number_format((float) $sale->subtotal, 2) }}</strong>
+                <strong>${{ money($sale->subtotal) }}</strong>
             </div>
 
             <div class="summary-row">
@@ -326,57 +326,57 @@
             @if((float) $sale->discount_amount > 0)
                 <div class="summary-row">
                     <span>Descuento</span>
-                    <strong>-${{ number_format((float) $sale->discount_amount, 2) }}</strong>
+                    <strong>-${{ money($sale->discount_amount) }}</strong>
                 </div>
             @endif
 
             @if((float) $sale->tax_amount > 0)
                 <div class="summary-row">
                     <span>Impuesto</span>
-                    <strong>${{ number_format((float) $sale->tax_amount, 2) }}</strong>
+                    <strong>${{ money($sale->tax_amount) }}</strong>
                 </div>
             @endif
 
             @if($tipAmount > 0)
                 <div class="summary-row">
                     <span>Propina</span>
-                    <strong>${{ number_format($tipAmount, 2) }}</strong>
+                    <strong>${{ money($tipAmount) }}</strong>
                 </div>
             @endif
 
             <div class="summary-row summary-total">
                 <span>Total</span>
-                <strong>${{ number_format((float) $sale->total, 2) }}</strong>
+                <strong>${{ money($sale->total) }}</strong>
             </div>
 
             @if($sale->payment_status === 'credit')
                 <div class="summary-row">
                     <span>Saldo credito</span>
-                    <strong>${{ number_format((float) $sale->total, 2) }}</strong>
+                    <strong>${{ money($sale->total) }}</strong>
                 </div>
             @elseif($appliedCustomerBalance > 0)
                 <div class="summary-row">
                     <span>Saldo a favor aplicado</span>
-                    <strong>${{ number_format($appliedCustomerBalance, 2) }}</strong>
+                    <strong>${{ money($appliedCustomerBalance) }}</strong>
                 </div>
             @elseif($receivedAmount > 0)
                 <div class="summary-row">
                     <span>Recibido</span>
-                    <strong>${{ number_format($receivedAmount, 2) }}</strong>
+                    <strong>${{ money($receivedAmount) }}</strong>
                 </div>
             @endif
 
             @if($appliedCustomerBalance > 0 && $receivedAmount > 0)
                 <div class="summary-row">
                     <span>Recibido</span>
-                    <strong>${{ number_format($receivedAmount, 2) }}</strong>
+                    <strong>${{ money($receivedAmount) }}</strong>
                 </div>
             @endif
 
             @if($receivedAmount > 0 || $changeAmount > 0)
                 <div class="summary-row">
                     <span>Su cambio</span>
-                    <strong>${{ number_format($changeAmount, 2) }}</strong>
+                    <strong>${{ money($changeAmount) }}</strong>
                 </div>
             @endif
         </div>

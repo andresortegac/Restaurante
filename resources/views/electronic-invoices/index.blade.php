@@ -73,7 +73,7 @@
                                         <div>{{ $invoice->electronic_number ?: 'Pendiente' }}</div>
                                         <div class="table-note">{{ $invoice->cufe ?: 'Sin CUFE todavía' }}</div>
                                     </td>
-                                    <td>${{ number_format((float) ($invoice->sale?->total ?? 0), 2) }}</td>
+                                    <td>${{ money($invoice->sale?->total ?? 0) }}</td>
                                     <td>
                                         @php
                                             $statusMap = [

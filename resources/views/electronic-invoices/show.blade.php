@@ -34,7 +34,7 @@
                             <div class="module-list-item">
                                 <div>
                                     <strong>Total</strong>
-                                    <div class="table-note">${{ number_format((float) ($invoice->sale?->total ?? 0), 2) }}</div>
+                                    <div class="table-note">${{ money($invoice->sale?->total ?? 0) }}</div>
                                 </div>
                             </div>
                             <div class="module-list-item">

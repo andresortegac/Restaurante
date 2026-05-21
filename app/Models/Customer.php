@@ -28,7 +28,7 @@ class Customer extends Model
     ];
 
     protected $casts = [
-        'available_balance' => 'decimal:2',
+        'available_balance' => 'integer',
         'is_active' => 'boolean',
     ];
 

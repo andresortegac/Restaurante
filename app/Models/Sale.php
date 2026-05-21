@@ -27,10 +27,10 @@ class Sale extends Model
     ];
 
     protected $casts = [
-        'subtotal' => 'decimal:2',
-        'discount_amount' => 'decimal:2',
-        'tax_amount' => 'decimal:2',
-        'total' => 'decimal:2',
+        'subtotal' => 'integer',
+        'discount_amount' => 'integer',
+        'tax_amount' => 'integer',
+        'total' => 'integer',
         'credit_due_at' => 'date',
     ];
 
@@ -95,9 +95,9 @@ class Sale extends Model
             ? $this->customerBalanceMovements
             : $this->customerBalanceMovements()->where('movement_type', 'sale_consumption')->get();
 
-        return round(abs((float) $movements
+        return money_value(abs((float) $movements
             ->where('movement_type', 'sale_consumption')
-            ->sum('amount')), 2);
+            ->sum('amount')));
     }
 
     public function paymentMethodSummary(): string
@@ -109,17 +109,17 @@ class Sale extends Model
 
     public function externalReceivedTotal(): float
     {
-        return round((float) $this->payments->sum('received_amount'), 2);
+        return money_value((float) $this->payments->sum('received_amount'));
     }
 
     public function paymentChangeTotal(): float
     {
-        return round((float) $this->payments->sum('change_amount'), 2);
+        return money_value((float) $this->payments->sum('change_amount'));
     }
 
     public function paymentTipTotal(): float
     {
-        return round((float) $this->payments->sum('tip_amount'), 2);
+        return money_value((float) $this->payments->sum('tip_amount'));
     }
 
     private function paymentLabels(): Collection
@@ -155,16 +155,16 @@ class Sale extends Model
     {
         $this->loadMissing('items.product.taxRate');
 
-        $this->subtotal = round((float) $this->items->sum('subtotal'), 2);
+        $this->subtotal = money_value((float) $this->items->sum('subtotal'));
         $discountAmount = min((float) ($this->discount_amount ?? 0), (float) $this->subtotal);
-        $this->discount_amount = round(max(0, $discountAmount), 2);
+        $this->discount_amount = money_value(max(0, $discountAmount));
 
         $discountFactor = (float) $this->subtotal > 0
             ? max(0, ((float) $this->subtotal - (float) $this->discount_amount) / (float) $this->subtotal)
             : 1.0;
 
         $taxAmount = $this->items->sum(function ($item) use ($discountFactor): float {
-            $subtotal = round((float) $item->subtotal * $discountFactor, 2);
+            $subtotal = money_value((float) $item->subtotal * $discountFactor);
             $taxRate = $item->product?->taxRate;
 
             if (! $taxRate) {
@@ -175,7 +175,7 @@ class Sale extends Model
         });
 
         $taxedTotal = $this->items->sum(function ($item) use ($discountFactor): float {
-            $subtotal = round((float) $item->subtotal * $discountFactor, 2);
+            $subtotal = money_value((float) $item->subtotal * $discountFactor);
             $taxRate = $item->product?->taxRate;
 
             if (! $taxRate) {
@@ -185,8 +185,8 @@ class Sale extends Model
             return $taxRate->calculateTotalAmount($subtotal);
         });
 
-        $this->tax_amount = round((float) $taxAmount, 2);
-        $this->total = round((float) $taxedTotal, 2);
+        $this->tax_amount = money_value((float) $taxAmount);
+        $this->total = money_value((float) $taxedTotal);
         $this->save();
     }
 }

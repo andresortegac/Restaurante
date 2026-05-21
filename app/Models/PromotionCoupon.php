@@ -22,7 +22,7 @@ class PromotionCoupon extends Model
     protected $casts = [
         'usage_limit' => 'integer',
         'usage_count' => 'integer',
-        'min_purchase_amount' => 'decimal:2',
+        'min_purchase_amount' => 'integer',
         'expires_at' => 'datetime',
         'active' => 'boolean',
     ];

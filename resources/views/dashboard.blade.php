@@ -41,11 +41,11 @@
             @if($canViewFinancialStats)
                 <div class="stat-card">
                     <h3><i class="fas fa-dollar-sign"></i> Ventas Hoy</h3>
-                    <div class="value">${{ number_format($stats['sales_today'], 2) }}</div>
+                    <div class="value">${{ money($stats['sales_today']) }}</div>
                 </div>
                 <div class="stat-card">
                     <h3><i class="fas fa-chart-line"></i> Ingresos mensuales</h3>
-                    <div class="value">${{ number_format($stats['monthly_income'], 2) }}</div>
+                    <div class="value">${{ money($stats['monthly_income']) }}</div>
                 </div>
             @endif
             <div class="stat-card">

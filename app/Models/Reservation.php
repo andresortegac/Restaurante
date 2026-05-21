@@ -27,7 +27,7 @@ class Reservation extends Model
     protected $casts = [
         'reservation_at' => 'datetime',
         'party_size' => 'integer',
-        'deposit_amount' => 'decimal:2',
+        'deposit_amount' => 'integer',
     ];
 
     public function customer(): BelongsTo

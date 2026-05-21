@@ -128,7 +128,7 @@
                             </div>
                             <div class="meta-box">
                                 <div class="summary-kicker">Total actual</div>
-                                <div class="fw-bold">${{ number_format((float) ($openOrder?->total ?? 0), 2) }}</div>
+                                <div class="fw-bold">${{ money($openOrder?->total ?? 0) }}</div>
                                 <div class="seat-note">{{ $openOrder ? 'Incluye impuesto' : 'Sin consumo registrado' }}</div>
                             </div>
                         </div>
@@ -182,7 +182,7 @@
                                     <div class="meta-box mb-3">
                                         <div class="summary-kicker">Resumen</div>
                                         <div class="fw-bold">{{ $serviceOrder->items->sum('quantity') }} items</div>
-                                        <div class="seat-note">${{ number_format((float) $serviceOrder->total, 2) }} acumulados</div>
+                                        <div class="seat-note">${{ money($serviceOrder->total) }} acumulados</div>
                                     </div>
 
                                     <div class="table-card-actions">

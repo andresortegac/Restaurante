@@ -11,10 +11,10 @@
                 <p>Resumen financiero del mes con base inicial, ingresos, egresos y balance final consolidado.</p>
             </div>
             <div class="summary-group">
-                <span class="summary-chip">${{ number_format($summary['opening_base'], 2) }} base</span>
-                <span class="summary-chip">${{ number_format($summary['income'], 2) }} ingresos</span>
-                <span class="summary-chip">${{ number_format($summary['expense'], 2) }} egresos</span>
-                <span class="summary-chip">${{ number_format($summary['balance'], 2) }} balance</span>
+                <span class="summary-chip">${{ money($summary['opening_base']) }} base</span>
+                <span class="summary-chip">${{ money($summary['income']) }} ingresos</span>
+                <span class="summary-chip">${{ money($summary['expense']) }} egresos</span>
+                <span class="summary-chip">${{ money($summary['balance']) }} balance</span>
             </div>
         </section>
 
@@ -43,9 +43,9 @@
                                 <div class="module-list-item">
                                     <div>
                                         <strong>{{ $boxName }}</strong>
-                                        <div class="table-note">Ingresos: ${{ number_format($data['income'], 2) }} | Egresos: ${{ number_format($data['expense'], 2) }}</div>
+                                        <div class="table-note">Ingresos: ${{ money($data['income']) }} | Egresos: ${{ money($data['expense']) }}</div>
                                     </div>
-                                    <span class="summary-chip">${{ number_format($data['income'] - $data['expense'], 2) }}</span>
+                                    <span class="summary-chip">${{ money($data['income'] - $data['expense']) }}</span>
                                 </div>
                             @empty
                                 <p class="text-muted mb-0">No hubo movimientos en el mes seleccionado.</p>
@@ -79,7 +79,7 @@
                                             <td>{{ $session->user?->name ?? 'Sin responsable' }}</td>
                                             <td>{{ $session->opened_at?->format('d/m/Y H:i') ?? '-' }}</td>
                                             <td>{{ $session->closed_at?->format('d/m/Y H:i') ?? 'Abierta' }}</td>
-                                            <td>${{ number_format((float) ($session->difference_amount ?? 0), 2) }}</td>
+                                            <td>${{ money($session->difference_amount ?? 0) }}</td>
                                         </tr>
                                     @empty
                                         <tr>

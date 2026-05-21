@@ -67,7 +67,7 @@ class BoxController extends Controller
             $session = BoxSession::query()->create([
                 'box_id' => $lockedBox->id,
                 'user_id' => Auth::id(),
-                'opening_balance' => round((float) $validated['opening_balance'], 2),
+                'opening_balance' => money_value($validated['opening_balance']),
                 'status' => 'open',
                 'opened_at' => now(),
             ]);
@@ -122,8 +122,8 @@ class BoxController extends Controller
             }
 
             $expectedBalance = $session->currentBalance();
-            $countedBalance = round((float) ($validated['counted_balance'] ?? $validated['closing_balance'] ?? 0), 2);
-            $difference = round($countedBalance - $expectedBalance, 2);
+            $countedBalance = money_value($validated['counted_balance'] ?? $validated['closing_balance'] ?? 0);
+            $difference = money_value($countedBalance - $expectedBalance);
 
             $session->update([
                 'status' => 'closed',

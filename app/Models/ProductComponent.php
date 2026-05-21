@@ -21,7 +21,7 @@ class ProductComponent extends Model
 
     protected $casts = [
         'quantity' => 'decimal:2',
-        'extra_price' => 'decimal:2',
+        'extra_price' => 'integer',
         'is_optional' => 'boolean',
     ];
 

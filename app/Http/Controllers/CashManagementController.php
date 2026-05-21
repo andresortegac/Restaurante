@@ -240,7 +240,7 @@ class CashManagementController extends Controller
             $session = BoxSession::query()->create([
                 'box_id' => $lockedBox->id,
                 'user_id' => Auth::id(),
-                'opening_balance' => round((float) $validated['opening_balance'], 2),
+                'opening_balance' => money_value($validated['opening_balance']),
                 'opening_notes' => $validated['opening_notes'] ?? null,
                 'status' => 'open',
                 'opened_at' => now(),
@@ -264,7 +264,7 @@ class CashManagementController extends Controller
                 $lockedBox,
                 $session,
                 'box_opened',
-                'Apertura de caja con base inicial de $' . number_format($session->opening_balance, 2),
+                'Apertura de caja con base inicial de $' . money($session->opening_balance),
                 ['opening_balance' => (float) $session->opening_balance]
             );
         });
@@ -293,13 +293,13 @@ class CashManagementController extends Controller
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            $rawAmount = round((float) $validated['amount'], 2);
+            $rawAmount = money_value($validated['amount']);
             $signedAmount = $validated['movement_type'] === 'manual_expense'
                 ? -1 * $rawAmount
                 : $rawAmount;
 
             $balanceBefore = $session->currentBalance();
-            $balanceAfter = round($balanceBefore + $signedAmount, 2);
+            $balanceAfter = money_value($balanceBefore + $signedAmount);
 
             $movement = $session->movements()->create([
                 'box_id' => $box->id,
@@ -351,8 +351,8 @@ class CashManagementController extends Controller
                 ->firstOrFail();
 
             $expectedBalance = $session->currentBalance();
-            $countedBalance = round((float) $validated['counted_balance'], 2);
-            $difference = round($countedBalance - $expectedBalance, 2);
+            $countedBalance = money_value($validated['counted_balance']);
+            $difference = money_value($countedBalance - $expectedBalance);
 
             $session->update([
                 'status' => 'closed',
@@ -483,14 +483,14 @@ class CashManagementController extends Controller
             ->groupBy(fn (BoxMovement $movement) => $movement->box?->name ?? 'Sin caja')
             ->map(function ($group) {
                 return [
-                    'income' => round((float) $group->where('amount', '>', 0)->sum('amount'), 2),
-                    'expense' => round(abs((float) $group->where('amount', '<', 0)->sum('amount')), 2),
+                    'income' => money_value((float) $group->where('amount', '>', 0)->sum('amount')),
+                    'expense' => money_value(abs((float) $group->where('amount', '<', 0)->sum('amount'))),
                 ];
             });
 
-        $openingBase = round((float) $sessions->sum('opening_balance'), 2);
-        $income = round((float) $movements->where('amount', '>', 0)->sum('amount'), 2);
-        $expense = round(abs((float) $movements->where('amount', '<', 0)->sum('amount')), 2);
+        $openingBase = money_value((float) $sessions->sum('opening_balance'));
+        $income = money_value((float) $movements->where('amount', '>', 0)->sum('amount'));
+        $expense = money_value(abs((float) $movements->where('amount', '<', 0)->sum('amount')));
 
         return view('cash-management.monthly', [
             'month' => $month,
@@ -500,7 +500,7 @@ class CashManagementController extends Controller
                 'opening_base' => $openingBase,
                 'income' => $income,
                 'expense' => $expense,
-                'balance' => round($openingBase + $income - $expense, 2),
+                'balance' => money_value($openingBase + $income - $expense),
                 'closed_sessions' => $sessions->where('status', 'closed')->count(),
             ],
         ]);

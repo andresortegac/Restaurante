@@ -369,8 +369,8 @@ class BillingManagementController extends Controller
                 ->findOrFail($sale->id);
 
             $currentCredit = $currentSale->customerCredit;
-            $remainingBalance = round((float) ($currentCredit?->balance ?? $currentSale->total), 2);
-            $appliedAmount = round((float) $validated['amount_received'], 2);
+            $remainingBalance = money_value($currentCredit?->balance ?? $currentSale->total);
+            $appliedAmount = money_value($validated['amount_received']);
 
             if ($appliedAmount <= 0 || $appliedAmount > $remainingBalance) {
                 throw \Illuminate\Validation\ValidationException::withMessages([
@@ -417,8 +417,8 @@ class BillingManagementController extends Controller
             }
 
             $payment = $currentSale->payments->first();
-            $newRemainingBalance = round(max(0, $remainingBalance - $appliedAmount), 2);
-            $totalReceived = round((float) ($payment?->received_amount ?? 0) + $appliedAmount, 2);
+            $newRemainingBalance = money_value(max(0, $remainingBalance - $appliedAmount));
+            $totalReceived = money_value((float) ($payment?->received_amount ?? 0) + $appliedAmount);
             $paymentStatus = $newRemainingBalance <= 0 ? 'completed' : 'pending';
 
             if ($payment) {
@@ -445,8 +445,8 @@ class BillingManagementController extends Controller
                 ->where('box_session_id', $boxSession->id)
                 ->lockForUpdate()
                 ->sum('amount');
-            $balanceBefore = round((float) $box->opening_balance + $movementTotal, 2);
-            $balanceAfter = round($balanceBefore + $appliedAmount, 2);
+            $balanceBefore = money_value((float) $box->opening_balance + $movementTotal);
+            $balanceAfter = money_value($balanceBefore + $appliedAmount);
             $description = ($newRemainingBalance <= 0 ? 'Pago final de credito #' : 'Abono a credito #') . $currentSale->id
                 . ' | Cliente ' . ($currentSale->customer?->name ?: $currentSale->customer_name ?: 'Sin cliente');
 

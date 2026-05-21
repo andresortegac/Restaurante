@@ -107,9 +107,9 @@
                                         @endif
                                     </td>
                                     <td>
-                                        <div>${{ number_format($delivery->total_charge, 2) }}</div>
-                                        <div class="table-note">Pedido ${{ number_format($delivery->order_total, 2) }} + envio ${{ number_format($delivery->delivery_fee, 2) }}</div>
-                                        <div class="table-note">Paga con ${{ number_format($delivery->customer_payment_amount, 2) }} / Cambio ${{ number_format($delivery->change_required, 2) }}</div>
+                                        <div>${{ money($delivery->total_charge) }}</div>
+                                        <div class="table-note">Pedido ${{ money($delivery->order_total) }} + envio ${{ money($delivery->delivery_fee) }}</div>
+                                        <div class="table-note">Paga con ${{ money($delivery->customer_payment_amount) }} / Cambio ${{ money($delivery->change_required) }}</div>
                                         <div class="table-note">
                                             @if($isCharged)
                                                 Cobrado en caja

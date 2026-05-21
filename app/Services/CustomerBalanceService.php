@@ -18,7 +18,7 @@ class CustomerBalanceService
                 ->findOrFail($customer->id);
 
             $operation = (string) ($payload['operation'] ?? 'add');
-            $amount = round((float) ($payload['amount'] ?? 0), 2);
+            $amount = money_value($payload['amount'] ?? 0);
 
             if ($amount <= 0) {
                 throw ValidationException::withMessages([
@@ -26,7 +26,7 @@ class CustomerBalanceService
                 ]);
             }
 
-            $balanceBefore = round((float) $currentCustomer->available_balance, 2);
+            $balanceBefore = money_value($currentCustomer->available_balance);
             $signedAmount = $operation === 'remove'
                 ? -$amount
                 : $amount;
@@ -37,7 +37,7 @@ class CustomerBalanceService
                 ]);
             }
 
-            $balanceAfter = round($balanceBefore + $signedAmount, 2);
+            $balanceAfter = money_value($balanceBefore + $signedAmount);
 
             $currentCustomer->update([
                 'available_balance' => $balanceAfter,
@@ -61,19 +61,19 @@ class CustomerBalanceService
             ->lockForUpdate()
             ->findOrFail($customer->id);
 
-        $balanceBefore = round((float) $currentCustomer->available_balance, 2);
-        $amountToApply = round(min($balanceBefore, max(0, $saleAmount)), 2);
+        $balanceBefore = money_value($currentCustomer->available_balance);
+        $amountToApply = money_value(min($balanceBefore, max(0, $saleAmount)));
 
         if ($amountToApply <= 0) {
             return [
                 'applied_amount' => 0.0,
-                'remaining_amount' => round(max(0, $saleAmount), 2),
+                'remaining_amount' => money_value(max(0, $saleAmount)),
                 'balance_before' => $balanceBefore,
                 'balance_after' => $balanceBefore,
             ];
         }
 
-        $balanceAfter = round($balanceBefore - $amountToApply, 2);
+        $balanceAfter = money_value($balanceBefore - $amountToApply);
 
         $currentCustomer->update([
             'available_balance' => $balanceAfter,
@@ -91,7 +91,7 @@ class CustomerBalanceService
 
         return [
             'applied_amount' => $amountToApply,
-            'remaining_amount' => round(max(0, $saleAmount - $amountToApply), 2),
+            'remaining_amount' => money_value(max(0, $saleAmount - $amountToApply)),
             'balance_before' => $balanceBefore,
             'balance_after' => $balanceAfter,
         ];

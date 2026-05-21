@@ -14,8 +14,8 @@
                 <span class="summary-chip">{{ $summary['customersWithCredit'] }} clientes con saldo</span>
                 <span class="summary-chip">{{ $summary['customersWithAvailableBalance'] }} con saldo a favor</span>
                 <span class="summary-chip">{{ $summary['pendingCredits'] }} cuentas pendientes</span>
-                <span class="summary-chip">${{ number_format($summary['creditPending'], 2) }} por cobrar</span>
-                <span class="summary-chip">${{ number_format($summary['availableBalance'], 2) }} a favor</span>
+                <span class="summary-chip">${{ money($summary['creditPending']) }} por cobrar</span>
+                <span class="summary-chip">${{ money($summary['availableBalance']) }} a favor</span>
             </div>
         </section>
 
@@ -73,7 +73,7 @@
                                     </td>
                                     <td>{{ number_format((int) ($customer->pending_credits_count ?? 0)) }}</td>
                                     <td>
-                                        <strong>${{ number_format((float) ($customer->pending_credit_total ?? 0), 2) }}</strong>
+                                        <strong>${{ money($customer->pending_credit_total ?? 0) }}</strong>
                                         <div class="table-note">
                                             @if((float) ($customer->pending_credit_total ?? 0) > 0)
                                                 Cartera pendiente
@@ -83,7 +83,7 @@
                                         </div>
                                     </td>
                                     <td>
-                                        <strong>${{ number_format((float) ($customer->available_balance ?? 0), 2) }}</strong>
+                                        <strong>${{ money($customer->available_balance ?? 0) }}</strong>
                                         <div class="table-note">
                                             @if((float) ($customer->available_balance ?? 0) > 0)
                                                 Disponible para futuros cobros

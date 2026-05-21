@@ -132,7 +132,7 @@
 
                             <div>
                                 <label class="form-label" for="amount_received">Monto recibido</label>
-                                <input type="number" class="form-control" id="amount_received" name="amount_received" min="0" step="0.01" value="{{ number_format((float) old('amount_received', 0), 2, '.', '') }}" required>
+                                <input type="number" class="form-control" id="amount_received" name="amount_received" min="0" step="1" value="{{ money_input(old('amount_received', 0)) }}" required>
                                 <div class="form-help mt-1" id="amountReceivedHelp">Ingresa el valor recibido para calcular el cambio.</div>
                             </div>
 
@@ -144,19 +144,19 @@
                                 </div>
                                 <div class="d-flex justify-content-between gap-3">
                                     <span class="summary-kicker">Subtotal</span>
-                                    <strong id="manualSubtotal">$0.00</strong>
+                                    <strong id="manualSubtotal">$0</strong>
                                 </div>
                                 <div class="d-flex justify-content-between gap-3 mt-2">
                                     <span class="summary-kicker">Total a cobrar</span>
-                                    <strong id="manualAmountDue">$0.00</strong>
+                                    <strong id="manualAmountDue">$0</strong>
                                 </div>
                                 <div class="d-flex justify-content-between gap-3 mt-2">
                                     <span class="summary-kicker">Saldo a favor aplicado</span>
-                                    <strong id="manualAppliedBalance">$0.00</strong>
+                                    <strong id="manualAppliedBalance">$0</strong>
                                 </div>
                                 <div class="d-flex justify-content-between gap-3 mt-2">
                                     <span class="summary-kicker">Cambio</span>
-                                    <strong id="manualChange">$0.00</strong>
+                                    <strong id="manualChange">$0</strong>
                                 </div>
                             </div>
                         </div>
@@ -257,10 +257,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const selectedItems = new Map();
     let activeCategory = 'all';
 
-    const money = value => '$' + Number(value || 0).toLocaleString('es-CO', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-    });
+    const money = value => '$' + Math.round(Number(value || 0)).toLocaleString('es-CO');
+    const moneyInput = value => String(Math.max(0, Math.round(Number(value || 0))));
     const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({
         '&': '&amp;',
         '<': '&lt;',
@@ -366,7 +364,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (isCreditSale()) {
             paymentMethod.value = '';
             paymentMethod.disabled = true;
-            amountReceived.value = '0.00';
+            amountReceived.value = '0';
             amountReceived.readOnly = true;
             amountReceived.classList.add('bg-light');
             amountHelp.textContent = 'Credito pendiente: no se registra dinero recibido ni cambio.';
@@ -376,7 +374,7 @@ document.addEventListener('DOMContentLoaded', function () {
         } else if (due <= 0 && subtotal > 0) {
             paymentMethod.value = '';
             paymentMethod.disabled = true;
-            amountReceived.value = '0.00';
+            amountReceived.value = '0';
             amountReceived.readOnly = true;
             amountReceived.classList.add('bg-light');
             amountHelp.textContent = 'El saldo a favor cubre todo el cobro. No se registra ingreso en caja.';
@@ -385,7 +383,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         } else if (exactPayment) {
             paymentMethod.disabled = false;
-            amountReceived.value = due.toFixed(2);
+            amountReceived.value = moneyInput(due);
             amountReceived.readOnly = true;
             amountReceived.classList.add('bg-light');
             amountHelp.textContent = appliedBalance > 0
@@ -403,7 +401,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 : 'Ingresa el valor recibido para calcular el cambio.';
 
             if (amountReceived.dataset.userEdited !== 'true' && due > 0) {
-                amountReceived.value = due.toFixed(2);
+                amountReceived.value = moneyInput(due);
             }
 
             if (submitButton) {
@@ -461,7 +459,7 @@ document.addEventListener('DOMContentLoaded', function () {
             '<input type="hidden" name="items[' + index + '][product_id]" value="' + entry.product.id + '">' +
             '<input type="hidden" name="items[' + index + '][name]" value="' + escapeHtml(entry.product.name) + '">' +
             '<input type="hidden" name="items[' + index + '][quantity]" value="' + entry.quantity + '">' +
-            '<input type="hidden" name="items[' + index + '][unit_price]" value="' + Number(entry.unitPrice).toFixed(2) + '">'
+            '<input type="hidden" name="items[' + index + '][unit_price]" value="' + moneyInput(entry.unitPrice) + '">'
         )).join('');
 
         syncTotals();

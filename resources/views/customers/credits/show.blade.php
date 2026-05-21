@@ -10,8 +10,8 @@
                 <h1>{{ $customer->name }}</h1>
             </div>
             <div class="summary-group">
-                <span class="summary-chip">${{ number_format($summary['pending'], 2) }} pendiente</span>
-                <span class="summary-chip">${{ number_format($summary['available'], 2) }} saldo a favor</span>
+                <span class="summary-chip">${{ money($summary['pending']) }} pendiente</span>
+                <span class="summary-chip">${{ money($summary['available']) }} saldo a favor</span>
                 <span class="summary-chip">{{ $summary['pendingCount'] }} creditos pendientes</span>
                 <span class="summary-chip">{{ $summary['paidCount'] }} creditos pagados</span>
             </div>
@@ -36,11 +36,11 @@
                         @if($summary['pending'] > 0)
                             <div class="mb-4">
                                 <div class="table-note text-uppercase">Deuda total</div>
-                                <div class="display-6 fw-semibold mb-2">${{ number_format($summary['pending'], 2) }}</div>
+                                <div class="display-6 fw-semibold mb-2">${{ money($summary['pending']) }}</div>
                                 <p class="mb-0">Puedes cobrar el valor completo o registrar un abono parcial sin perder el historial del cliente.</p>
                             </div>
 
-                            <form method="POST" action="{{ route('customers.credits.collect', $customer) }}" data-customer-credit-collection-form data-full-amount="{{ number_format($summary['pending'], 2, '.', '') }}">
+                            <form method="POST" action="{{ route('customers.credits.collect', $customer) }}" data-customer-credit-collection-form data-full-amount="{{ money_input($summary['pending']) }}">
                                 @csrf
                                 <input type="hidden" name="payment_mode" value="{{ old('payment_mode', 'partial') }}">
 
@@ -51,10 +51,10 @@
                                         class="form-control"
                                         id="amount_received"
                                         name="amount_received"
-                                        min="0.01"
-                                        max="{{ number_format($summary['pending'], 2, '.', '') }}"
-                                        step="0.01"
-                                        value="{{ old('amount_received', number_format($summary['pending'], 2, '.', '')) }}"
+                                        min="1"
+                                        max="{{ money_input($summary['pending']) }}"
+                                        step="1"
+                                        value="{{ money_input(old('amount_received', $summary['pending'])) }}"
                                         required
                                     >
                                     <div class="form-help mt-1">Si registras un abono, el sistema descuenta primero las deudas mas antiguas.</div>
@@ -82,7 +82,7 @@
                         <div>
                             <h5 class="mb-1">Saldo a favor</h5>
                         </div>
-                        <span class="summary-chip">${{ number_format($summary['available'], 2) }}</span>
+                        <span class="summary-chip">${{ money($summary['available']) }}</span>
                     </div>
                     <div class="card-body">
                         
@@ -99,7 +99,7 @@
 
                             <div class="mb-3">
                                 <label class="form-label" for="balance_amount">Valor</label>
-                                <input type="number" class="form-control" id="balance_amount" name="amount" min="0.01" step="0.01" value="{{ old('amount') }}" required>
+                                <input type="number" class="form-control" id="balance_amount" name="amount" min="1" step="1" value="{{ money_input(old('amount', 0)) }}" required>
                             </div>
 
                             <button type="submit" class="btn btn-primary w-100">Guardar saldo a favor</button>
@@ -118,7 +118,7 @@
 
                             <div class="mb-3">
                                 <label class="form-label" for="amount">Valor pendiente</label>
-                                <input type="number" class="form-control" id="amount" name="amount" min="0.01" step="0.01" value="{{ old('amount') }}" required>
+                                <input type="number" class="form-control" id="amount" name="amount" min="1" step="1" value="{{ money_input(old('amount', 0)) }}" required>
                             </div>
 
                             <button type="submit" class="btn btn-primary w-100">Guardar saldo pendiente</button>
@@ -163,7 +163,7 @@
             }
 
             if (paymentMode === 'full' && amountInput && fullAmount > 0) {
-                amountInput.value = fullAmount.toFixed(2);
+                amountInput.value = String(Math.round(fullAmount));
             }
 
             const amount = Number(amountInput?.value || 0);
@@ -186,8 +186,8 @@
 
             const isFullPayment = fullAmount > 0 && Math.abs(amount - fullAmount) < 0.01;
             const confirmText = isFullPayment
-                ? 'Se cobrara la deuda completa del cliente por $' + amount.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '.'
-                : 'Se registrara un abono de $' + amount.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' para la deuda del cliente.';
+                ? 'Se cobrara la deuda completa del cliente por $' + Math.round(amount).toLocaleString('es-CO') + '.'
+                : 'Se registrara un abono de $' + Math.round(amount).toLocaleString('es-CO') + ' para la deuda del cliente.';
 
             if (window.Swal) {
                 const result = await Swal.fire({

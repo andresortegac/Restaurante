@@ -34,7 +34,7 @@ class TaxRate extends Model
 
     public function calculateTaxAmount(float $amount): float
     {
-        $amount = round($amount, 2);
+        $amount = money_value($amount);
         $rate = (float) $this->rate;
 
         if (! $this->is_active || $rate <= 0 || $amount <= 0) {
@@ -42,15 +42,15 @@ class TaxRate extends Model
         }
 
         if ($this->is_inclusive) {
-            return round($amount - ($amount / (1 + ($rate / 100))), 2);
+            return money_value($amount - ($amount / (1 + ($rate / 100))));
         }
 
-        return round($amount * ($rate / 100), 2);
+        return money_value($amount * ($rate / 100));
     }
 
     public function calculateTotalAmount(float $amount): float
     {
-        $amount = round($amount, 2);
+        $amount = money_value($amount);
 
         if (! $this->is_active || (float) $this->rate <= 0) {
             return $amount;
@@ -60,6 +60,6 @@ class TaxRate extends Model
             return $amount;
         }
 
-        return round($amount + $this->calculateTaxAmount($amount), 2);
+        return money_value($amount + $this->calculateTaxAmount($amount));
     }
 }

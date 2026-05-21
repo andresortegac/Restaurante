@@ -20,9 +20,9 @@
             </div>
             <div class="summary-group">
                 <span class="summary-chip">{{ $currentSession?->isOpen() ? 'Sesion abierta' : 'Sesion cerrada' }}</span>
-                <span class="summary-chip">${{ number_format($incomeTotal, 2) }} ingresos</span>
-                <span class="summary-chip">${{ number_format($expenseTotal, 2) }} egresos</span>
-                <span class="summary-chip">${{ number_format($currentBalance, 2) }} saldo actual</span>
+                <span class="summary-chip">${{ money($incomeTotal) }} ingresos</span>
+                <span class="summary-chip">${{ money($expenseTotal) }} egresos</span>
+                <span class="summary-chip">${{ money($currentBalance) }} saldo actual</span>
                 @if($canManageBoxCatalog)
                     <a href="{{ route('cash-management.edit', $box) }}" class="btn btn-outline-secondary">
                         <i class="fas fa-pen"></i> Editar caja
@@ -45,7 +45,7 @@
                             @csrf
                             <div class="mb-3">
                                 <label class="form-label" for="opening_balance">Base de caja</label>
-                                <input type="number" step="0.01" min="0" class="form-control" id="opening_balance" name="opening_balance" value="{{ old('opening_balance', 0) }}" required>
+                                <input type="number" step="1" min="0" class="form-control" id="opening_balance" name="opening_balance" value="{{ money_input(old('opening_balance', 0)) }}" required>
                             </div>
                             <div class="mb-3">
                                 <label class="form-label" for="opening_notes">Observaciones</label>
@@ -84,20 +84,20 @@
                             <div class="module-list-item">
                                 <div>
                                     <strong>Base inicial</strong>
-                                    <div class="table-note">${{ number_format((float) $currentSession->opening_balance, 2) }}</div>
+                                    <div class="table-note">${{ money($currentSession->opening_balance) }}</div>
                                 </div>
                             </div>
                             <div class="module-list-item">
                                 <div>
                                     <strong>Saldo esperado</strong>
-                                    <div class="table-note">${{ number_format((float) $currentBalance, 2) }}</div>
+                                    <div class="table-note">${{ money($currentBalance) }}</div>
                                 </div>
                             </div>
                             @if(! $currentSession->isOpen())
                                 <div class="module-list-item">
                                     <div>
                                         <strong>Diferencia del ultimo cierre</strong>
-                                        <div class="table-note">${{ number_format((float) $currentSession->difference_amount, 2) }}</div>
+                                        <div class="table-note">${{ money($currentSession->difference_amount) }}</div>
                                     </div>
                                 </div>
                             @endif
@@ -123,25 +123,25 @@
                             <div class="col-md-3">
                                 <div class="meta-box h-100">
                                     <div class="summary-kicker">Base inicial</div>
-                                    <div class="fw-bold">${{ number_format((float) $currentSession->opening_balance, 2) }}</div>
+                                    <div class="fw-bold">${{ money($currentSession->opening_balance) }}</div>
                                 </div>
                             </div>
                             <div class="col-md-3">
                                 <div class="meta-box h-100">
                                     <div class="summary-kicker">Ventas del turno</div>
-                                    <div class="fw-bold">${{ number_format((float) $automaticIncome, 2) }}</div>
+                                    <div class="fw-bold">${{ money($automaticIncome) }}</div>
                                 </div>
                             </div>
                             <div class="col-md-3">
                                 <div class="meta-box h-100">
                                     <div class="summary-kicker">Ingresos manuales</div>
-                                    <div class="fw-bold">${{ number_format((float) $manualIncome, 2) }}</div>
+                                    <div class="fw-bold">${{ money($manualIncome) }}</div>
                                 </div>
                             </div>
                             <div class="col-md-3">
                                 <div class="meta-box h-100">
                                     <div class="summary-kicker">Egresos manuales</div>
-                                    <div class="fw-bold">${{ number_format((float) $manualExpense, 2) }}</div>
+                                    <div class="fw-bold">${{ money($manualExpense) }}</div>
                                 </div>
                             </div>
                         </div>
@@ -150,11 +150,11 @@
                             <div class="d-flex flex-wrap justify-content-between gap-3">
                                 <div>
                                     <div class="summary-kicker">Saldo esperado segun sistema</div>
-                                    <div class="h5 mb-0">${{ number_format($expectedClosingBalance, 2) }}</div>
+                                    <div class="h5 mb-0">${{ money($expectedClosingBalance) }}</div>
                                 </div>
                                 <div>
                                     <div class="summary-kicker">Diferencia estimada</div>
-                                    <div class="h5 mb-0" id="closingDifferencePreview">${{ number_format($closingDifference, 2) }}</div>
+                                    <div class="h5 mb-0" id="closingDifferencePreview">${{ money($closingDifference) }}</div>
                                 </div>
                             </div>
                         </div>
@@ -164,14 +164,14 @@
                             @csrf
                             <div class="col-md-4">
                                 <label class="form-label" for="counted_balance">Valor contado fisicamente</label>
-                                <input type="number" step="0.01" min="0" class="form-control" id="counted_balance" name="counted_balance" value="{{ old('counted_balance', number_format($expectedClosingBalance, 2, '.', '')) }}" required>
+                                <input type="number" step="1" min="0" class="form-control" id="counted_balance" name="counted_balance" value="{{ money_input(old('counted_balance', $expectedClosingBalance)) }}" required>
                             </div>
                             <div class="col-md-8">
                                 <label class="form-label" for="closing_notes">Observaciones</label>
                                 <input type="text" class="form-control" id="closing_notes" name="closing_notes">
                             </div>
                             <div class="col-12">
-                                <div class="table-note">Si el valor contado coincide con el saldo esperado, la diferencia quedara en $0.00.</div>
+                                <div class="table-note">Si el valor contado coincide con el saldo esperado, la diferencia quedara en $0.</div>
                             </div>
                             <div class="col-12">
                                 <button type="submit" class="btn btn-primary">Cerrar caja</button>
@@ -213,12 +213,7 @@
             function syncDifferencePreview() {
                 const countedBalance = Number(countedBalanceInput.value || 0);
                 const difference = countedBalance - Number(expectedBalance || 0);
-                differencePreview.textContent = new Intl.NumberFormat('es-CO', {
-                    style: 'currency',
-                    currency: 'COP',
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                }).format(difference);
+                differencePreview.textContent = '$' + Math.round(difference).toLocaleString('es-CO');
 
                 differencePreview.classList.remove('text-success', 'text-danger', 'text-muted', 'text-primary');
 

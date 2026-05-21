@@ -73,8 +73,8 @@ class ManualBillingService
 
         $tipAmount = $isCredit
             ? 0.0
-            : round((float) ($payload['tip_amount'] ?? 0), 2);
-        $amountReceived = round((float) $payload['amount_received'], 2);
+            : money_value($payload['tip_amount'] ?? 0);
+        $amountReceived = money_value($payload['amount_received']);
         $items = collect($payload['items'] ?? [])
             ->filter(fn (array $item) => filled($item['name'] ?? null) && (float) ($item['quantity'] ?? 0) > 0)
             ->values();
@@ -149,8 +149,8 @@ class ManualBillingService
                 }
 
                 $quantity = (int) $item['quantity'];
-                $unitPrice = round((float) $item['unit_price'], 2);
-                $subtotal = round($quantity * $unitPrice, 2);
+                $unitPrice = money_value($item['unit_price']);
+                $subtotal = money_value($quantity * $unitPrice);
 
                 if ($subtotal <= 0) {
                     throw ValidationException::withMessages([
@@ -180,7 +180,7 @@ class ManualBillingService
             $sale->calculateTotal();
 
             $appliedCustomerBalance = 0.0;
-            $remainingSaleAmount = round((float) $sale->total, 2);
+            $remainingSaleAmount = money_value($sale->total);
 
             if (! $isCredit && $applyCustomerBalance && $customer) {
                 $balanceApplication = $this->customerBalanceService->applyAvailableBalance(
@@ -195,7 +195,7 @@ class ManualBillingService
                 $remainingSaleAmount = $balanceApplication['remaining_amount'];
             }
 
-            $amountDue = round($remainingSaleAmount + $tipAmount, 2);
+            $amountDue = money_value($remainingSaleAmount + $tipAmount);
             $isCashPayment = $this->isCashPaymentMethod($paymentMethod);
 
             if (! $isCredit && $amountDue > 0 && $amountReceived < $amountDue) {
@@ -213,7 +213,7 @@ class ManualBillingService
             $changeAmount = $isCredit
                 ? 0.0
                 : ($isCashPayment
-                ? round(max(0, $amountReceived - $amountDue), 2)
+                ? money_value(max(0, $amountReceived - $amountDue))
                 : 0.0);
 
             $payment = $sale->payments()->create([
@@ -232,11 +232,11 @@ class ManualBillingService
                 ->where('box_session_id', $boxSession->id)
                 ->lockForUpdate()
                 ->sum('amount');
-            $balanceBefore = round((float) $box->opening_balance + $movementTotal, 2);
+            $balanceBefore = money_value((float) $box->opening_balance + $movementTotal);
             $boxImpact = $isCredit
                 ? 0.0
                 : $this->boxImpactAmount($remainingSaleAmount, $tipAmount, $paymentMethod);
-            $balanceAfter = round($balanceBefore + $boxImpact, 2);
+            $balanceAfter = money_value($balanceBefore + $boxImpact);
             $description = $this->movementDescription($sale, $originType, $paymentMethod, $boxImpact, $isCredit, $appliedCustomerBalance);
 
             $box->movements()->create([
@@ -326,7 +326,7 @@ class ManualBillingService
             return 0.0;
         }
 
-        return round($saleTotal + $tipAmount, 2);
+        return money_value($saleTotal + $tipAmount);
     }
 
     private function movementDescription(
@@ -343,10 +343,10 @@ class ManualBillingService
             $originType === 'delivery' ? 'Domicilio' : 'Mesa',
             $isCredit ? 'Credito' : 'Metodo ' . ($paymentMethod?->name ?? 'Sin dato'),
             $appliedCustomerBalance > 0
-                ? 'Saldo a favor aplicado $' . number_format($appliedCustomerBalance, 2, '.', '')
+                ? 'Saldo a favor aplicado $' . money($appliedCustomerBalance)
                 : null,
             $boxImpact > 0
-                ? 'Impacto en caja $' . number_format($boxImpact, 2, '.', '')
+                ? 'Impacto en caja $' . money($boxImpact)
                 : 'Sin impacto en caja',
         ];
 

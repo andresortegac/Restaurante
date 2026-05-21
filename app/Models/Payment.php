@@ -21,10 +21,10 @@ class Payment extends Model
     ];
 
     protected $casts = [
-        'amount' => 'decimal:2',
-        'received_amount' => 'decimal:2',
-        'change_amount' => 'decimal:2',
-        'tip_amount' => 'decimal:2',
+        'amount' => 'integer',
+        'received_amount' => 'integer',
+        'change_amount' => 'integer',
+        'tip_amount' => 'integer',
     ];
 
     public function sale()

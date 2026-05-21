@@ -73,7 +73,7 @@
                                         <strong>{{ $row->user?->name ?? 'Sin usuario' }}</strong>
                                         <div class="table-note">{{ number_format((int) $row->sales_count) }} ventas</div>
                                     </div>
-                                    <span class="summary-chip">${{ number_format((float) $row->revenue, 2) }}</span>
+                                    <span class="summary-chip">${{ money($row->revenue) }}</span>
                                 </div>
                             @empty
                                 <p class="text-muted mb-0">No hay ventas registradas en este rango.</p>
@@ -96,7 +96,7 @@
                                         <strong>{{ $row->paymentMethod?->name ?? 'Sin método' }}</strong>
                                         <div class="table-note">{{ number_format((int) $row->payments_count) }} pagos</div>
                                     </div>
-                                    <span class="summary-chip">${{ number_format((float) $row->total_amount, 2) }}</span>
+                                    <span class="summary-chip">${{ money($row->total_amount) }}</span>
                                 </div>
                             @empty
                                 <p class="text-muted mb-0">No hay pagos para mostrar.</p>
@@ -126,7 +126,7 @@
                                         <tr>
                                             <td>{{ \Carbon\Carbon::parse($row->report_date)->format('d/m/Y') }}</td>
                                             <td>{{ number_format((int) $row->sales_count) }}</td>
-                                            <td>${{ number_format((float) $row->revenue, 2) }}</td>
+                                            <td>${{ money($row->revenue) }}</td>
                                         </tr>
                                     @empty
                                         <tr>
@@ -153,7 +153,7 @@
                                         <strong>{{ $row->product_name }}</strong>
                                         <div class="table-note">{{ number_format((int) $row->quantity_sold) }} unidades</div>
                                     </div>
-                                    <span class="summary-chip">${{ number_format((float) $row->revenue, 2) }}</span>
+                                    <span class="summary-chip">${{ money($row->revenue) }}</span>
                                 </div>
                             @empty
                                 <p class="text-muted mb-0">Todavía no hay productos acumulados en este rango.</p>
@@ -196,7 +196,7 @@
                                         <strong>{{ ucfirst(str_replace('_', ' ', (string) $row->status)) }}</strong>
                                         <div class="table-note">{{ number_format((int) $row->total) }} registros</div>
                                     </div>
-                                    <span class="summary-chip">${{ number_format((float) $row->billed_total, 2) }}</span>
+                                    <span class="summary-chip">${{ money($row->billed_total) }}</span>
                                 </div>
                             @empty
                                 <p class="text-muted mb-0">No hay domicilios para este periodo.</p>

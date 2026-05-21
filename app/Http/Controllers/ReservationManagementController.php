@@ -161,7 +161,7 @@ class ReservationManagementController extends Controller
             'party_size' => ['required', 'integer', 'min:1', 'max:30'],
             'status' => ['required', Rule::in($this->availableStatuses())],
             'notes' => ['nullable', 'string'],
-            'deposit_amount' => ['nullable', 'numeric', 'min:0', 'max:99999999.99'],
+            'deposit_amount' => ['nullable', 'numeric', 'min:0', 'max:99999999'],
         ]);
 
         if (
@@ -189,7 +189,7 @@ class ReservationManagementController extends Controller
             'party_size' => $validated['party_size'],
             'status' => $validated['status'],
             'notes' => $validated['notes'] ?? null,
-            'deposit_amount' => $validated['deposit_amount'] ?? 0,
+            'deposit_amount' => money_value($validated['deposit_amount'] ?? 0),
         ];
     }
 

@@ -22,9 +22,9 @@ class CustomerBalanceMovement extends Model
     ];
 
     protected $casts = [
-        'amount' => 'decimal:2',
-        'balance_before' => 'decimal:2',
-        'balance_after' => 'decimal:2',
+        'amount' => 'integer',
+        'balance_before' => 'integer',
+        'balance_after' => 'integer',
     ];
 
     public function customer(): BelongsTo

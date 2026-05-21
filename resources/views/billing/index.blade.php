@@ -13,7 +13,7 @@
             <div class="summary-group">
                 <span class="summary-chip">{{ number_format($summary['openOrders']) }} cuentas abiertas</span>
                 <span class="summary-chip">{{ number_format($summary['tables']) }} mesas</span>
-                <span class="summary-chip">${{ number_format($summary['totalDue'], 2) }} por cobrar</span>
+                <span class="summary-chip">${{ money($summary['totalDue']) }} por cobrar</span>
             </div>
         </section>
 
@@ -98,8 +98,8 @@
                                             @endif
                                         </td>
                                         <td>
-                                            <strong>${{ number_format((float) $order->total, 2) }}</strong>
-                                            <div class="table-note">Subtotal ${{ number_format((float) $order->subtotal, 2) }}</div>
+                                            <strong>${{ money($order->total) }}</strong>
+                                            <div class="table-note">Subtotal ${{ money($order->subtotal) }}</div>
                                         </td>
                                         <td>
                                             <div class="table-actions justify-content-end">

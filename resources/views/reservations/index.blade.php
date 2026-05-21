@@ -116,7 +116,7 @@
                                     <td>
                                         <div>{{ optional($reservation->reservation_at)->format('d/m/Y h:i A') }}</div>
                                         <div class="table-note">{{ $reservation->party_size }} personas</div>
-                                        <div class="table-note">Abono ${{ number_format((float) ($reservation->deposit_amount ?? 0), 2) }}</div>
+                                        <div class="table-note">Abono ${{ money($reservation->deposit_amount ?? 0) }}</div>
                                     </td>
                                     <td>
                                         @if($reservation->table)

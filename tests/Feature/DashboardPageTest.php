@@ -162,8 +162,8 @@ class DashboardPageTest extends TestCase
         $response->assertSee('15/05/2026 14:30');
         $response->assertSee('Acceso anterior');
         $response->assertSee('14/05/2026 21:10');
-        $response->assertSee('$100.00');
-        $response->assertSee('$350.00');
+        $response->assertSee('$100');
+        $response->assertSee('$350');
         $response->assertDontSee('Permisos Autorizados');
         $response->assertDontSee('Estado del Sistema');
 

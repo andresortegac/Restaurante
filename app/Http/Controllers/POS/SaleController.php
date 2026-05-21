@@ -110,14 +110,14 @@ class SaleController extends Controller
                 ]);
 
                 $boxImpact = strtoupper((string) $paymentMethod->code) === 'CASH'
-                    ? round((float) $sale->total, 2)
+                    ? money_value((float) $sale->total)
                     : 0.0;
                 $movementTotal = (float) BoxMovement::query()
                     ->where('box_session_id', $session->id)
                     ->lockForUpdate()
                     ->sum('amount');
-                $balanceBefore = round((float) $session->opening_balance + $movementTotal, 2);
-                $balanceAfter = round($balanceBefore + $boxImpact, 2);
+                $balanceBefore = money_value((float) $session->opening_balance + $movementTotal);
+                $balanceAfter = money_value($balanceBefore + $boxImpact);
 
                 $movement = $session->movements()->create([
                     'box_id' => $box->id,

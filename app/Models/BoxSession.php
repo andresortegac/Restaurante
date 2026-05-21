@@ -26,9 +26,9 @@ class BoxSession extends Model
     ];
 
     protected $casts = [
-        'opening_balance' => 'decimal:2',
-        'counted_balance' => 'decimal:2',
-        'difference_amount' => 'decimal:2',
+        'opening_balance' => 'integer',
+        'counted_balance' => 'integer',
+        'difference_amount' => 'integer',
         'opened_at' => 'datetime',
         'closed_at' => 'datetime',
     ];
@@ -65,16 +65,16 @@ class BoxSession extends Model
 
     public function currentBalance(): float
     {
-        return round((float) $this->opening_balance + (float) $this->movements()->sum('amount'), 2);
+        return money_value((float) $this->opening_balance + (float) $this->movements()->sum('amount'));
     }
 
     public function incomeTotal(): float
     {
-        return round((float) $this->movements()->where('amount', '>', 0)->sum('amount'), 2);
+        return money_value((float) $this->movements()->where('amount', '>', 0)->sum('amount'));
     }
 
     public function expenseTotal(): float
     {
-        return round(abs((float) $this->movements()->where('amount', '<', 0)->sum('amount')), 2);
+        return money_value(abs((float) $this->movements()->where('amount', '<', 0)->sum('amount')));
     }
 }

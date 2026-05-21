@@ -19,8 +19,8 @@
                 <p>Consulta los movimientos de cartera del cliente y revisa que creditos siguen pendientes o ya fueron pagados.</p>
             </div>
             <div class="summary-group">
-                <span class="summary-chip">${{ number_format($summary['pending'], 2) }} pendiente</span>
-                <span class="summary-chip">${{ number_format($summary['available'], 2) }} saldo a favor</span>
+                <span class="summary-chip">${{ money($summary['pending']) }} pendiente</span>
+                <span class="summary-chip">${{ money($summary['available']) }} saldo a favor</span>
                 <span class="summary-chip">{{ $summary['pendingCount'] }} creditos pendientes</span>
                 <span class="summary-chip">{{ $summary['paidCount'] }} creditos pagados</span>
             </div>
@@ -86,13 +86,13 @@
                                             </div>
                                         </td>
                                         <td>
-                                            <strong>${{ number_format((float) $credit->amount, 2) }}</strong>
+                                            <strong>${{ money($credit->amount) }}</strong>
                                             @if((float) $credit->amount > (float) $credit->balance)
-                                                <div class="table-note">Abonado: ${{ number_format((float) $credit->amount - (float) $credit->balance, 2) }}</div>
+                                                <div class="table-note">Abonado: ${{ money((float) $credit->amount - (float) $credit->balance) }}</div>
                                             @endif
                                         </td>
                                         <td>
-                                            <strong>${{ number_format((float) $credit->balance, 2) }}</strong>
+                                            <strong>${{ money($credit->balance) }}</strong>
                                             <div class="table-note">
                                                 @if($credit->paid_at)
                                                     Pagado {{ $credit->paid_at->format('d/m/Y H:i') }}

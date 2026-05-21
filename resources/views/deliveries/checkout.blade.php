@@ -24,7 +24,7 @@
         <div class="summary-group">
             <span class="summary-chip">{{ $delivery->deliveryDriver?->name ?? 'Sin domiciliario' }}</span>
             <span class="summary-chip">{{ $delivery->customer_name }}</span>
-            <span class="summary-chip">Total ${{ number_format($baseTotal, 2) }}</span>
+            <span class="summary-chip">Total ${{ money($baseTotal) }}</span>
         </div>
     </section>
 
@@ -50,19 +50,19 @@
                         <div class="col-md-4">
                             <div class="order-summary-card h-100">
                                 <div class="summary-kicker">Pedido</div>
-                                <div class="h3 mb-0">${{ number_format((float) $delivery->order_total, 2) }}</div>
+                                <div class="h3 mb-0">${{ money($delivery->order_total) }}</div>
                             </div>
                         </div>
                         <div class="col-md-4">
                             <div class="order-summary-card h-100">
                                 <div class="summary-kicker">Domicilio</div>
-                                <div class="h3 mb-0">${{ number_format((float) $delivery->delivery_fee, 2) }}</div>
+                                <div class="h3 mb-0">${{ money($delivery->delivery_fee) }}</div>
                             </div>
                         </div>
                         <div class="col-md-4">
                             <div class="order-summary-card h-100">
                                 <div class="summary-kicker">Total a cobrar</div>
-                                <div class="h3 mb-0">${{ number_format($baseTotal, 2) }}</div>
+                                <div class="h3 mb-0">${{ money($baseTotal) }}</div>
                             </div>
                         </div>
                     </div>
@@ -82,16 +82,16 @@
                                     <tr>
                                         <td><strong>{{ $item->product_name }}</strong></td>
                                         <td>{{ $item->quantity }}</td>
-                                        <td>${{ number_format((float) $item->unit_price, 2) }}</td>
-                                        <td class="text-end">${{ number_format((float) $item->subtotal, 2) }}</td>
+                                        <td>${{ money($item->unit_price) }}</td>
+                                        <td class="text-end">${{ money($item->subtotal) }}</td>
                                     </tr>
                                 @endforeach
                                 @if((float) $delivery->delivery_fee > 0)
                                     <tr>
                                         <td><strong>Costo domicilio</strong></td>
                                         <td>1</td>
-                                        <td>${{ number_format((float) $delivery->delivery_fee, 2) }}</td>
-                                        <td class="text-end">${{ number_format((float) $delivery->delivery_fee, 2) }}</td>
+                                        <td>${{ money($delivery->delivery_fee) }}</td>
+                                        <td class="text-end">${{ money($delivery->delivery_fee) }}</td>
                                     </tr>
                                 @endif
                             </tbody>
@@ -118,7 +118,7 @@
                             <div class="summary-kicker">Caja activa</div>
                             <div class="fw-bold">{{ $activeBox->name }}</div>
                             <div class="seat-note">{{ $activeBox->description ?: 'Sin descripcion operativa registrada.' }}</div>
-                            <div class="seat-note">Saldo estimado: ${{ number_format($activeBox->currentBalance(), 2) }}</div>
+                            <div class="seat-note">Saldo estimado: ${{ money($activeBox->currentBalance()) }}</div>
                         </div>
 
                         <form method="POST" action="{{ route('deliveries.checkout.store', $delivery) }}" id="deliveryCheckoutForm">
@@ -138,7 +138,7 @@
 
                             <div class="mb-3">
                                 <label class="form-label" for="amount_received">Monto recibido</label>
-                                <input type="number" class="form-control" id="amount_received" name="amount_received" min="0" step="0.01" value="{{ number_format($initialReceived, 2, '.', '') }}" required>
+                                <input type="number" class="form-control" id="amount_received" name="amount_received" min="0" step="1" value="{{ money_input($initialReceived) }}" required>
                                 <div class="form-help mt-1" id="amountReceivedHelp">Ingresa el valor recibido y veras de inmediato el cambio a devolver.</div>
                             </div>
 
@@ -150,11 +150,11 @@
                             <div class="meta-box mb-3">
                                 <div class="d-flex justify-content-between gap-3">
                                     <span class="summary-kicker">Total domicilio</span>
-                                    <strong id="checkoutAmountDue">${{ number_format($baseTotal, 2) }}</strong>
+                                    <strong id="checkoutAmountDue">${{ money($baseTotal) }}</strong>
                                 </div>
                                 <div class="d-flex justify-content-between gap-3 mt-2">
                                     <span class="summary-kicker">Cambio a devolver</span>
-                                    <strong id="checkoutChange">${{ number_format($initialChange, 2) }}</strong>
+                                    <strong id="checkoutChange">${{ money($initialChange) }}</strong>
                                 </div>
                             </div>
 
@@ -182,10 +182,8 @@ document.addEventListener('DOMContentLoaded', function () {
         return;
     }
 
-    const money = value => '$' + Number(value || 0).toLocaleString('es-CO', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-    });
+    const money = value => '$' + Math.round(Number(value || 0)).toLocaleString('es-CO');
+    const moneyInput = value => String(Math.max(0, Math.round(Number(value || 0))));
 
     const selectedMethod = () => paymentMethods.find(method => String(method.id) === String(methodSelect.value)) || null;
     const isCashPayment = () => {
@@ -199,7 +197,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const requiresExactAmount = Boolean(method) && !cashPayment;
 
         if (requiresExactAmount) {
-            amountReceivedInput.value = baseTotal.toFixed(2);
+            amountReceivedInput.value = moneyInput(baseTotal);
             amountReceivedInput.readOnly = true;
             amountReceivedInput.classList.add('bg-light');
             amountReceivedHelp.textContent = 'Para pagos distintos a efectivo, el monto recibido debe coincidir con el total a cobrar.';
@@ -207,7 +205,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const currentValue = Math.max(0, Number(amountReceivedInput.value || 0));
 
             if (currentValue < baseTotal || amountReceivedInput.dataset.userEdited !== 'true') {
-                amountReceivedInput.value = baseTotal.toFixed(2);
+                amountReceivedInput.value = moneyInput(baseTotal);
             }
 
             amountReceivedInput.readOnly = false;

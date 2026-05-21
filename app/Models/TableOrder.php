@@ -29,9 +29,9 @@ class TableOrder extends Model
     ];
 
     protected $casts = [
-        'subtotal' => 'decimal:2',
-        'tax_amount' => 'decimal:2',
-        'total' => 'decimal:2',
+        'subtotal' => 'integer',
+        'tax_amount' => 'integer',
+        'total' => 'integer',
         'last_transferred_at' => 'datetime',
     ];
 
@@ -69,14 +69,12 @@ class TableOrder extends Model
     {
         $this->loadMissing('items.product.taxRate');
 
-        $subtotal = round((float) $this->items->sum('subtotal'), 2);
-        $taxAmount = round(
+        $subtotal = money_value((float) $this->items->sum('subtotal'));
+        $taxAmount = money_value(
             $this->items->sum(fn (TableOrderItem $item): float => $this->itemTaxAmount($item)),
-            2
         );
-        $total = round(
+        $total = money_value(
             $this->items->sum(fn (TableOrderItem $item): float => $this->itemTotalAmount($item)),
-            2
         );
 
         $this->subtotal = $subtotal;
@@ -92,14 +90,12 @@ class TableOrder extends Model
         return $this->items
             ->groupBy(fn (TableOrderItem $item) => (int) ($item->split_group ?: 1))
             ->map(function (Collection $items, int $group): array {
-                $groupSubtotal = round((float) $items->sum('subtotal'), 2);
-                $groupTax = round(
+                $groupSubtotal = money_value((float) $items->sum('subtotal'));
+                $groupTax = money_value(
                     $items->sum(fn (TableOrderItem $item): float => $this->itemTaxAmount($item)),
-                    2
                 );
-                $groupTotal = round(
+                $groupTotal = money_value(
                     $items->sum(fn (TableOrderItem $item): float => $this->itemTotalAmount($item)),
-                    2
                 );
 
                 return [
@@ -116,7 +112,7 @@ class TableOrder extends Model
 
     private function itemTaxAmount(TableOrderItem $item): float
     {
-        $subtotal = round((float) $item->subtotal, 2);
+        $subtotal = money_value((float) $item->subtotal);
         $taxRate = $item->product?->taxRate;
 
         if (! $taxRate) {
@@ -128,7 +124,7 @@ class TableOrder extends Model
 
     private function itemTotalAmount(TableOrderItem $item): float
     {
-        $subtotal = round((float) $item->subtotal, 2);
+        $subtotal = money_value((float) $item->subtotal);
         $taxRate = $item->product?->taxRate;
 
         if (! $taxRate) {

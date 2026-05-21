@@ -30,7 +30,7 @@
             <div class="card module-card h-100">
                 <div class="card-body">
                     <div class="summary-kicker">Ingresos de hoy</div>
-                    <div class="summary-value">${{ number_format($todayRevenue, 2) }}</div>
+                    <div class="summary-value">${{ money($todayRevenue) }}</div>
                 </div>
             </div>
         </div>
@@ -102,9 +102,9 @@
                                     <td>
                                         @if($primaryPayment)
                                             <strong>{{ $sale->payments->pluck('paymentMethod.name')->filter()->join(', ') ?: 'Sin pago' }}</strong>
-                                            <div class="text-muted small">Recibido: ${{ number_format((float) $primaryPayment->received_amount, 2) }}</div>
-                                            <div class="text-muted small">Cambio: ${{ number_format((float) $primaryPayment->change_amount, 2) }}</div>
-                                            <div class="text-muted small">Propina: ${{ number_format((float) $primaryPayment->tip_amount, 2) }}</div>
+                                            <div class="text-muted small">Recibido: ${{ money($primaryPayment->received_amount) }}</div>
+                                            <div class="text-muted small">Cambio: ${{ money($primaryPayment->change_amount) }}</div>
+                                            <div class="text-muted small">Propina: ${{ money($primaryPayment->tip_amount) }}</div>
                                         @else
                                             <span class="text-muted">Sin pago</span>
                                         @endif
@@ -118,9 +118,9 @@
                                     </td>
                                     <td>{{ $sale->items_count }}</td>
                                     <td>
-                                        <strong>${{ number_format((float) $sale->total, 2) }}</strong>
+                                        <strong>${{ money($sale->total) }}</strong>
                                         @if($primaryPayment && (float) $primaryPayment->tip_amount > 0)
-                                            <div class="text-muted small">Con propina: ${{ number_format((float) $sale->total + (float) $primaryPayment->tip_amount, 2) }}</div>
+                                            <div class="text-muted small">Con propina: ${{ money((float) $sale->total + (float) $primaryPayment->tip_amount) }}</div>
                                         @endif
                                     </td>
                                     <td>

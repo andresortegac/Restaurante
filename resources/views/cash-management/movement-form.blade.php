@@ -32,14 +32,14 @@
                     <div class="col-md-4">
                         <div class="meta-box h-100">
                             <div class="summary-kicker">Base inicial</div>
-                            <div class="fw-bold">${{ number_format((float) ($currentSession?->opening_balance ?? 0), 2) }}</div>
+                            <div class="fw-bold">${{ money($currentSession?->opening_balance ?? 0) }}</div>
                             <div class="seat-note">{{ $currentSession?->opened_at ? $currentSession->opened_at->format('d/m/Y H:i') : 'Sin sesion activa' }}</div>
                         </div>
                     </div>
                     <div class="col-md-4">
                         <div class="meta-box h-100">
                             <div class="summary-kicker">Saldo esperado</div>
-                            <div class="fw-bold">${{ number_format((float) ($currentSession?->currentBalance() ?? 0), 2) }}</div>
+                            <div class="fw-bold">${{ money($currentSession?->currentBalance() ?? 0) }}</div>
                             <div class="seat-note">Antes del nuevo movimiento</div>
                         </div>
                     </div>
@@ -66,7 +66,7 @@
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label" for="amount">Monto</label>
-                                <input type="number" step="0.01" min="0.01" class="form-control" id="amount" name="amount" value="{{ old('amount') }}" required>
+                                <input type="number" step="1" min="1" class="form-control" id="amount" name="amount" value="{{ money_input(old('amount', 0)) }}" required>
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label" for="description">Motivo</label>

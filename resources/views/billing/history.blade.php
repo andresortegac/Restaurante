@@ -13,9 +13,9 @@
             <div class="summary-group">
                 <span class="summary-chip">{{ number_format($summary['sales']) }} ventas</span>
                 <span class="summary-chip">{{ number_format($summary['today']) }} hoy</span>
-                <span class="summary-chip">${{ number_format($summary['revenue'], 2) }} vendidos</span>
+                <span class="summary-chip">${{ money($summary['revenue']) }} vendidos</span>
                 <span class="summary-chip">{{ number_format($summary['electronic']) }} electronicas</span>
-                <span class="summary-chip">${{ number_format($summary['credit'], 2) }} en credito</span>
+                <span class="summary-chip">${{ money($summary['credit']) }} en credito</span>
             </div>
         </section>
 
@@ -135,25 +135,25 @@
                                                 @if($sale->payment_status === 'credit')
                                                     <strong class="text-warning">Credito pendiente</strong>
                                                     <div class="text-muted small">Cliente: {{ $sale->customer?->name ?: $sale->customer_name ?: 'Sin cliente' }}</div>
-                                                    <div class="text-muted small">Saldo pendiente: ${{ number_format($remainingCreditBalance, 2) }}</div>
-                                                    <div class="text-muted small">Abonado: ${{ number_format(max(0, (float) $sale->total - $remainingCreditBalance), 2) }}</div>
+                                                    <div class="text-muted small">Saldo pendiente: ${{ money($remainingCreditBalance) }}</div>
+                                                    <div class="text-muted small">Abonado: ${{ money(max(0, (float) $sale->total - $remainingCreditBalance)) }}</div>
                                                 @else
                                                     <strong>{{ $sale->paymentMethodSummary() ?: 'Sin pago' }}</strong>
                                                     @if($appliedCustomerBalance > 0)
-                                                        <div class="text-muted small">Saldo a favor aplicado: ${{ number_format($appliedCustomerBalance, 2) }}</div>
+                                                        <div class="text-muted small">Saldo a favor aplicado: ${{ money($appliedCustomerBalance) }}</div>
                                                     @endif
-                                                    <div class="text-muted small">Recibido: ${{ number_format($receivedAmount, 2) }}</div>
-                                                    <div class="text-muted small">Cambio: ${{ number_format($changeAmount, 2) }}</div>
-                                                    <div class="text-muted small">Propina: ${{ number_format($tipAmount, 2) }}</div>
+                                                    <div class="text-muted small">Recibido: ${{ money($receivedAmount) }}</div>
+                                                    <div class="text-muted small">Cambio: ${{ money($changeAmount) }}</div>
+                                                    <div class="text-muted small">Propina: ${{ money($tipAmount) }}</div>
                                                 @endif
                                             @else
                                                 <span class="text-muted">Sin pago</span>
                                             @endif
                                         </td>
                                         <td>
-                                            <strong>${{ number_format((float) $sale->total, 2) }}</strong>
+                                            <strong>${{ money($sale->total) }}</strong>
                                             @if($tipAmount > 0)
-                                                <div class="text-muted small">Con propina: ${{ number_format((float) $sale->total + $tipAmount, 2) }}</div>
+                                                <div class="text-muted small">Con propina: ${{ money((float) $sale->total + $tipAmount) }}</div>
                                             @endif
                                         </td>
                                         <td>
@@ -164,7 +164,7 @@
                                                 @if($sale->payment_status === 'credit')
                                                     <form method="POST" action="{{ route('billing.credits.pay', $sale) }}" class="d-flex align-items-center gap-2 m-0" data-credit-payment-form data-credit-label="credito #{{ $sale->id }}">
                                                         @csrf
-                                                        <input type="number" name="amount_received" class="form-control form-control-sm" min="0.01" max="{{ number_format($remainingCreditBalance, 2, '.', '') }}" step="0.01" value="{{ number_format($remainingCreditBalance, 2, '.', '') }}" style="width: 120px;">
+                                                        <input type="number" name="amount_received" class="form-control form-control-sm" min="1" max="{{ money_input($remainingCreditBalance) }}" step="1" value="{{ money_input($remainingCreditBalance) }}" style="width: 120px;">
                                                         <button type="submit" class="btn btn-sm btn-success">
                                                             <i class="fas fa-check"></i> Pagar credito
                                                         </button>
@@ -221,7 +221,7 @@
                     const result = await Swal.fire({
                         icon: 'question',
                         title: 'Confirmar pago',
-                        text: 'Se registrara un abono de $' + amount.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' para ' + label + '.',
+                        text: 'Se registrara un abono de $' + Math.round(amount).toLocaleString('es-CO') + ' para ' + label + '.',
                         showCancelButton: true,
                         confirmButtonText: 'Registrar',
                         cancelButtonText: 'Cancelar',

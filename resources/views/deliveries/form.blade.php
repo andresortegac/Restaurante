@@ -205,7 +205,7 @@
                                         </div>
                                         <div class="meta-box">
                                             <div class="summary-kicker">Subtotal pedido</div>
-                                            <div class="fw-bold" id="draftSubtotal">$0.00</div>
+                                            <div class="fw-bold" id="draftSubtotal">$0</div>
                                         </div>
                                     </div>
 
@@ -229,13 +229,13 @@
                                             <label class="form-label" for="delivery_fee">Costo domicilio</label>
                                             <input
                                                 type="number"
-                                                step="0.01"
+                                                step="1"
                                                 min="0"
                                                 class="form-control"
                                                 id="delivery_fee"
                                                 name="delivery_fee"
-                                                value="{{ number_format($initialDeliveryFee, 2, '.', '') }}"
-                                                data-last-custom-fee="{{ number_format(max($initialDeliveryFee, 0), 2, '.', '') }}"
+                                                value="{{ money_input($initialDeliveryFee) }}"
+                                                data-last-custom-fee="{{ money_input(max($initialDeliveryFee, 0)) }}"
                                             >
                                             <div class="form-help mt-1" id="deliveryFeeModeHelp">Marca la opcion gratis si no se debe cobrar envio.</div>
                                         </div>
@@ -244,35 +244,35 @@
                                             <label class="form-label" for="customer_payment_amount">Paga con</label>
                                             <input
                                                 type="number"
-                                                step="0.01"
+                                                step="1"
                                                 min="0"
                                                 class="form-control"
                                                 id="customer_payment_amount"
                                                 name="customer_payment_amount"
-                                                value="{{ number_format($initialCustomerPayment, 2, '.', '') }}"
+                                                value="{{ money_input($initialCustomerPayment) }}"
                                                 data-user-edited="{{ $initialCustomerPayment > 0 ? 'true' : 'false' }}"
                                                 required
                                             >
                                             <div class="form-help mt-1" id="paymentChangeHelp">Ingresa con cuanto paga el cliente para calcular el cambio del domiciliario.</div>
                                         </div>
 
-                                        <input type="hidden" id="order_total" name="order_total" value="{{ number_format((float) old('order_total', $delivery->order_total ?? 0), 2, '.', '') }}">
+                                        <input type="hidden" id="order_total" name="order_total" value="{{ money_input(old('order_total', $delivery->order_total ?? 0)) }}">
 
                                         <div class="d-flex justify-content-between gap-3">
                                             <span class="summary-kicker">Subtotal pedido</span>
-                                            <strong id="orderSubtotalPreview">$0.00</strong>
+                                            <strong id="orderSubtotalPreview">$0</strong>
                                         </div>
                                         <div class="d-flex justify-content-between gap-3 mt-2">
                                             <span class="summary-kicker">Costo domicilio</span>
-                                            <strong id="deliveryFeePreview">$0.00</strong>
+                                            <strong id="deliveryFeePreview">$0</strong>
                                         </div>
                                         <div class="d-flex justify-content-between gap-3 mt-2">
                                             <span class="summary-kicker">Total domicilio</span>
-                                            <strong id="totalChargePreview">$0.00</strong>
+                                            <strong id="totalChargePreview">$0</strong>
                                         </div>
                                         <div class="d-flex justify-content-between gap-3 mt-2">
                                             <span class="summary-kicker">Cambio a devolver</span>
-                                            <strong id="changeRequiredPreview">$0.00</strong>
+                                            <strong id="changeRequiredPreview">$0</strong>
                                         </div>
                                     </div>
                                 </aside>
@@ -323,10 +323,8 @@
             const paymentChangeHelp = document.getElementById('paymentChangeHelp');
             const deliveryFeeModeHelp = document.getElementById('deliveryFeeModeHelp');
 
-            const money = value => '$' + Number(value || 0).toLocaleString('es-CO', {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-            });
+            const money = value => '$' + Math.round(Number(value || 0)).toLocaleString('es-CO');
+            const moneyInput = value => String(Math.max(0, Math.round(Number(value || 0))));
 
             const syncCustomerSelection = (fillOnlyWhenEmpty = false) => {
                 if (!customerSelect || !customerSelectionHelp) {
@@ -436,7 +434,7 @@
                             lastCustomDeliveryFee = currentFee;
                         }
 
-                        deliveryFeeInput.value = '0.00';
+                        deliveryFeeInput.value = '0';
                         deliveryFeeInput.disabled = true;
                         deliveryFeeInput.classList.add('bg-light');
 
@@ -448,7 +446,7 @@
                         deliveryFeeInput.classList.remove('bg-light');
 
                         if (currentFee <= 0 && lastCustomDeliveryFee > 0) {
-                            deliveryFeeInput.value = lastCustomDeliveryFee.toFixed(2);
+                            deliveryFeeInput.value = moneyInput(lastCustomDeliveryFee);
                         }
 
                         if (deliveryFeeModeHelp) {
@@ -463,14 +461,14 @@
                 const totalCharge = orderSubtotal + deliveryFee;
 
                 if (orderTotalInput) {
-                    orderTotalInput.value = orderSubtotal.toFixed(2);
+                    orderTotalInput.value = moneyInput(orderSubtotal);
                 }
 
                 if (customerPaymentInput) {
                     const currentPayment = Math.max(0, Number(customerPaymentInput.value || 0));
 
                     if (customerPaymentInput.dataset.userEdited !== 'true' || currentPayment < totalCharge) {
-                        customerPaymentInput.value = totalCharge.toFixed(2);
+                        customerPaymentInput.value = moneyInput(totalCharge);
                     }
                 }
 

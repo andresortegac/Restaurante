@@ -325,16 +325,16 @@ class DeliveryManagementController extends Controller
             return [
                 'product_id' => $product->id,
                 'product_name' => $product->name,
-                'unit_price' => round((float) $product->price, 2),
+                'unit_price' => money_value($product->price),
                 'quantity' => $row['quantity'],
-                'subtotal' => round((float) $product->price * $row['quantity'], 2),
+                'subtotal' => money_value((float) $product->price * $row['quantity']),
             ];
         });
 
         $deliveryFeeIsFree = $request->boolean('delivery_fee_is_free');
         $deliveryFee = $deliveryFeeIsFree
             ? 0.0
-            : round((float) ($validated['delivery_fee'] ?? 0), 2);
+            : money_value($validated['delivery_fee'] ?? 0);
 
         if (! $deliveryFeeIsFree && $deliveryFee <= 0) {
             throw ValidationException::withMessages([
@@ -342,9 +342,9 @@ class DeliveryManagementController extends Controller
             ]);
         }
 
-        $orderTotal = round((float) $items->sum('subtotal'), 2);
-        $totalCharge = round($orderTotal + $deliveryFee, 2);
-        $customerPaymentAmount = round((float) $validated['customer_payment_amount'], 2);
+        $orderTotal = money_value((float) $items->sum('subtotal'));
+        $totalCharge = money_value($orderTotal + $deliveryFee);
+        $customerPaymentAmount = money_value($validated['customer_payment_amount']);
 
         if ($customerPaymentAmount < $totalCharge) {
             throw ValidationException::withMessages([
@@ -418,7 +418,7 @@ class DeliveryManagementController extends Controller
             'delivery_fee' => $deliveryFee,
             'total_charge' => $totalCharge,
             'customer_payment_amount' => $customerPaymentAmount,
-            'change_required' => max(round($customerPaymentAmount - $totalCharge, 2), 0),
+            'change_required' => max(money_value($customerPaymentAmount - $totalCharge), 0),
             'status' => $resolvedStatus,
             'scheduled_at' => $validated['scheduled_at'] ?? null,
             'delivered_at' => $deliveredAt,

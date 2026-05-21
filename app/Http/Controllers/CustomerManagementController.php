@@ -240,7 +240,7 @@ class CustomerManagementController extends Controller
             return $response;
         }
 
-        $totalPending = round((float) $customer->pendingCredits()->sum('balance'), 2);
+        $totalPending = money_value((float) $customer->pendingCredits()->sum('balance'));
 
         if ($totalPending <= 0) {
             return redirect()
@@ -436,7 +436,7 @@ class CustomerManagementController extends Controller
             'pending' => (float) ($customer->pending_credit_total ?? 0),
             'pendingCount' => (int) ($customer->pending_credits_count ?? 0),
             'paidCount' => (int) ($customer->paid_credits_count ?? 0),
-            'available' => round((float) ($customer->available_balance ?? 0), 2),
+            'available' => money_value($customer->available_balance ?? 0),
         ];
     }
 

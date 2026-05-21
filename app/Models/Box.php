@@ -30,10 +30,10 @@ class Box extends Model
     ];
 
     protected $casts = [
-        'opening_balance' => 'decimal:2',
-        'closing_balance' => 'decimal:2',
-        'counted_balance' => 'decimal:2',
-        'difference_amount' => 'decimal:2',
+        'opening_balance' => 'integer',
+        'closing_balance' => 'integer',
+        'counted_balance' => 'integer',
+        'difference_amount' => 'integer',
         'opened_at' => 'datetime',
         'closed_at' => 'datetime',
     ];
@@ -106,6 +106,6 @@ class Box extends Model
     {
         $movementTotal = (float) $this->movements()->sum('amount');
 
-        return (float) $this->opening_balance + $movementTotal;
+        return money_value((float) $this->opening_balance + $movementTotal);
     }
 }

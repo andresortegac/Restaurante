@@ -19,8 +19,8 @@
                 <p>Consulta solo los movimientos del saldo a favor del cliente, sin mezclarlo con el dinero de caja.</p>
             </div>
             <div class="summary-group">
-                <span class="summary-chip">${{ number_format($summary['available'], 2) }} disponible</span>
-                <span class="summary-chip">${{ number_format($summary['pending'], 2) }} en cartera</span>
+                <span class="summary-chip">${{ money($summary['available']) }} disponible</span>
+                <span class="summary-chip">${{ money($summary['pending']) }} en cartera</span>
                 <span class="summary-chip">{{ $summary['pendingCount'] }} creditos pendientes</span>
             </div>
         </section>
@@ -82,11 +82,11 @@
                                         </td>
                                         <td>{{ $movement->description }}</td>
                                         <td class="{{ $isPositive ? 'text-success' : 'text-danger' }}">
-                                            <strong>{{ $isPositive ? '+' : '-' }}${{ number_format(abs($amount), 2) }}</strong>
-                                            <div class="table-note">Antes: ${{ number_format((float) $movement->balance_before, 2) }}</div>
+                                            <strong>{{ $isPositive ? '+' : '-' }}${{ money(abs($amount)) }}</strong>
+                                            <div class="table-note">Antes: ${{ money($movement->balance_before) }}</div>
                                         </td>
                                         <td>
-                                            <strong>${{ number_format((float) $movement->balance_after, 2) }}</strong>
+                                            <strong>${{ money($movement->balance_after) }}</strong>
                                             <div class="table-note">Disponible despues del movimiento</div>
                                         </td>
                                     </tr>

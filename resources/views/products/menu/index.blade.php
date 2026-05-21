@@ -15,7 +15,7 @@
                 return [
                     'key' => 'category-' . $category->id,
                     'title' => $category->name,
-                    'description' => $category->description ?: 'Categoría disponible para el menú gráfico.',
+                    'description' => $category->description ?: 'CategorÃ­a disponible para el menÃº grÃ¡fico.',
                     'is_active' => $category->is_active,
                     'products' => $products->where('category_id', $category->id)->values(),
                 ];
@@ -29,7 +29,7 @@
             $menuSections = $menuSections->push([
                 'key' => 'uncategorized',
                 'title' => 'Sin categoria',
-                'description' => 'Productos pendientes por clasificar dentro del menú.',
+                'description' => 'Productos pendientes por clasificar dentro del menÃº.',
                 'is_active' => true,
                 'products' => $uncategorizedProducts,
             ]);
@@ -155,7 +155,7 @@
                                             <div class="menu-product-footer">
                                                 <div>
                                                     <div class="summary-kicker">Precio</div>
-                                                    <div class="menu-product-price">${{ number_format($product->price, 2) }}</div>
+                                                    <div class="menu-product-price">${{ money($product->price) }}</div>
                                                 </div>
 
                                                 <div class="table-actions menu-product-actions">

@@ -34,11 +34,11 @@ class Delivery extends Model
     ];
 
     protected $casts = [
-        'order_total' => 'decimal:2',
-        'delivery_fee' => 'decimal:2',
-        'total_charge' => 'decimal:2',
-        'customer_payment_amount' => 'decimal:2',
-        'change_required' => 'decimal:2',
+        'order_total' => 'integer',
+        'delivery_fee' => 'integer',
+        'total_charge' => 'integer',
+        'customer_payment_amount' => 'integer',
+        'change_required' => 'integer',
         'scheduled_at' => 'datetime',
         'delivered_at' => 'datetime',
     ];

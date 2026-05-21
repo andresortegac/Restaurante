@@ -35,8 +35,8 @@ class CustomerCreditService
                 'source_type' => $sourceType,
                 'source_reference' => $sourceReference,
                 'description' => $description ?: $this->defaultSaleDescription($sale, $sourceType),
-                'amount' => round((float) $sale->total, 2),
-                'balance' => round((float) $sale->total, 2),
+                'amount' => money_value($sale->total),
+                'balance' => money_value($sale->total),
                 'status' => 'pending',
                 'due_at' => $dueAt ?: $sale->credit_due_at,
                 'paid_at' => null,
@@ -72,8 +72,8 @@ class CustomerCreditService
             'source_type' => 'manual_assignment',
             'source_reference' => $payload['source_reference'] ?? null,
             'description' => $payload['description'] ?? 'Saldo pendiente manual del cliente ' . $customer->name,
-            'amount' => round((float) $payload['amount'], 2),
-            'balance' => round((float) $payload['amount'], 2),
+            'amount' => money_value($payload['amount']),
+            'balance' => money_value($payload['amount']),
             'status' => 'pending',
             'due_at' => $payload['due_at'] ?? null,
         ]);
@@ -96,8 +96,8 @@ class CustomerCreditService
             $paymentMethod = $this->resolvePaymentMethod($payload['payment_method_id'] ?? null);
             [$box, $boxSession] = $this->resolveOpenBoxForUser($userId);
 
-            $amountReceived = round((float) $payload['amount_received'], 2);
-            $creditBalance = round((float) $currentCredit->balance, 2);
+            $amountReceived = money_value($payload['amount_received']);
+            $creditBalance = money_value($currentCredit->balance);
 
             if ($amountReceived <= 0 || $amountReceived > $creditBalance) {
                 throw ValidationException::withMessages([
@@ -109,7 +109,7 @@ class CustomerCreditService
                 ->where('box_session_id', $boxSession->id)
                 ->lockForUpdate()
                 ->sum('amount');
-            $runningBalance = round((float) $box->opening_balance + $movementTotal, 2);
+            $runningBalance = money_value((float) $box->opening_balance + $movementTotal);
 
             $this->applyPaymentToCredit($currentCredit, $amountReceived, $payload, $userId, $paymentMethod, $box, $boxSession, $runningBalance);
         });
@@ -136,8 +136,8 @@ class CustomerCreditService
             $paymentMethod = $this->resolvePaymentMethod($payload['payment_method_id'] ?? null);
             [$box, $boxSession] = $this->resolveOpenBoxForUser($userId);
 
-            $amountReceived = round((float) $payload['amount_received'], 2);
-            $totalPending = round((float) $pendingCredits->sum('balance'), 2);
+            $amountReceived = money_value($payload['amount_received']);
+            $totalPending = money_value((float) $pendingCredits->sum('balance'));
 
             if ($amountReceived <= 0 || $amountReceived > $totalPending) {
                 throw ValidationException::withMessages([
@@ -149,7 +149,7 @@ class CustomerCreditService
                 ->where('box_session_id', $boxSession->id)
                 ->lockForUpdate()
                 ->sum('amount');
-            $runningBalance = round((float) $box->opening_balance + $movementTotal, 2);
+            $runningBalance = money_value((float) $box->opening_balance + $movementTotal);
             $remainingToApply = $amountReceived;
             $appliedCredits = 0;
 
@@ -158,8 +158,8 @@ class CustomerCreditService
                     break;
                 }
 
-                $creditBalance = round((float) $pendingCredit->balance, 2);
-                $appliedAmount = round(min($creditBalance, $remainingToApply), 2);
+                $creditBalance = money_value($pendingCredit->balance);
+                $appliedAmount = money_value(min($creditBalance, $remainingToApply));
 
                 if ($appliedAmount <= 0) {
                     continue;
@@ -167,14 +167,14 @@ class CustomerCreditService
 
                 $this->applyPaymentToCredit($pendingCredit, $appliedAmount, $payload, $userId, $paymentMethod, $box, $boxSession, $runningBalance);
 
-                $remainingToApply = round($remainingToApply - $appliedAmount, 2);
+                $remainingToApply = money_value($remainingToApply - $appliedAmount);
                 $appliedCredits++;
             }
 
             return [
                 'amount_applied' => $amountReceived,
                 'total_pending' => $totalPending,
-                'remaining_pending' => round(max(0, $totalPending - $amountReceived), 2),
+                'remaining_pending' => money_value(max(0, $totalPending - $amountReceived)),
                 'applied_credits' => $appliedCredits,
             ];
         });
@@ -255,10 +255,10 @@ class CustomerCreditService
     ): void {
         $credit->loadMissing('customer');
 
-        $creditBalance = round((float) $credit->balance, 2);
-        $remainingBalance = round(max(0, $creditBalance - $amountReceived), 2);
+        $creditBalance = money_value($credit->balance);
+        $remainingBalance = money_value(max(0, $creditBalance - $amountReceived));
         $balanceBefore = $runningBalance;
-        $balanceAfter = round($balanceBefore + $amountReceived, 2);
+        $balanceAfter = money_value($balanceBefore + $amountReceived);
         $description = ($remainingBalance <= 0 ? 'Pago final de cartera #' : 'Abono de cartera #') . $credit->id
             . ' | Cliente ' . $credit->customer->name;
 
@@ -326,7 +326,7 @@ class CustomerCreditService
         if ($payment) {
             $payment->update([
                 'payment_method_id' => $paymentMethod?->id,
-                'received_amount' => round((float) ($payment->received_amount ?? 0) + $amountReceived, 2),
+                'received_amount' => money_value((float) ($payment->received_amount ?? 0) + $amountReceived),
                 'change_amount' => 0,
                 'reference' => $reference ?? $payment->reference,
                 'status' => $paymentStatus,

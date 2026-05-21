@@ -20,7 +20,7 @@
                 <span class="summary-chip">{{ $summary['active'] }} activos</span>
                 <span class="summary-chip">{{ $summary['inactive'] }} inactivos</span>
                 <span class="summary-chip">{{ $summary['customersWithCredit'] }} con saldo</span>
-                <span class="summary-chip">${{ number_format($summary['creditPending'], 2) }} pendiente</span>
+                <span class="summary-chip">${{ money($summary['creditPending']) }} pendiente</span>
             </div>
         </section>
 
@@ -81,7 +81,7 @@
                                         <div class="table-note">{{ $customer->sales_count }} ventas</div>
                                     </td>
                                     <td>
-                                        <strong>${{ number_format((float) ($customer->pending_credit_total ?? 0), 2) }}</strong>
+                                        <strong>${{ money($customer->pending_credit_total ?? 0) }}</strong>
                                         <div class="table-note">
                                             @if((float) ($customer->pending_credit_total ?? 0) > 0)
                                                 Cartera activa

@@ -107,7 +107,7 @@ class CustomerManagementTest extends TestCase
         $creditIndexResponse->assertOk();
         $creditIndexResponse->assertSee('Gestion de creditos');
         $creditIndexResponse->assertSee('Cliente Cartera');
-        $creditIndexResponse->assertSee('$45,000.00');
+        $creditIndexResponse->assertSee('$45,000');
 
         Box::create([
             'name' => 'Caja cartera clientes',

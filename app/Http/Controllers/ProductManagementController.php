@@ -342,7 +342,7 @@ class ProductManagementController extends Controller
         return [
             'name' => $validated['name'],
             'description' => $validated['description'] ?? null,
-            'price' => $validated['price'],
+            'price' => money_value($validated['price']),
             'stock' => $tracksStock ? (int) ($validated['stock'] ?? 0) : 0,
             'tracks_stock' => $tracksStock,
             'category' => $category->name,
