@@ -123,7 +123,7 @@ class BillingManagementController extends Controller
                 })
                 ->orderBy('name')
                 ->limit(200)
-                ->get(['id', 'name', 'document_number', 'billing_identification', 'email', 'phone']),
+                ->get(['id', 'name', 'document_number', 'billing_identification', 'email', 'phone', 'available_balance']),
             'billingReadiness' => $billingReadiness,
             'customerPendingCreditTotal' => (float) ($order->customer?->pendingCredits()->sum('balance') ?? 0),
         ]);
@@ -142,6 +142,8 @@ class BillingManagementController extends Controller
             'document_type' => ['nullable', 'in:ticket,electronic'],
             'is_credit' => ['nullable', 'boolean'],
         ]);
+
+        $validated['apply_customer_balance'] = true;
 
         $result = $this->billingService->checkout($order, $validated, Auth::id());
         $sale = $result['sale'];
@@ -198,7 +200,7 @@ class BillingManagementController extends Controller
                 ->where('is_active', true)
                 ->orderBy('name')
                 ->limit(200)
-                ->get(['id', 'name', 'document_number', 'billing_identification', 'email', 'phone', 'billing_address']),
+                ->get(['id', 'name', 'document_number', 'billing_identification', 'email', 'phone', 'billing_address', 'available_balance']),
             'billingReadiness' => $this->saleDocumentService->electronicInvoiceStatus(null),
         ]);
     }
@@ -229,6 +231,8 @@ class BillingManagementController extends Controller
             'items.*.quantity' => ['required', 'integer', 'min:1'],
             'items.*.unit_price' => ['required', 'numeric', 'min:0.01'],
         ]);
+
+        $validated['apply_customer_balance'] = true;
 
         $result = $this->manualBillingService->checkout($validated, Auth::id());
         $sale = $result['sale'];
@@ -278,7 +282,7 @@ class BillingManagementController extends Controller
         ]);
 
         $salesQuery = Sale::query()
-            ->with(['user', 'box', 'invoice', 'payments.paymentMethod', 'tableOrder.table', 'customer', 'delivery', 'customerCredit'])
+            ->with(['user', 'box', 'invoice', 'payments.paymentMethod', 'tableOrder.table', 'customer', 'delivery', 'customerCredit', 'customerBalanceMovements'])
             ->withCount('items')
             ->when($filters['search'] ?? null, function ($query, string $search) {
                 $query->where(function ($nestedQuery) use ($search) {

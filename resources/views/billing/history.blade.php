@@ -88,6 +88,10 @@
                                         $primaryPayment = $sale->payments->first();
                                         $invoice = $sale->invoice;
                                         $remainingCreditBalance = (float) ($sale->customerCredit?->balance ?? $sale->total);
+                                        $appliedCustomerBalance = $sale->customerBalanceAppliedTotal();
+                                        $receivedAmount = $sale->externalReceivedTotal();
+                                        $changeAmount = $sale->paymentChangeTotal();
+                                        $tipAmount = $sale->paymentTipTotal();
                                     @endphp
                                     <tr>
                                         <td>
@@ -134,10 +138,13 @@
                                                     <div class="text-muted small">Saldo pendiente: ${{ number_format($remainingCreditBalance, 2) }}</div>
                                                     <div class="text-muted small">Abonado: ${{ number_format(max(0, (float) $sale->total - $remainingCreditBalance), 2) }}</div>
                                                 @else
-                                                    <strong>{{ $sale->payments->map(fn ($payment) => $payment->paymentMethod?->name ?? 'Sin dato')->filter()->unique()->join(', ') ?: 'Sin pago' }}</strong>
-                                                    <div class="text-muted small">Recibido: ${{ number_format((float) $primaryPayment->received_amount, 2) }}</div>
-                                                    <div class="text-muted small">Cambio: ${{ number_format((float) $primaryPayment->change_amount, 2) }}</div>
-                                                    <div class="text-muted small">Propina: ${{ number_format((float) $primaryPayment->tip_amount, 2) }}</div>
+                                                    <strong>{{ $sale->paymentMethodSummary() ?: 'Sin pago' }}</strong>
+                                                    @if($appliedCustomerBalance > 0)
+                                                        <div class="text-muted small">Saldo a favor aplicado: ${{ number_format($appliedCustomerBalance, 2) }}</div>
+                                                    @endif
+                                                    <div class="text-muted small">Recibido: ${{ number_format($receivedAmount, 2) }}</div>
+                                                    <div class="text-muted small">Cambio: ${{ number_format($changeAmount, 2) }}</div>
+                                                    <div class="text-muted small">Propina: ${{ number_format($tipAmount, 2) }}</div>
                                                 @endif
                                             @else
                                                 <span class="text-muted">Sin pago</span>
@@ -145,8 +152,8 @@
                                         </td>
                                         <td>
                                             <strong>${{ number_format((float) $sale->total, 2) }}</strong>
-                                            @if($primaryPayment && (float) $primaryPayment->tip_amount > 0)
-                                                <div class="text-muted small">Con propina: ${{ number_format((float) $sale->total + (float) $primaryPayment->tip_amount, 2) }}</div>
+                                            @if($tipAmount > 0)
+                                                <div class="text-muted small">Con propina: ${{ number_format((float) $sale->total + $tipAmount, 2) }}</div>
                                             @endif
                                         </td>
                                         <td>

@@ -19,7 +19,8 @@ class ManualBillingService
 {
     public function __construct(
         private readonly SaleDocumentService $saleDocumentService,
-        private readonly CustomerCreditService $customerCreditService
+        private readonly CustomerCreditService $customerCreditService,
+        private readonly CustomerBalanceService $customerBalanceService
     ) {
     }
 
@@ -28,6 +29,7 @@ class ManualBillingService
         $documentType = $payload['document_type'] ?? Invoice::TYPE_TICKET;
         $originType = $payload['origin_type'] ?? 'table';
         $isCredit = (bool) ($payload['is_credit'] ?? false);
+        $applyCustomerBalance = (bool) ($payload['apply_customer_balance'] ?? false);
 
         $customer = null;
 
@@ -85,7 +87,7 @@ class ManualBillingService
 
         $sale = null;
 
-        DB::transaction(function () use ($payload, $paymentMethod, $items, $tipAmount, $amountReceived, $userId, $originType, $customer, $isCredit, &$sale): void {
+        DB::transaction(function () use ($payload, $paymentMethod, $items, $tipAmount, $amountReceived, $userId, $originType, $customer, $isCredit, $applyCustomerBalance, &$sale): void {
             $box = Box::query()
                 ->where('status', 'open')
                 ->where('user_id', $userId)
@@ -177,16 +179,32 @@ class ManualBillingService
 
             $sale->calculateTotal();
 
-            $amountDue = round((float) $sale->total + $tipAmount, 2);
+            $appliedCustomerBalance = 0.0;
+            $remainingSaleAmount = round((float) $sale->total, 2);
+
+            if (! $isCredit && $applyCustomerBalance && $customer) {
+                $balanceApplication = $this->customerBalanceService->applyAvailableBalance(
+                    $customer,
+                    $sale,
+                    (float) $sale->total,
+                    $userId,
+                    'Consumo descontado desde saldo a favor en cobro manual #' . $sale->id
+                );
+
+                $appliedCustomerBalance = $balanceApplication['applied_amount'];
+                $remainingSaleAmount = $balanceApplication['remaining_amount'];
+            }
+
+            $amountDue = round($remainingSaleAmount + $tipAmount, 2);
             $isCashPayment = $this->isCashPaymentMethod($paymentMethod);
 
-            if (! $isCredit && $amountReceived < $amountDue) {
+            if (! $isCredit && $amountDue > 0 && $amountReceived < $amountDue) {
                 throw ValidationException::withMessages([
                     'amount_received' => 'El monto recibido no cubre el total mas la propina.',
                 ]);
             }
 
-            if (! $isCredit && ! $isCashPayment && abs($amountReceived - $amountDue) > 0.009) {
+            if (! $isCredit && $amountDue > 0 && ! $isCashPayment && abs($amountReceived - $amountDue) > 0.009) {
                 throw ValidationException::withMessages([
                     'amount_received' => 'Para pagos distintos a efectivo, el monto recibido debe ser igual al total mas la propina.',
                 ]);
@@ -199,12 +217,14 @@ class ManualBillingService
                 : 0.0);
 
             $payment = $sale->payments()->create([
-                'payment_method_id' => $paymentMethod?->id,
-                'amount' => $sale->total,
+                'payment_method_id' => $isCredit || $amountDue <= 0 ? null : $paymentMethod?->id,
+                'amount' => $isCredit ? $sale->total : $remainingSaleAmount,
                 'received_amount' => $isCredit ? 0 : $amountReceived,
                 'change_amount' => $changeAmount,
                 'tip_amount' => $isCredit ? 0 : $tipAmount,
-                'reference' => $payload['reference'] ?? null,
+                'reference' => $amountDue <= 0 && $appliedCustomerBalance > 0
+                    ? 'Saldo a favor aplicado automaticamente'
+                    : ($payload['reference'] ?? null),
                 'status' => $isCredit ? 'pending' : 'completed',
             ]);
 
@@ -215,9 +235,9 @@ class ManualBillingService
             $balanceBefore = round((float) $box->opening_balance + $movementTotal, 2);
             $boxImpact = $isCredit
                 ? 0.0
-                : $this->boxImpactAmount((float) $sale->total, $tipAmount, $paymentMethod);
+                : $this->boxImpactAmount($remainingSaleAmount, $tipAmount, $paymentMethod);
             $balanceAfter = round($balanceBefore + $boxImpact, 2);
-            $description = $this->movementDescription($sale, $originType, $paymentMethod, $boxImpact, $isCredit);
+            $description = $this->movementDescription($sale, $originType, $paymentMethod, $boxImpact, $isCredit, $appliedCustomerBalance);
 
             $box->movements()->create([
                 'box_session_id' => $boxSession->id,
@@ -244,6 +264,7 @@ class ManualBillingService
                     'payment_id' => $payment->id,
                     'amount' => $boxImpact,
                     'is_credit' => $isCredit,
+                    'applied_customer_balance' => $appliedCustomerBalance,
                 ],
                 'occurred_at' => now(),
             ]);
@@ -308,12 +329,22 @@ class ManualBillingService
         return round($saleTotal + $tipAmount, 2);
     }
 
-    private function movementDescription(Sale $sale, string $originType, ?PaymentMethod $paymentMethod, float $boxImpact, bool $isCredit = false): string
+    private function movementDescription(
+        Sale $sale,
+        string $originType,
+        ?PaymentMethod $paymentMethod,
+        float $boxImpact,
+        bool $isCredit = false,
+        float $appliedCustomerBalance = 0
+    ): string
     {
         $parts = [
             'Cobro manual #' . $sale->id,
             $originType === 'delivery' ? 'Domicilio' : 'Mesa',
             $isCredit ? 'Credito' : 'Metodo ' . ($paymentMethod?->name ?? 'Sin dato'),
+            $appliedCustomerBalance > 0
+                ? 'Saldo a favor aplicado $' . number_format($appliedCustomerBalance, 2, '.', '')
+                : null,
             $boxImpact > 0
                 ? 'Impacto en caja $' . number_format($boxImpact, 2, '.', '')
                 : 'Sin impacto en caja',

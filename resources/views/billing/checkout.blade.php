@@ -30,6 +30,7 @@
         'email' => $customer->email,
         'phone' => $customer->phone,
         'pendingCreditTotal' => (float) ($customer->pending_credit_total ?? 0),
+        'availableBalance' => (float) ($customer->available_balance ?? 0),
     ])->values();
 @endphp
 
@@ -197,6 +198,10 @@
                                     <strong id="checkoutAmountDue">${{ number_format($baseTotal, 2) }}</strong>
                                 </div>
                                 <div class="d-flex justify-content-between gap-3 mt-2">
+                                    <span class="summary-kicker">Saldo a favor aplicado</span>
+                                    <strong id="checkoutAppliedBalance">$0.00</strong>
+                                </div>
+                                <div class="d-flex justify-content-between gap-3 mt-2">
                                     <span class="summary-kicker">Cambio a devolver</span>
                                     <strong id="checkoutChange">${{ number_format($initialChange, 2) }}</strong>
                                 </div>
@@ -221,6 +226,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const methodSelect = document.getElementById('payment_method_id');
     const amountReceivedInput = document.getElementById('amount_received');
     const amountDueLabel = document.getElementById('checkoutAmountDue');
+    const appliedBalanceLabel = document.getElementById('checkoutAppliedBalance');
     const changeLabel = document.getElementById('checkoutChange');
     const amountReceivedHelp = document.getElementById('amountReceivedHelp');
     const creditMode = document.getElementById('is_credit');
@@ -244,6 +250,16 @@ document.addEventListener('DOMContentLoaded', function () {
     const selectedMethod = () => paymentMethods.find(method => String(method.id) === String(methodSelect.value)) || null;
     const selectedCustomer = () => customers.find(customer => String(customer.id) === String(customerSelect.value)) || null;
     const isCreditSale = () => String(creditMode.value || '0') === '1';
+    const availableBalanceToApply = () => {
+        const customer = selectedCustomer();
+
+        if (!customer || isCreditSale()) {
+            return 0;
+        }
+
+        return Math.min(Number(customer.availableBalance || 0), baseTotal);
+    };
+    const outstandingAmount = () => Math.max(0, baseTotal - availableBalanceToApply());
     const ensureDefaultCashMethod = () => {
         if (!methodSelect.value && defaultCashMethodId) {
             methodSelect.value = String(defaultCashMethodId);
@@ -269,10 +285,13 @@ document.addEventListener('DOMContentLoaded', function () {
             customer.phone ? 'Telefono: ' + customer.phone : null,
             customer.email ? 'Email: ' + customer.email : null,
             'Saldo actual: ' + money(customer.pendingCreditTotal || 0),
+            'Saldo a favor: ' + money(customer.availableBalance || 0),
         ].filter(Boolean);
 
         if (isCreditSale()) {
             details.push('Quedara en: ' + money((customer.pendingCreditTotal || 0) + baseTotal));
+        } else if ((customer.availableBalance || 0) > 0) {
+            details.push('Se aplicaran: ' + money(availableBalanceToApply()));
         }
 
         customerHelp.textContent = details.join(' | ');
@@ -297,6 +316,8 @@ document.addEventListener('DOMContentLoaded', function () {
         const method = selectedMethod();
         const cashPayment = isCashPayment();
         const requiresExactAmount = Boolean(method) && !cashPayment;
+        const appliedBalance = availableBalanceToApply();
+        const amountDue = outstandingAmount();
         const submitButton = checkoutForm.querySelector('button[type="submit"]');
 
         if (isCreditSale()) {
@@ -310,12 +331,25 @@ document.addEventListener('DOMContentLoaded', function () {
             if (submitButton) {
                 submitButton.textContent = 'Enviar a credito y liberar mesa';
             }
-        } else if (requiresExactAmount) {
-            methodSelect.disabled = false;
-            amountReceivedInput.value = baseTotal.toFixed(2);
+        } else if (amountDue <= 0) {
+            methodSelect.value = '';
+            methodSelect.disabled = true;
+            amountReceivedInput.value = '0.00';
             amountReceivedInput.readOnly = true;
             amountReceivedInput.classList.add('bg-light');
-            amountReceivedHelp.textContent = 'Para pagos distintos a efectivo, el monto recibido debe coincidir con el total.';
+            amountReceivedHelp.textContent = 'El saldo a favor cubre toda la cuenta. No entra dinero a caja.';
+
+            if (submitButton) {
+                submitButton.textContent = 'Aplicar saldo a favor y liberar mesa';
+            }
+        } else if (requiresExactAmount) {
+            methodSelect.disabled = false;
+            amountReceivedInput.value = amountDue.toFixed(2);
+            amountReceivedInput.readOnly = true;
+            amountReceivedInput.classList.add('bg-light');
+            amountReceivedHelp.textContent = appliedBalance > 0
+                ? 'Primero se descuenta el saldo a favor y el resto debe coincidir exactamente con el total.'
+                : 'Para pagos distintos a efectivo, el monto recibido debe coincidir con el total.';
 
             if (submitButton) {
                 submitButton.textContent = 'Registrar cobro y liberar mesa';
@@ -323,15 +357,17 @@ document.addEventListener('DOMContentLoaded', function () {
         } else {
             methodSelect.disabled = false;
 
-            if (amountReceivedInput.dataset.userEdited !== 'true' || Number(amountReceivedInput.value || 0) < baseTotal) {
-                amountReceivedInput.value = baseTotal.toFixed(2);
+            if (amountReceivedInput.dataset.userEdited !== 'true' || Number(amountReceivedInput.value || 0) < amountDue) {
+                amountReceivedInput.value = amountDue.toFixed(2);
             }
 
             amountReceivedInput.readOnly = false;
             amountReceivedInput.classList.remove('bg-light');
-            amountReceivedHelp.textContent = method
-                ? 'Ingresa el valor recibido y el sistema calculara el cambio.'
-                : 'Selecciona un metodo de pago para continuar.';
+            amountReceivedHelp.textContent = appliedBalance > 0
+                ? 'El sistema descuenta primero el saldo a favor y te pide solo el valor restante.'
+                : (method
+                    ? 'Ingresa el valor recibido y el sistema calculara el cambio.'
+                    : 'Selecciona un metodo de pago para continuar.');
 
             if (submitButton) {
                 submitButton.textContent = 'Registrar cobro y liberar mesa';
@@ -339,13 +375,16 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         const receivedAmount = Math.max(0, Number(amountReceivedInput.value || 0));
-        const changeAmount = !isCreditSale() && cashPayment ? Math.max(0, receivedAmount - baseTotal) : 0;
+        const changeAmount = !isCreditSale() && cashPayment ? Math.max(0, receivedAmount - amountDue) : 0;
 
-        amountDueLabel.textContent = money(baseTotal);
+        amountDueLabel.textContent = money(isCreditSale() ? baseTotal : amountDue);
+        appliedBalanceLabel.textContent = money(isCreditSale() ? 0 : appliedBalance);
         changeLabel.textContent = money(changeAmount);
         creditModeHelp.textContent = isCreditSale()
             ? 'El cliente quedara vinculado desde este formulario.'
-            : 'El cobro se registrara de inmediato en la venta.';
+            : (appliedBalance > 0
+                ? 'Si el cliente tiene saldo a favor, se descuenta antes de registrar el cobro restante.'
+                : 'El cobro se registrara de inmediato en la venta.');
         customerSelect.required = isCreditSale() || documentTypeSelect.value === 'electronic';
         syncCustomerHelp();
     };
@@ -365,6 +404,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     creditMode.addEventListener('change', syncAmounts);
     customerSelect.addEventListener('change', function () {
+        amountReceivedInput.dataset.userEdited = 'false';
         syncCustomerHelp();
         syncDocumentHelp();
         syncAmounts();

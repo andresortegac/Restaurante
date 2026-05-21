@@ -309,4 +309,77 @@ class CustomerManagementTest extends TestCase
             'balance_after' => 85000,
         ]);
     }
+
+    public function test_admin_can_add_remove_and_review_customer_available_balance(): void
+    {
+        $user = User::factory()->create();
+        $adminRole = Role::create([
+            'name' => 'Admin',
+            'description' => 'Administrador',
+        ]);
+        $user->roles()->attach($adminRole);
+
+        $customer = Customer::create([
+            'name' => 'Cliente Anticipo',
+            'document_number' => 'CC-7777',
+            'is_active' => true,
+        ]);
+
+        $addResponse = $this
+            ->actingAs($user)
+            ->post(route('customers.credits.balance.store', $customer), [
+                'operation' => 'add',
+                'description' => 'Anticipo de caja externa',
+                'amount' => 100000,
+            ]);
+
+        $addResponse->assertRedirect(route('customers.credits.show', $customer));
+
+        $this->assertDatabaseHas('customers', [
+            'id' => $customer->id,
+            'available_balance' => 100000,
+        ]);
+
+        $this->assertDatabaseHas('customer_balance_movements', [
+            'customer_id' => $customer->id,
+            'movement_type' => 'manual_addition',
+            'description' => 'Anticipo de caja externa',
+            'amount' => 100000,
+            'balance_before' => 0,
+            'balance_after' => 100000,
+        ]);
+
+        $removeResponse = $this
+            ->actingAs($user)
+            ->post(route('customers.credits.balance.store', $customer), [
+                'operation' => 'remove',
+                'description' => 'Ajuste solicitado por cliente',
+                'amount' => 25000,
+            ]);
+
+        $removeResponse->assertRedirect(route('customers.credits.show', $customer));
+
+        $this->assertDatabaseHas('customers', [
+            'id' => $customer->id,
+            'available_balance' => 75000,
+        ]);
+
+        $this->assertDatabaseHas('customer_balance_movements', [
+            'customer_id' => $customer->id,
+            'movement_type' => 'manual_removal',
+            'description' => 'Ajuste solicitado por cliente',
+            'amount' => -25000,
+            'balance_before' => 100000,
+            'balance_after' => 75000,
+        ]);
+
+        $historyResponse = $this
+            ->actingAs($user)
+            ->get(route('customers.credits.balance-history', $customer));
+
+        $historyResponse->assertOk();
+        $historyResponse->assertSee('Historial del saldo a favor');
+        $historyResponse->assertSee('Anticipo de caja externa');
+        $historyResponse->assertSee('Ajuste solicitado por cliente');
+    }
 }

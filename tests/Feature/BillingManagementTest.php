@@ -824,6 +824,202 @@ class BillingManagementTest extends TestCase
         ]);
     }
 
+    public function test_manual_billing_can_consume_customer_available_balance_without_affecting_cash(): void
+    {
+        $user = $this->createAdminUser();
+
+        $box = Box::create([
+            'name' => 'Caja saldo a favor manual',
+            'code' => 'BOX-BALANCE-MANUAL',
+            'user_id' => $user->id,
+            'opening_balance' => 50000,
+            'status' => 'open',
+            'opened_at' => now(),
+        ]);
+
+        $customer = Customer::create([
+            'name' => 'Cliente Anticipo Manual',
+            'document_number' => '445566',
+            'available_balance' => 100000,
+            'is_active' => true,
+        ]);
+
+        $response = $this
+            ->actingAs($user)
+            ->postJson(route('billing.manual.store'), [
+                'origin_type' => 'table',
+                'customer_id' => $customer->id,
+                'document_type' => 'ticket',
+                'amount_received' => 0,
+                'items' => [
+                    [
+                        'name' => 'Cobro cubierto por saldo a favor',
+                        'quantity' => 1,
+                        'unit_price' => 40000,
+                    ],
+                ],
+            ]);
+
+        $response->assertOk();
+
+        $sale = Sale::query()->firstOrFail();
+
+        $this->assertDatabaseHas('sales', [
+            'id' => $sale->id,
+            'box_id' => $box->id,
+            'customer_id' => $customer->id,
+            'status' => 'completed',
+            'payment_status' => 'paid',
+            'total' => 40000,
+        ]);
+
+        $this->assertDatabaseHas('customers', [
+            'id' => $customer->id,
+            'available_balance' => 60000,
+        ]);
+
+        $this->assertDatabaseHas('customer_balance_movements', [
+            'customer_id' => $customer->id,
+            'sale_id' => $sale->id,
+            'movement_type' => 'sale_consumption',
+            'amount' => -40000,
+            'balance_before' => 100000,
+            'balance_after' => 60000,
+        ]);
+
+        $this->assertDatabaseHas('payments', [
+            'sale_id' => $sale->id,
+            'payment_method_id' => null,
+            'amount' => 0,
+            'received_amount' => 0,
+            'change_amount' => 0,
+            'status' => 'completed',
+        ]);
+
+        $this->assertDatabaseHas('box_movements', [
+            'sale_id' => $sale->id,
+            'movement_type' => 'manual_payment',
+            'amount' => 0,
+            'balance_before' => 50000,
+            'balance_after' => 50000,
+        ]);
+    }
+
+    public function test_billing_checkout_applies_customer_available_balance_before_collecting_remaining_amount(): void
+    {
+        $user = $this->createAdminUser();
+
+        $paymentMethod = PaymentMethod::create([
+            'name' => 'Efectivo',
+            'code' => 'CASH',
+            'description' => 'Pago en efectivo',
+            'active' => true,
+        ]);
+
+        $box = Box::create([
+            'name' => 'Caja saldo a favor mesa',
+            'code' => 'BOX-BALANCE-TABLE',
+            'user_id' => $user->id,
+            'opening_balance' => 25000,
+            'status' => 'open',
+            'opened_at' => now(),
+        ]);
+
+        $customer = Customer::create([
+            'name' => 'Cliente Anticipo Mesa',
+            'document_number' => '998800',
+            'available_balance' => 10000,
+            'is_active' => true,
+        ]);
+
+        $table = RestaurantTable::create([
+            'name' => 'Mesa saldo 1',
+            'code' => 'M-BAL-01',
+            'area' => 'Salon',
+            'capacity' => 4,
+            'status' => 'occupied',
+            'is_active' => true,
+        ]);
+
+        $order = TableOrder::create([
+            'restaurant_table_id' => $table->id,
+            'order_number' => 'PED-BAL-001',
+            'customer_id' => $customer->id,
+            'customer_name' => $customer->name,
+            'status' => 'open',
+            'opened_by_user_id' => $user->id,
+        ]);
+
+        $order->items()->create([
+            'product_name' => 'Consumo mixto',
+            'unit_price' => 28000,
+            'quantity' => 1,
+            'subtotal' => 28000,
+            'split_group' => 1,
+        ]);
+        $order->recalculateTotals();
+
+        $response = $this
+            ->actingAs($user)
+            ->postJson(route('billing.checkout.store', $order), [
+                'payment_method_id' => $paymentMethod->id,
+                'amount_received' => 18000,
+                'document_type' => 'ticket',
+            ]);
+
+        $response->assertOk();
+
+        $sale = Sale::query()->firstOrFail();
+
+        $this->assertDatabaseHas('customers', [
+            'id' => $customer->id,
+            'available_balance' => 0,
+        ]);
+
+        $this->assertDatabaseHas('customer_balance_movements', [
+            'customer_id' => $customer->id,
+            'sale_id' => $sale->id,
+            'movement_type' => 'sale_consumption',
+            'amount' => -10000,
+            'balance_before' => 10000,
+            'balance_after' => 0,
+        ]);
+
+        $this->assertDatabaseHas('payments', [
+            'sale_id' => $sale->id,
+            'payment_method_id' => $paymentMethod->id,
+            'amount' => 18000,
+            'received_amount' => 18000,
+            'change_amount' => 0,
+            'status' => 'completed',
+        ]);
+
+        $this->assertDatabaseHas('box_movements', [
+            'sale_id' => $sale->id,
+            'movement_type' => 'table_order_payment',
+            'amount' => 18000,
+            'balance_before' => 25000,
+            'balance_after' => 43000,
+        ]);
+
+        $this->assertDatabaseHas('sales', [
+            'id' => $sale->id,
+            'status' => 'completed',
+            'payment_status' => 'paid',
+            'total' => 28000,
+        ]);
+
+        $this->assertDatabaseHas('table_orders', [
+            'id' => $order->id,
+            'status' => 'paid',
+        ]);
+
+        $this->assertDatabaseHas('restaurant_tables', [
+            'id' => $table->id,
+            'status' => 'free',
+        ]);
+    }
+
     private function createAdminUser(): User
     {
         $user = User::factory()->create();

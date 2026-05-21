@@ -29,7 +29,7 @@ class ReportManagementController extends Controller
 
         $salesQuery = $this->salesQuery($filters, $start, $end);
         $sales = (clone $salesQuery)
-            ->with(['user', 'customer', 'invoice', 'payments.paymentMethod', 'tableOrder.table'])
+            ->with(['user', 'customer', 'invoice', 'payments.paymentMethod', 'tableOrder.table', 'customerBalanceMovements'])
             ->latest('created_at')
             ->paginate(15)
             ->withQueryString();
@@ -158,7 +158,7 @@ class ReportManagementController extends Controller
         [$filters, $start, $end] = $this->validatedFilters($request);
 
         $sales = $this->salesQuery($filters, $start, $end)
-            ->with(['user', 'customer', 'invoice', 'payments.paymentMethod'])
+            ->with(['user', 'customer', 'invoice', 'payments.paymentMethod', 'customerBalanceMovements'])
             ->latest('created_at')
             ->get();
 
@@ -184,7 +184,7 @@ class ReportManagementController extends Controller
                     $sale->id,
                     $sale->user?->name ?? 'Sin usuario',
                     $sale->customer?->name ?? $sale->customer_name ?? 'Sin cliente',
-                    $sale->payments->pluck('paymentMethod.name')->filter()->implode(', ') ?: 'Sin pago',
+                    $sale->paymentMethodSummary() ?: 'Sin pago',
                     number_format((float) $sale->subtotal, 2, '.', ''),
                     number_format((float) $sale->discount_amount, 2, '.', ''),
                     number_format((float) $sale->tax_amount, 2, '.', ''),

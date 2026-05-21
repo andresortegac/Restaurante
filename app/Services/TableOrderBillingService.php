@@ -20,7 +20,8 @@ class TableOrderBillingService
 {
     public function __construct(
         private readonly SaleDocumentService $saleDocumentService,
-        private readonly CustomerCreditService $customerCreditService
+        private readonly CustomerCreditService $customerCreditService,
+        private readonly CustomerBalanceService $customerBalanceService
     ) {
     }
 
@@ -28,6 +29,7 @@ class TableOrderBillingService
     {
         $documentType = $payload['document_type'] ?? Invoice::TYPE_TICKET;
         $isCredit = (bool) ($payload['is_credit'] ?? false);
+        $applyCustomerBalance = (bool) ($payload['apply_customer_balance'] ?? false);
         $customerSelectionProvided = array_key_exists('customer_id', $payload);
         $selectedCustomerId = $customerSelectionProvided && ! blank($payload['customer_id'] ?? null)
             ? (int) $payload['customer_id']
@@ -60,7 +62,7 @@ class TableOrderBillingService
 
         $paymentMethod = null;
 
-        if (! $isCredit) {
+        if (! $isCredit && ! empty($payload['payment_method_id'])) {
             $paymentMethod = PaymentMethod::query()
                 ->whereKey($payload['payment_method_id'] ?? null)
                 ->where('active', true)
@@ -80,7 +82,7 @@ class TableOrderBillingService
         $sale = null;
         $table = null;
 
-        DB::transaction(function () use ($order, $paymentMethod, $payload, $tipAmount, $amountReceived, $userId, $isCredit, $customerSelectionProvided, &$sale, &$table): void {
+        DB::transaction(function () use ($order, $paymentMethod, $payload, $tipAmount, $amountReceived, $userId, $isCredit, $applyCustomerBalance, $customerSelectionProvided, &$sale, &$table): void {
             $currentOrder = TableOrder::query()
                 ->with(['items.product.taxRate', 'table', 'sale', 'customer'])
                 ->lockForUpdate()
@@ -166,27 +168,6 @@ class TableOrderBillingService
                 ]);
             }
 
-            $amountDue = round((float) $currentOrder->total + $tipAmount, 2);
-            $isCashPayment = $this->isCashPaymentMethod($paymentMethod);
-
-            if (! $isCredit && $amountReceived < $amountDue) {
-                throw ValidationException::withMessages([
-                    'amount_received' => 'El monto recibido no cubre el total a cobrar.',
-                ]);
-            }
-
-            if (! $isCredit && ! $isCashPayment && abs($amountReceived - $amountDue) > 0.009) {
-                throw ValidationException::withMessages([
-                    'amount_received' => 'Para pagos distintos a efectivo, el monto recibido debe ser igual al total a cobrar.',
-                ]);
-            }
-
-            $changeAmount = $isCredit
-                ? 0.0
-                : ($isCashPayment
-                    ? round(max(0, $amountReceived - $amountDue), 2)
-                    : 0.0);
-
             $saleNotes = collect([
                 'Pedido ' . $currentOrder->order_number,
                 $table ? 'Mesa ' . $table->name : null,
@@ -217,13 +198,58 @@ class TableOrderBillingService
 
             $sale->calculateTotal();
 
+            $appliedCustomerBalance = 0.0;
+            $remainingSaleAmount = round((float) $sale->total, 2);
+
+            if (! $isCredit && $applyCustomerBalance && $currentOrder->customer_id) {
+                $balanceApplication = $this->customerBalanceService->applyAvailableBalance(
+                    $selectedCustomer ?: $currentOrder->customer,
+                    $sale,
+                    (float) $sale->total,
+                    $userId,
+                    'Consumo descontado desde saldo a favor en pedido ' . $currentOrder->order_number
+                );
+
+                $appliedCustomerBalance = $balanceApplication['applied_amount'];
+                $remainingSaleAmount = $balanceApplication['remaining_amount'];
+            }
+
+            $amountDue = round($remainingSaleAmount + $tipAmount, 2);
+            $isCashPayment = $this->isCashPaymentMethod($paymentMethod);
+
+            if (! $isCredit && $amountDue > 0 && ! $paymentMethod) {
+                throw ValidationException::withMessages([
+                    'payment_method_id' => 'Selecciona un metodo de pago activo.',
+                ]);
+            }
+
+            if (! $isCredit && $amountDue > 0 && $amountReceived < $amountDue) {
+                throw ValidationException::withMessages([
+                    'amount_received' => 'El monto recibido no cubre el total a cobrar.',
+                ]);
+            }
+
+            if (! $isCredit && $amountDue > 0 && ! $isCashPayment && abs($amountReceived - $amountDue) > 0.009) {
+                throw ValidationException::withMessages([
+                    'amount_received' => 'Para pagos distintos a efectivo, el monto recibido debe ser igual al total a cobrar.',
+                ]);
+            }
+
+            $changeAmount = $isCredit
+                ? 0.0
+                : ($isCashPayment
+                    ? round(max(0, $amountReceived - $amountDue), 2)
+                    : 0.0);
+
             $payment = $sale->payments()->create([
-                'payment_method_id' => $paymentMethod?->id,
-                'amount' => $sale->total,
+                'payment_method_id' => $isCredit || $amountDue <= 0 ? null : $paymentMethod?->id,
+                'amount' => $isCredit ? $sale->total : $remainingSaleAmount,
                 'received_amount' => $isCredit ? 0 : $amountReceived,
                 'change_amount' => $changeAmount,
                 'tip_amount' => $isCredit ? 0 : $tipAmount,
-                'reference' => $payload['reference'] ?? null,
+                'reference' => $amountDue <= 0 && $appliedCustomerBalance > 0
+                    ? 'Saldo a favor aplicado automaticamente'
+                    : ($payload['reference'] ?? null),
                 'status' => $isCredit ? 'pending' : 'completed',
             ]);
 
@@ -234,9 +260,9 @@ class TableOrderBillingService
             $balanceBefore = round((float) $box->opening_balance + $movementTotal, 2);
             $boxImpact = $isCredit
                 ? 0.0
-                : $this->boxImpactAmount((float) $sale->total, $tipAmount, $paymentMethod);
+                : $this->boxImpactAmount($remainingSaleAmount, $tipAmount, $paymentMethod);
             $balanceAfter = round($balanceBefore + $boxImpact, 2);
-            $description = $this->movementDescription($currentOrder, $table, $paymentMethod, $boxImpact, $isCredit);
+            $description = $this->movementDescription($currentOrder, $table, $paymentMethod, $boxImpact, $isCredit, $appliedCustomerBalance);
 
             $box->movements()->create([
                 'box_session_id' => $boxSession->id,
@@ -262,6 +288,7 @@ class TableOrderBillingService
                     'payment_id' => $payment->id,
                     'amount' => $boxImpact,
                     'is_credit' => $isCredit,
+                    'applied_customer_balance' => $appliedCustomerBalance,
                 ],
                 'occurred_at' => now(),
             ]);
@@ -329,12 +356,16 @@ class TableOrderBillingService
         ?RestaurantTable $table,
         ?PaymentMethod $paymentMethod,
         float $boxImpact,
-        bool $isCredit = false
+        bool $isCredit = false,
+        float $appliedCustomerBalance = 0
     ): string {
         $parts = [
             'Cobro del pedido ' . $order->order_number,
             $table ? 'Mesa ' . $table->name : null,
             $isCredit ? 'Credito al cliente' : 'Metodo ' . ($paymentMethod?->name ?? 'Sin dato'),
+            $appliedCustomerBalance > 0
+                ? 'Saldo a favor aplicado $' . number_format($appliedCustomerBalance, 2, '.', '')
+                : null,
             $boxImpact > 0
                 ? 'Impacto en caja $' . number_format($boxImpact, 2, '.', '')
                 : 'Sin impacto en caja',

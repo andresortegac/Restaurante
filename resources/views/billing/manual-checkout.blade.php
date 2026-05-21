@@ -48,6 +48,7 @@
         'phone' => $customer->phone,
         'address' => $customer->billing_address,
         'pendingCreditTotal' => (float) ($customer->pending_credit_total ?? 0),
+        'availableBalance' => (float) ($customer->available_balance ?? 0),
     ])->values();
 @endphp
 
@@ -150,6 +151,10 @@
                                     <strong id="manualAmountDue">$0.00</strong>
                                 </div>
                                 <div class="d-flex justify-content-between gap-3 mt-2">
+                                    <span class="summary-kicker">Saldo a favor aplicado</span>
+                                    <strong id="manualAppliedBalance">$0.00</strong>
+                                </div>
+                                <div class="d-flex justify-content-between gap-3 mt-2">
                                     <span class="summary-kicker">Cambio</span>
                                     <strong id="manualChange">$0.00</strong>
                                 </div>
@@ -193,7 +198,7 @@
                                 Toca los productos del menu para agregarlos al cobro.
                             </div>
 
-                            <div class="waiter-draft-items" id="manualSelectedItems"></div>
+                            <div class="waiter-draft-items waiter-draft-items-manual" id="manualSelectedItems"></div>
                             <div id="manualItemsInputs"></div>
                         </aside>
 
@@ -204,7 +209,7 @@
                                     <h6 class="mb-1">Selecciona productos para el cobro</h6>
                                     <p class="table-note mb-0">Toca un producto para sumarlo al cobro manual.</p>
                                 </div>
-                                <div class="waiter-menu-search">
+                                <div class="waiter-menu-search waiter-menu-search-emphasis">
                                     <label class="form-label" for="manualProductSearch">Filtrar por nombre</label>
                                     <input type="search" class="form-control" id="manualProductSearch" placeholder="Ej: churrasco, limonada, postre">
                                 </div>
@@ -241,6 +246,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const creditMode = document.getElementById('is_credit');
     const subtotalLabel = document.getElementById('manualSubtotal');
     const dueLabel = document.getElementById('manualAmountDue');
+    const appliedBalanceLabel = document.getElementById('manualAppliedBalance');
     const changeLabel = document.getElementById('manualChange');
     const documentType = document.getElementById('document_type');
     const documentHelp = document.getElementById('documentTypeHelp');
@@ -269,13 +275,22 @@ document.addEventListener('DOMContentLoaded', function () {
         const method = selectedMethod();
         return !method || method.code === 'CASH';
     };
+    const availableBalanceToApply = amount => {
+        const customer = selectedCustomer();
+
+        if (!customer || isCreditSale()) {
+            return 0;
+        }
+
+        return Math.min(Number(customer.availableBalance || 0), Math.max(0, Number(amount || 0)));
+    };
 
     const selectedCustomer = () => customers.find(customer => String(customer.id) === String(customerSelect.value)) || null;
     const findProduct = productId => products.find(product => String(product.id) === String(productId)) || null;
     const placeholderMarkup = icon => '<div class="waiter-image-placeholder"><i class="' + icon + '"></i></div>';
     const requiresRegisteredCustomer = () => isCreditSale() || documentType.value === 'electronic';
 
-    const syncCustomerSummary = (projectedAmount = null) => {
+    const syncCustomerSummary = (projectedAmount = null, appliedBalance = 0) => {
         const customer = selectedCustomer();
 
         if (customer) {
@@ -284,14 +299,17 @@ document.addEventListener('DOMContentLoaded', function () {
                 customer.document ? 'Documento: ' + customer.document : null,
                 customer.phone ? 'Telefono: ' + customer.phone : null,
                 customer.email ? 'Email: ' + customer.email : null,
+                'Saldo a favor: ' + money(customer.availableBalance || 0),
             ].filter(Boolean);
 
             if (customer.pendingCreditTotal > 0) {
-                details.push('Saldo actual: ' + money(customer.pendingCreditTotal));
+                details.push('Cartera actual: ' + money(customer.pendingCreditTotal));
             }
 
             if (isCreditSale() && projectedAmount && projectedAmount > 0) {
                 details.push('Quedara en: ' + money(customer.pendingCreditTotal + projectedAmount));
+            } else if (appliedBalance > 0) {
+                details.push('Se aplicaran: ' + money(appliedBalance));
             }
 
             customerMeta.textContent = details.join(' | ') || 'Cliente registrado.';
@@ -339,9 +357,11 @@ document.addEventListener('DOMContentLoaded', function () {
     const syncTotals = () => {
         const entries = Array.from(selectedItems.values());
         const subtotal = entries.reduce((sum, entry) => sum + (entry.quantity * entry.unitPrice), 0);
-        const due = subtotal;
+        const appliedBalance = availableBalanceToApply(subtotal);
+        const due = Math.max(0, subtotal - appliedBalance);
         const method = selectedMethod();
         const exactPayment = Boolean(method) && !isCashPayment();
+        const submitButton = form.querySelector('button[type="submit"]');
 
         if (isCreditSale()) {
             paymentMethod.value = '';
@@ -350,28 +370,53 @@ document.addEventListener('DOMContentLoaded', function () {
             amountReceived.readOnly = true;
             amountReceived.classList.add('bg-light');
             amountHelp.textContent = 'Credito pendiente: no se registra dinero recibido ni cambio.';
+            if (submitButton) {
+                submitButton.textContent = 'Registrar cobro manual';
+            }
+        } else if (due <= 0 && subtotal > 0) {
+            paymentMethod.value = '';
+            paymentMethod.disabled = true;
+            amountReceived.value = '0.00';
+            amountReceived.readOnly = true;
+            amountReceived.classList.add('bg-light');
+            amountHelp.textContent = 'El saldo a favor cubre todo el cobro. No se registra ingreso en caja.';
+            if (submitButton) {
+                submitButton.textContent = 'Aplicar saldo a favor';
+            }
         } else if (exactPayment) {
             paymentMethod.disabled = false;
             amountReceived.value = due.toFixed(2);
             amountReceived.readOnly = true;
             amountReceived.classList.add('bg-light');
-            amountHelp.textContent = 'Para pagos distintos a efectivo, el monto recibido debe coincidir con el total.';
+            amountHelp.textContent = appliedBalance > 0
+                ? 'Primero se descuenta el saldo a favor y el resto debe coincidir exactamente con el total.'
+                : 'Para pagos distintos a efectivo, el monto recibido debe coincidir con el total.';
+            if (submitButton) {
+                submitButton.textContent = 'Registrar cobro manual';
+            }
         } else {
             paymentMethod.disabled = false;
             amountReceived.readOnly = false;
             amountReceived.classList.remove('bg-light');
-            amountHelp.textContent = 'Ingresa el valor recibido para calcular el cambio.';
+            amountHelp.textContent = appliedBalance > 0
+                ? 'El sistema descuenta primero el saldo a favor y te pide solo el valor restante.'
+                : 'Ingresa el valor recibido para calcular el cambio.';
 
             if (amountReceived.dataset.userEdited !== 'true' && due > 0) {
                 amountReceived.value = due.toFixed(2);
+            }
+
+            if (submitButton) {
+                submitButton.textContent = 'Registrar cobro manual';
             }
         }
 
         const received = Math.max(0, Number(amountReceived.value || 0));
         subtotalLabel.textContent = money(subtotal);
-        dueLabel.textContent = money(due);
+        dueLabel.textContent = money(isCreditSale() ? subtotal : due);
+        appliedBalanceLabel.textContent = money(isCreditSale() ? 0 : appliedBalance);
         changeLabel.textContent = money(!isCreditSale() && isCashPayment() ? Math.max(0, received - due) : 0);
-        syncCustomerSummary(due);
+        syncCustomerSummary(subtotal, appliedBalance);
     };
 
     const syncSelectedItems = () => {
@@ -591,12 +636,13 @@ document.addEventListener('DOMContentLoaded', function () {
     documentType.addEventListener('change', function () {
         syncCustomerFieldState();
         syncDocumentHelp();
-        syncCustomerSummary();
+        syncTotals();
     });
     customerSelect.addEventListener('change', function () {
+        amountReceived.dataset.userEdited = 'false';
         syncCustomerFieldState();
         syncDocumentHelp();
-        syncCustomerSummary();
+        syncTotals();
     });
 
     form.addEventListener('submit', async function (event) {

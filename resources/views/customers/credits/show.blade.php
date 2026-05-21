@@ -8,10 +8,11 @@
             <div>
                 <span class="module-kicker">Clientes / Cartera</span>
                 <h1>{{ $customer->name }}</h1>
-                <p>Cobra la deuda del cliente desde un solo resumen y deja el detalle completo en el historial de credito.</p>
+                <p>Administra por separado la cartera pendiente y el saldo a favor del cliente desde un solo resumen.</p>
             </div>
             <div class="summary-group">
                 <span class="summary-chip">${{ number_format($summary['pending'], 2) }} pendiente</span>
+                <span class="summary-chip">${{ number_format($summary['available'], 2) }} saldo a favor</span>
                 <span class="summary-chip">{{ $summary['pendingCount'] }} creditos pendientes</span>
                 <span class="summary-chip">{{ $summary['paidCount'] }} creditos pagados</span>
             </div>
@@ -29,6 +30,7 @@
                         </div>
                         <div class="d-flex align-items-center gap-2">
                             <a href="{{ route('customers.credits.history', $customer) }}" class="btn btn-outline-primary btn-sm">Ver historial del credito</a>
+                            <a href="{{ route('customers.credits.balance-history', $customer) }}" class="btn btn-outline-primary btn-sm">Ver historial del saldo a favor</a>
                             <a href="{{ route('customers.credits.index') }}" class="btn btn-outline-secondary btn-sm">Volver</a>
                         </div>
                     </div>
@@ -78,6 +80,43 @@
 
             <div class="col-lg-5">
                 <div class="card module-card service-card">
+                    <div class="card-header d-flex justify-content-between align-items-center gap-3">
+                        <div>
+                            <h5 class="mb-1">Saldo a favor</h5>
+                            <p class="table-note mb-0">Este saldo se descuenta automaticamente en cobros manuales y cuentas de mesa.</p>
+                        </div>
+                        <span class="summary-chip">${{ number_format($summary['available'], 2) }}</span>
+                    </div>
+                    <div class="card-body">
+                        <p class="table-note">Estos movimientos no entran ni salen de caja. Solo actualizan el saldo disponible del cliente.</p>
+
+                        <form method="POST" action="{{ route('customers.credits.balance.store', $customer) }}">
+                            @csrf
+
+                            <div class="mb-3">
+                                <label class="form-label" for="operation">Movimiento</label>
+                                <select class="form-select" id="operation" name="operation">
+                                    <option value="add" @selected(old('operation', 'add') === 'add')>Agregar saldo a favor</option>
+                                    <option value="remove" @selected(old('operation') === 'remove')>Quitar saldo a favor</option>
+                                </select>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label" for="balance_description">Concepto</label>
+                                <input type="text" class="form-control" id="balance_description" name="description" value="{{ old('description') }}" placeholder="Ej: anticipo del cliente, ajuste manual" required>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label" for="balance_amount">Valor</label>
+                                <input type="number" class="form-control" id="balance_amount" name="amount" min="0.01" step="0.01" value="{{ old('amount') }}" required>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary w-100">Guardar movimiento de saldo a favor</button>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="card module-card service-card mt-4">
                     <div class="card-header">
                         <h5 class="mb-0">Asignar saldo pendiente</h5>
                     </div>

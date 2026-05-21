@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Collection;
 
 class Sale extends Model
 {
@@ -81,6 +82,62 @@ class Sale extends Model
     public function customerCredit()
     {
         return $this->hasOne(CustomerCredit::class);
+    }
+
+    public function customerBalanceMovements()
+    {
+        return $this->hasMany(CustomerBalanceMovement::class);
+    }
+
+    public function customerBalanceAppliedTotal(): float
+    {
+        $movements = $this->relationLoaded('customerBalanceMovements')
+            ? $this->customerBalanceMovements
+            : $this->customerBalanceMovements()->where('movement_type', 'sale_consumption')->get();
+
+        return round(abs((float) $movements
+            ->where('movement_type', 'sale_consumption')
+            ->sum('amount')), 2);
+    }
+
+    public function paymentMethodSummary(): string
+    {
+        $labels = $this->paymentLabels();
+
+        return $labels->join(', ');
+    }
+
+    public function externalReceivedTotal(): float
+    {
+        return round((float) $this->payments->sum('received_amount'), 2);
+    }
+
+    public function paymentChangeTotal(): float
+    {
+        return round((float) $this->payments->sum('change_amount'), 2);
+    }
+
+    public function paymentTipTotal(): float
+    {
+        return round((float) $this->payments->sum('tip_amount'), 2);
+    }
+
+    private function paymentLabels(): Collection
+    {
+        $labels = $this->payments
+            ->map(fn ($payment) => $payment->paymentMethod?->name)
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($this->customerBalanceAppliedTotal() > 0) {
+            $labels->prepend('Saldo a favor');
+        }
+
+        return $labels
+            ->filter()
+            ->unique()
+            ->values();
     }
 
     public function addItem($productId, $quantity, $unitPrice, ?string $productName = null)

@@ -23,10 +23,12 @@ class Customer extends Model
         'trade_name',
         'email',
         'notes',
+        'available_balance',
         'is_active',
     ];
 
     protected $casts = [
+        'available_balance' => 'decimal:2',
         'is_active' => 'boolean',
     ];
 
@@ -43,6 +45,11 @@ class Customer extends Model
     public function credits(): HasMany
     {
         return $this->hasMany(CustomerCredit::class);
+    }
+
+    public function balanceMovements(): HasMany
+    {
+        return $this->hasMany(CustomerBalanceMovement::class);
     }
 
     public function pendingCredits(): HasMany

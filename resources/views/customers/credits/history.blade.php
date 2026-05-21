@@ -20,6 +20,7 @@
             </div>
             <div class="summary-group">
                 <span class="summary-chip">${{ number_format($summary['pending'], 2) }} pendiente</span>
+                <span class="summary-chip">${{ number_format($summary['available'], 2) }} saldo a favor</span>
                 <span class="summary-chip">{{ $summary['pendingCount'] }} creditos pendientes</span>
                 <span class="summary-chip">{{ $summary['paidCount'] }} creditos pagados</span>
             </div>
@@ -32,6 +33,7 @@
                     <p class="table-note mb-0">Para registrar pagos usa el resumen de cobro del cliente.</p>
                 </div>
                 <div class="d-flex align-items-center gap-2">
+                    <a href="{{ route('customers.credits.balance-history', $customer) }}" class="btn btn-outline-primary btn-sm">Ver saldo a favor</a>
                     <a href="{{ route('customers.credits.show', $customer) }}" class="btn btn-primary btn-sm">Volver a cobrar</a>
                     <a href="{{ route('customers.credits.index') }}" class="btn btn-outline-secondary btn-sm">Volver</a>
                 </div>

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Customer;
 use App\Models\CustomerCredit;
+use App\Services\CustomerBalanceService;
 use App\Services\CustomerCreditService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -67,7 +68,7 @@ class CustomerManagementController extends Controller
 
         $filters = $request->validate([
             'search' => ['nullable', 'string', 'max:255'],
-            'balance' => ['nullable', 'in:all,pending'],
+            'balance' => ['nullable', 'in:all,activity,pending,favor'],
         ]);
 
         $customers = Customer::query()
@@ -82,8 +83,17 @@ class CustomerManagementController extends Controller
                         ->orWhere('email', 'like', '%' . $search . '%');
                 });
             })
-            ->when(($filters['balance'] ?? 'pending') === 'pending', fn ($query) => $query->has('pendingCredits'))
+            ->when(($filters['balance'] ?? 'activity') === 'pending', fn ($query) => $query->has('pendingCredits'))
+            ->when(($filters['balance'] ?? 'activity') === 'favor', fn ($query) => $query->where('available_balance', '>', 0))
+            ->when(($filters['balance'] ?? 'activity') === 'activity', function ($query) {
+                $query->where(function ($nestedQuery) {
+                    $nestedQuery
+                        ->has('pendingCredits')
+                        ->orWhere('available_balance', '>', 0);
+                });
+            })
             ->orderByDesc('pending_credit_total')
+            ->orderByDesc('available_balance')
             ->orderBy('name')
             ->paginate(15)
             ->withQueryString();
@@ -96,8 +106,12 @@ class CustomerManagementController extends Controller
                     ->where('status', 'pending')
                     ->distinct('customer_id')
                     ->count('customer_id'),
+                'customersWithAvailableBalance' => Customer::query()
+                    ->where('available_balance', '>', 0)
+                    ->count(),
                 'pendingCredits' => CustomerCredit::query()->where('status', 'pending')->count(),
                 'creditPending' => (float) CustomerCredit::query()->where('status', 'pending')->sum('balance'),
+                'availableBalance' => (float) Customer::query()->sum('available_balance'),
             ],
         ]);
     }
@@ -134,6 +148,24 @@ class CustomerManagementController extends Controller
         ]);
     }
 
+    public function showBalanceHistory(Customer $customer)
+    {
+        if ($response = $this->denyIfUnauthorized(['customers.view'])) {
+            return $response;
+        }
+
+        $this->loadCustomerCreditSummary($customer);
+
+        $movements = $this->customerBalanceMovementsQuery($customer)
+            ->paginate(15);
+
+        return view('customers.credits.balance-history', [
+            'customer' => $customer,
+            'movements' => $movements,
+            'summary' => $this->customerCreditSummary($customer),
+        ]);
+    }
+
     public function storeCredit(Request $request, Customer $customer, CustomerCreditService $customerCreditService): RedirectResponse|Response
     {
         if ($response = $this->denyIfUnauthorized(['customers.edit'])) {
@@ -150,6 +182,27 @@ class CustomerManagementController extends Controller
         return redirect()
             ->route('customers.credits.show', $customer)
             ->with('success', 'Saldo pendiente asignado correctamente.');
+    }
+
+    public function storeBalanceMovement(Request $request, Customer $customer, CustomerBalanceService $customerBalanceService): RedirectResponse|Response
+    {
+        if ($response = $this->denyIfUnauthorized(['customers.edit'])) {
+            return $response;
+        }
+
+        $validated = $request->validate([
+            'operation' => ['required', 'in:add,remove'],
+            'description' => ['required', 'string', 'max:255'],
+            'amount' => ['required', 'numeric', 'gt:0'],
+        ]);
+
+        $customerBalanceService->registerManualMovement($customer, $validated, Auth::id());
+
+        return redirect()
+            ->route('customers.credits.show', $customer)
+            ->with('success', $validated['operation'] === 'remove'
+                ? 'Saldo a favor descontado correctamente.'
+                : 'Saldo a favor agregado correctamente.');
     }
 
     public function payCredit(Request $request, Customer $customer, CustomerCredit $credit, CustomerCreditService $customerCreditService): RedirectResponse|Response
@@ -369,12 +422,21 @@ class CustomerManagementController extends Controller
             ->orderByDesc('id');
     }
 
+    private function customerBalanceMovementsQuery(Customer $customer)
+    {
+        return $customer->balanceMovements()
+            ->with(['sale.tableOrder.table', 'createdBy'])
+            ->latest()
+            ->orderByDesc('id');
+    }
+
     private function customerCreditSummary(Customer $customer): array
     {
         return [
             'pending' => (float) ($customer->pending_credit_total ?? 0),
             'pendingCount' => (int) ($customer->pending_credits_count ?? 0),
             'paidCount' => (int) ($customer->paid_credits_count ?? 0),
+            'available' => round((float) ($customer->available_balance ?? 0), 2),
         ];
     }
 

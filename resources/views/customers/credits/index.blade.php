@@ -8,12 +8,14 @@
             <div>
                 <span class="module-kicker">Clientes / Cartera</span>
                 <h1>Gestion de creditos</h1>
-                <p>Consulta los saldos pendientes de cada cliente y entra a su cartera para asignar o cobrar cuentas.</p>
+                <p>Consulta la cartera pendiente y el saldo a favor de cada cliente para entrar a su gestion completa.</p>
             </div>
             <div class="summary-group">
                 <span class="summary-chip">{{ $summary['customersWithCredit'] }} clientes con saldo</span>
+                <span class="summary-chip">{{ $summary['customersWithAvailableBalance'] }} con saldo a favor</span>
                 <span class="summary-chip">{{ $summary['pendingCredits'] }} cuentas pendientes</span>
                 <span class="summary-chip">${{ number_format($summary['creditPending'], 2) }} por cobrar</span>
+                <span class="summary-chip">${{ number_format($summary['availableBalance'], 2) }} a favor</span>
             </div>
         </section>
 
@@ -28,7 +30,9 @@
                         <div class="col-md-4">
                             <label class="form-label" for="balance">Mostrar</label>
                             <select class="form-select" id="balance" name="balance">
-                                <option value="pending" @selected(($filters['balance'] ?? 'pending') === 'pending')>Solo con saldo pendiente</option>
+                                <option value="activity" @selected(($filters['balance'] ?? 'activity') === 'activity')>Con cartera o saldo a favor</option>
+                                <option value="pending" @selected(($filters['balance'] ?? '') === 'pending')>Solo con saldo pendiente</option>
+                                <option value="favor" @selected(($filters['balance'] ?? '') === 'favor')>Solo con saldo a favor</option>
                                 <option value="all" @selected(($filters['balance'] ?? '') === 'all')>Todos los clientes</option>
                             </select>
                         </div>
@@ -51,7 +55,8 @@
                                 <th>Cliente</th>
                                 <th>Contacto</th>
                                 <th>Cuentas pendientes</th>
-                                <th>Saldo actual</th>
+                                <th>Cartera</th>
+                                <th>Saldo a favor</th>
                                 <th class="text-end">Acciones</th>
                             </tr>
                         </thead>
@@ -78,6 +83,16 @@
                                         </div>
                                     </td>
                                     <td>
+                                        <strong>${{ number_format((float) ($customer->available_balance ?? 0), 2) }}</strong>
+                                        <div class="table-note">
+                                            @if((float) ($customer->available_balance ?? 0) > 0)
+                                                Disponible para futuros cobros
+                                            @else
+                                                Sin saldo a favor
+                                            @endif
+                                        </div>
+                                    </td>
+                                    <td>
                                         <div class="table-actions justify-content-end">
                                             <a href="{{ route('customers.credits.show', $customer) }}" class="btn btn-primary btn-sm">Gestionar</a>
                                         </div>
@@ -85,7 +100,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="5" class="text-center py-4 text-muted">No encontramos clientes con esos filtros.</td>
+                                    <td colspan="6" class="text-center py-4 text-muted">No encontramos clientes con esos filtros.</td>
                                 </tr>
                             @endforelse
                         </tbody>

@@ -172,7 +172,7 @@
                                                 </td>
                                                 <td>{{ $sale->customer?->name ?? $sale->customer_name ?? 'Sin cliente' }}</td>
                                                 <td>{{ $sale->user?->name ?? 'Sin usuario' }}</td>
-                                                <td>{{ $sale->payments->pluck('paymentMethod.name')->filter()->implode(', ') ?: 'Sin pago' }}</td>
+                                                <td>{{ $sale->paymentMethodSummary() ?: 'Sin pago' }}</td>
                                                 <td>
                                                     <strong>${{ number_format((float) $sale->total, 2) }}</strong>
                                                     <div class="table-note">Desc. ${{ number_format((float) $sale->discount_amount, 2) }}</div>

@@ -2,14 +2,11 @@
     $brandName = config('app.name', 'Solomo & Pomo');
     $documentTitle = $invoice->isElectronic() ? 'Factura electronica' : 'Recibo de caja';
     $customerName = $sale->customer?->name ?: $sale->customer_name;
-    $paymentMethods = $sale->payments
-        ->map(fn ($payment) => $payment->paymentMethod?->name ?? 'Sin dato')
-        ->filter()
-        ->unique()
-        ->join(', ');
-    $receivedAmount = (float) $sale->payments->sum('received_amount');
-    $changeAmount = (float) $sale->payments->sum('change_amount');
-    $tipAmount = (float) $sale->payments->sum('tip_amount');
+    $paymentMethods = $sale->paymentMethodSummary();
+    $receivedAmount = $sale->externalReceivedTotal();
+    $changeAmount = $sale->paymentChangeTotal();
+    $tipAmount = $sale->paymentTipTotal();
+    $appliedCustomerBalance = $sale->customerBalanceAppliedTotal();
     $itemsCount = (float) $sale->items->sum('quantity');
 @endphp
 <!DOCTYPE html>
@@ -357,7 +354,19 @@
                     <span>Saldo credito</span>
                     <strong>${{ number_format((float) $sale->total, 2) }}</strong>
                 </div>
+            @elseif($appliedCustomerBalance > 0)
+                <div class="summary-row">
+                    <span>Saldo a favor aplicado</span>
+                    <strong>${{ number_format($appliedCustomerBalance, 2) }}</strong>
+                </div>
             @elseif($receivedAmount > 0)
+                <div class="summary-row">
+                    <span>Recibido</span>
+                    <strong>${{ number_format($receivedAmount, 2) }}</strong>
+                </div>
+            @endif
+
+            @if($appliedCustomerBalance > 0 && $receivedAmount > 0)
                 <div class="summary-row">
                     <span>Recibido</span>
                     <strong>${{ number_format($receivedAmount, 2) }}</strong>
