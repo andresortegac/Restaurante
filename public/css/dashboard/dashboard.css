@@ -198,6 +198,13 @@
 }
 
 /* Responsive */
+@media (max-width: 1024px) {
+    .main-content {
+        min-height: auto;
+        padding: 1rem;
+    }
+}
+
 @media (max-width: 768px) {
     .main-content {
         padding: 1rem;

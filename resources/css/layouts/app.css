@@ -11,6 +11,7 @@
     --border-color: #ddd;
     --shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
     --shadow-lg: 0 5px 20px rgba(0, 0, 0, 0.15);
+    --app-navbar-height: 70px;
 }
 
 * {
@@ -43,20 +44,21 @@ body {
 .page-layout {
     display: flex;
     position: fixed;
-    top: 70px;
+    top: var(--app-navbar-height);
     left: 0;
     right: 0;
     bottom: 0;
     width: 100%;
-    height: calc(100vh - 70px);
+    height: calc(100vh - var(--app-navbar-height));
     overflow: hidden;
 }
 
 .main-content {
-    flex: 1;
+    flex: 1 1 auto;
+    min-width: 0;
     overflow-y: auto;
     height: 100%;
-    width: 100%;
+    width: auto;
 }
 
 .modal {
@@ -65,4 +67,24 @@ body {
 
 .modal-backdrop {
     z-index: 1190 !important;
+}
+
+@media (max-width: 991.98px) {
+    body {
+        overflow-y: auto;
+    }
+
+    .page-layout {
+        position: static;
+        min-height: 100vh;
+        min-height: 100dvh;
+        height: auto;
+        padding-top: var(--app-navbar-height);
+        overflow: visible;
+    }
+
+    .main-content {
+        overflow-y: visible;
+        height: auto;
+    }
 }

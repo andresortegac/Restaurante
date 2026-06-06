@@ -92,7 +92,6 @@
                         $openOrder = $restaurantTable->openOrder;
                         $statusLabel = $statusLabels[$restaurantTable->status] ?? ucfirst($restaurantTable->status);
                         $statusClass = $statusClasses[$restaurantTable->status] ?? 'status-free';
-                        $itemsCount = $openOrder ? $openOrder->items->sum('quantity') : 0;
                     @endphp
 
                     <article class="table-card">
@@ -100,37 +99,13 @@
                             <div>
                                 <div class="summary-kicker">{{ $restaurantTable->area ?: 'Salon principal' }}</div>
                                 <h4 class="mb-1">{{ $restaurantTable->name }}</h4>
-                                <div class="seat-note">Codigo {{ $restaurantTable->code }}</div>
                             </div>
                             <span class="status-pill {{ $statusClass }}">{{ $statusLabel }}</span>
                         </div>
 
-                        <div class="table-card-meta">
-                            <div class="meta-box">
-                                <div class="summary-kicker">Capacidad</div>
-                                <div class="h4 mb-0">{{ $restaurantTable->capacity }}</div>
-                                <div class="seat-note">personas</div>
-                            </div>
-                            <div class="meta-box">
-                                <div class="summary-kicker">Pedido</div>
-                                @if($openOrder)
-                                    <div class="fw-bold">{{ $openOrder->order_number }}</div>
-                                    <div class="seat-note">{{ $itemsCount }} items registrados</div>
-                                @else
-                                    <div class="fw-bold">Sin pedido abierto</div>
-                                    <div class="seat-note">Lista para tomar orden</div>
-                                @endif
-                            </div>
-                            <div class="meta-box">
-                                <div class="summary-kicker">Cliente</div>
-                                <div class="fw-bold">{{ $openOrder?->customer?->name ?: $openOrder?->customer_name ?: 'Sin cliente' }}</div>
-                                <div class="seat-note">{{ $openOrder ? 'Pedido en curso' : 'Aun no se ha iniciado servicio' }}</div>
-                            </div>
-                            <div class="meta-box">
-                                <div class="summary-kicker">Total actual</div>
-                                <div class="fw-bold">${{ money($openOrder?->total ?? 0) }}</div>
-                                <div class="seat-note">{{ $openOrder ? 'Incluye impuesto' : 'Sin consumo registrado' }}</div>
-                            </div>
+                        <div class="order-table-compact-meta">
+                            <span><strong>Capacidad:</strong> {{ $restaurantTable->capacity }} personas</span>
+                            <span><strong>Total:</strong> ${{ money($openOrder?->total ?? 0) }}</span>
                         </div>
 
                         <div class="table-card-actions">

@@ -14,6 +14,7 @@
     --btn-radius: 16px;
     --btn-radius-sm: 13px;
     --btn-radius-lg: 18px;
+    --app-navbar-height: 70px;
 }
 
 * {
@@ -41,7 +42,7 @@ body {
     right: 0 !important;
     width: 100% !important;
     z-index: 1100 !important;
-    height: 70px !important;
+    height: var(--app-navbar-height) !important;
 }
 
 .page-layout {
@@ -53,13 +54,14 @@ body {
     bottom: 0 !important;
     width: 100% !important;
     overflow: hidden !important;
-    padding-top: 70px !important;
+    padding-top: var(--app-navbar-height) !important;
 }
 
 .main-content {
-    flex: 1;
+    flex: 1 1 auto;
+    min-width: 0;
     overflow-y: auto;
-    width: 100%;
+    width: auto;
 }
 
 .modal {
@@ -68,6 +70,24 @@ body {
 
 .modal-backdrop {
     z-index: 1190 !important;
+}
+
+@media (max-width: 991.98px) {
+    body {
+        overflow-y: auto;
+    }
+
+    .page-layout {
+        position: static !important;
+        min-height: 100vh;
+        min-height: 100dvh;
+        overflow: visible !important;
+    }
+
+    .main-content {
+        overflow-y: visible;
+        width: auto;
+    }
 }
 
 /* Sistema global de botones */
@@ -322,5 +342,3 @@ body {
     filter: none;
     text-decoration: underline;
 }
-
-

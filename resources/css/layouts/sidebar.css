@@ -117,14 +117,15 @@
 }
 
 /* Responsive - Mobile */
-@media (max-width: 768px) {
+@media (max-width: 991.98px) {
     .sidebar {
         width: 100%;
         position: fixed;
-        top: 70px;
+        top: var(--app-navbar-height);
         left: -100%;
         transition: left 0.3s ease;
-        max-height: calc(100vh - 70px);
+        max-height: calc(100vh - var(--app-navbar-height));
+        max-height: calc(100dvh - var(--app-navbar-height));
         box-shadow: 2px 0 10px rgba(0, 0, 0, 0.2);
     }
 

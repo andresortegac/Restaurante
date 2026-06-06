@@ -35,6 +35,12 @@
     }
 }
 
+@media (max-width: 1024px) {
+    .tables-grid {
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+    }
+}
+
 .table-card {
     display: flex;
     flex-direction: column;
@@ -118,6 +124,25 @@
     border-radius: 14px;
     background: #f7f9fc;
     border: 1px solid #e8edf5;
+}
+
+.order-table-compact-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1rem;
+    margin-bottom: 1rem;
+    color: #526176;
+    font-size: 0.88rem;
+    line-height: 1.25;
+}
+
+.order-table-compact-meta span {
+    min-width: 0;
+}
+
+.order-table-compact-meta strong {
+    color: #24324a;
+    font-weight: 800;
 }
 
 .table-card-actions,
