@@ -62,6 +62,7 @@ body {
     min-width: 0;
     overflow-y: auto;
     width: auto;
+    scroll-padding-bottom: 3rem;
 }
 
 .modal {

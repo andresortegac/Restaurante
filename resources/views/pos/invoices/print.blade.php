@@ -192,6 +192,10 @@
             text-transform: uppercase;
         }
 
+        .paper-feed {
+            height: 18mm;
+        }
+
         .actions {
             display: flex;
             gap: 10px;
@@ -221,7 +225,14 @@
         }
 
         @media print {
+            @page {
+                size: 80mm auto;
+                margin: 3mm 4mm 8mm;
+            }
+
+            html,
             body {
+                width: 80mm;
                 padding: 0;
                 background: #ffffff;
             }
@@ -390,6 +401,7 @@
         @endif
 
         <div class="thanks">Gracias por su compra</div>
+        <div class="paper-feed" aria-hidden="true"></div>
     </div>
 
     <div class="actions">

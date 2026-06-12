@@ -3,6 +3,7 @@
 .module-page {
     width: min(100%, 1280px);
     margin: 0 auto;
+    padding: 1.5rem 1.5rem max(3rem, env(safe-area-inset-bottom));
 }
 
 .module-hero {
@@ -599,6 +600,10 @@
 }
 
 @media (max-width: 768px) {
+    .module-page {
+        padding: 1rem 1rem max(2.5rem, env(safe-area-inset-bottom));
+    }
+
     .module-hero {
         flex-direction: column;
         padding: 1.5rem;
