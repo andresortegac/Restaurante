@@ -84,7 +84,7 @@ class FactusInvoicePayloadBuilder
         return $sale->payments
             ->map(function (Payment $payment): array {
                 $code = strtoupper((string) ($payment->paymentMethod->code ?? ''));
-                $paymentForm = $code === 'CASH' ? '1' : '2';
+                $paymentForm = $code === '' || $code === 'CASH' ? '1' : '2';
                 $paymentMethodCode = match ($code) {
                     'CASH' => '10',
                     'CARD' => '48',

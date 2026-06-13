@@ -19,8 +19,8 @@
                 <span class="summary-chip">{{ $summary['total'] }} registrados</span>
                 <span class="summary-chip">{{ $summary['active'] }} activos</span>
                 <span class="summary-chip">{{ $summary['inactive'] }} inactivos</span>
-                <span class="summary-chip">{{ $summary['customersWithCredit'] }} con saldo</span>
-                <span class="summary-chip">${{ money($summary['creditPending']) }} pendiente</span>
+                <span class="summary-chip">{{ $summary['customersWithAvailableBalance'] }} con saldo a favor</span>
+                <span class="summary-chip">${{ money($summary['availableBalance']) }} a favor</span>
             </div>
         </section>
 
@@ -60,7 +60,7 @@
                                 <th>Cliente</th>
                                 <th>Contacto</th>
                                 <th>Movimientos</th>
-                                <th>Saldo pendiente</th>
+                                <th>Saldo a favor</th>
                                 <th>Estado</th>
                                 <th class="text-end">Acciones</th>
                             </tr>
@@ -81,12 +81,12 @@
                                         <div class="table-note">{{ $customer->sales_count }} ventas</div>
                                     </td>
                                     <td>
-                                        <strong>${{ money($customer->pending_credit_total ?? 0) }}</strong>
+                                        <strong>${{ money($customer->available_balance ?? 0) }}</strong>
                                         <div class="table-note">
-                                            @if((float) ($customer->pending_credit_total ?? 0) > 0)
-                                                Cartera activa
+                                            @if((float) ($customer->available_balance ?? 0) > 0)
+                                                Disponible para consumir
                                             @else
-                                                Sin cartera pendiente
+                                                Sin saldo a favor
                                             @endif
                                         </div>
                                     </td>

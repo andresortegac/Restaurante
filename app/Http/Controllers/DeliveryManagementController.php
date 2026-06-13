@@ -525,7 +525,7 @@ class DeliveryManagementController extends Controller
                 fn ($query, int $driverId) => $query->where(function ($nestedQuery) use ($driverId) {
                     $nestedQuery
                         ->where('is_active', true)
-                        ->orWhereKey($driverId);
+                        ->orWhere('id', $driverId);
                 }),
                 fn ($query) => $query->where('is_active', true)
             )

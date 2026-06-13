@@ -257,6 +257,35 @@ document.addEventListener('DOMContentLoaded', function () {
 
         return Math.min(Number(customer.availableBalance || 0), baseTotal);
     };
+    const showCustomerBalanceWarning = async () => {
+        const customer = selectedCustomer();
+
+        if (!customer || isCreditSale()) {
+            return false;
+        }
+
+        const availableBalance = Number(customer.availableBalance || 0);
+
+        if (availableBalance <= baseTotal) {
+            return false;
+        }
+
+        const message = 'El cliente tiene ' + money(availableBalance) + ' de saldo a favor y el pedido vale ' + money(baseTotal) + '. El saldo a favor no puede superar el valor del pedido.';
+
+        if (window.Swal) {
+            await Swal.fire({
+                icon: 'warning',
+                title: 'Saldo a favor superior al pedido',
+                text: message,
+                confirmButtonText: 'Aceptar',
+                confirmButtonColor: '#dc3545',
+            });
+        } else {
+            alert(message);
+        }
+
+        return true;
+    };
     const outstandingAmount = () => Math.max(0, baseTotal - availableBalanceToApply());
     const ensureDefaultCashMethod = () => {
         if (!methodSelect.value && defaultCashMethodId) {
@@ -406,6 +435,7 @@ document.addEventListener('DOMContentLoaded', function () {
         syncCustomerHelp();
         syncDocumentHelp();
         syncAmounts();
+        showCustomerBalanceWarning();
     });
     documentTypeSelect.addEventListener('change', function () {
         syncDocumentHelp();
@@ -444,6 +474,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 alert('Selecciona un cliente registrado antes de emitir factura electronica.');
             }
 
+            return;
+        }
+
+        if (await showCustomerBalanceWarning()) {
             return;
         }
 

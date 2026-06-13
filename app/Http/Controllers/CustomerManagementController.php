@@ -49,13 +49,10 @@ class CustomerManagementController extends Controller
                 'total' => Customer::query()->count(),
                 'active' => Customer::query()->where('is_active', true)->count(),
                 'inactive' => Customer::query()->where('is_active', false)->count(),
-                'customersWithCredit' => CustomerCredit::query()
-                    ->where('status', 'pending')
-                    ->distinct('customer_id')
-                    ->count('customer_id'),
-                'creditPending' => (float) CustomerCredit::query()
-                    ->where('status', 'pending')
-                    ->sum('balance'),
+                'customersWithAvailableBalance' => Customer::query()
+                    ->where('available_balance', '>', 0)
+                    ->count(),
+                'availableBalance' => (float) Customer::query()->sum('available_balance'),
             ],
         ]);
     }

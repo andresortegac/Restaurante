@@ -69,7 +69,7 @@
 
     <form method="POST" action="{{ route('billing.manual.store') }}" id="manualBillingForm" accept-charset="UTF-8">
         @csrf
-        <input type="hidden" name="origin_type" value="table">
+        <input type="hidden" name="origin_type" value="delivery">
 
         <div class="billing-manual-stack">
             <div class="card module-card service-card">

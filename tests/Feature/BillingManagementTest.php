@@ -890,7 +890,7 @@ class BillingManagementTest extends TestCase
         $this->assertDatabaseHas('payments', [
             'sale_id' => $sale->id,
             'payment_method_id' => null,
-            'amount' => 0,
+            'amount' => 40000,
             'received_amount' => 0,
             'change_amount' => 0,
             'status' => 'completed',
@@ -988,7 +988,7 @@ class BillingManagementTest extends TestCase
         $this->assertDatabaseHas('payments', [
             'sale_id' => $sale->id,
             'payment_method_id' => $paymentMethod->id,
-            'amount' => 18000,
+            'amount' => 28000,
             'received_amount' => 18000,
             'change_amount' => 0,
             'status' => 'completed',

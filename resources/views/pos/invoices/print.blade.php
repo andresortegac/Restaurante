@@ -8,6 +8,7 @@
     $tipAmount = $sale->paymentTipTotal();
     $appliedCustomerBalance = $sale->customerBalanceAppliedTotal();
     $itemsCount = (float) $sale->items->sum('quantity');
+    $isManualDelivery = ! $sale->tableOrder && ! $sale->delivery && str_contains((string) $sale->notes, 'Domicilio manual');
 @endphp
 <!DOCTYPE html>
 <html lang="es">
@@ -280,6 +281,11 @@
                 <div class="meta-row">
                     <span>Domicilio</span>
                     <strong>{{ $sale->delivery->delivery_number }}</strong>
+                </div>
+            @elseif($isManualDelivery)
+                <div class="meta-row">
+                    <span>Domicilio</span>
+                    <strong>Cobro manual</strong>
                 </div>
             @endif
 

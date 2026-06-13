@@ -202,8 +202,16 @@ class TableOrderBillingService
             $remainingSaleAmount = money_value($sale->total);
 
             if (! $isCredit && $applyCustomerBalance && $currentOrder->customer_id) {
+                $balanceCustomer = $selectedCustomer ?: $currentOrder->customer;
+
+                if ($balanceCustomer && money_value($balanceCustomer->available_balance ?? 0) > money_value($sale->total)) {
+                    throw ValidationException::withMessages([
+                        'customer_id' => 'El saldo a favor del cliente no puede superar el valor del pedido.',
+                    ]);
+                }
+
                 $balanceApplication = $this->customerBalanceService->applyAvailableBalance(
-                    $selectedCustomer ?: $currentOrder->customer,
+                    $balanceCustomer,
                     $sale,
                     (float) $sale->total,
                     $userId,
@@ -243,7 +251,7 @@ class TableOrderBillingService
 
             $payment = $sale->payments()->create([
                 'payment_method_id' => $isCredit || $amountDue <= 0 ? null : $paymentMethod?->id,
-                'amount' => $isCredit ? $sale->total : $remainingSaleAmount,
+                'amount' => $sale->total,
                 'received_amount' => $isCredit ? 0 : $amountReceived,
                 'change_amount' => $changeAmount,
                 'tip_amount' => $isCredit ? 0 : $tipAmount,

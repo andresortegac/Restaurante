@@ -118,7 +118,7 @@ class BillingManagementController extends Controller
                     $query->where('is_active', true);
 
                     if ($order->customer_id) {
-                        $query->orWhereKey($order->customer_id);
+                        $query->orWhere('id', $order->customer_id);
                     }
                 })
                 ->orderBy('name')

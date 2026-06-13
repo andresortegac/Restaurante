@@ -218,7 +218,7 @@ class ManualBillingService
 
             $payment = $sale->payments()->create([
                 'payment_method_id' => $isCredit || $amountDue <= 0 ? null : $paymentMethod?->id,
-                'amount' => $isCredit ? $sale->total : $remainingSaleAmount,
+                'amount' => $sale->total,
                 'received_amount' => $isCredit ? 0 : $amountReceived,
                 'change_amount' => $changeAmount,
                 'tip_amount' => $isCredit ? 0 : $tipAmount,
