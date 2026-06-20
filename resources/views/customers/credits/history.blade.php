@@ -35,7 +35,7 @@
                 <div class="d-flex align-items-center gap-2">
                     <a href="{{ route('customers.credits.balance-history', $customer) }}" class="btn btn-outline-primary btn-sm">Ver saldo a favor</a>
                     <a href="{{ route('customers.credits.show', $customer) }}" class="btn btn-primary btn-sm">Volver a cobrar</a>
-                    <a href="{{ route('customers.credits.index') }}" class="btn btn-outline-secondary btn-sm">Volver</a>
+                    <a href="{{ route('customers.index') }}" class="btn btn-outline-secondary btn-sm">Volver</a>
                 </div>
             </div>
             <div class="card-body">

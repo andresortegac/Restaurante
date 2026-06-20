@@ -3,9 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Customer;
-use App\Models\Delivery;
 use App\Models\RestaurantTable;
-use App\Models\Reservation;
 use App\Models\Sale;
 use App\Models\TableOrder;
 
@@ -21,8 +19,6 @@ class DashboardController extends Controller
 
         $stats = [
             'table_orders_today' => TableOrder::query()->where('created_at', '>=', $todayStart)->count(),
-            'deliveries_today' => Delivery::query()->where('created_at', '>=', $todayStart)->count(),
-            'reservations_today' => Reservation::query()->whereBetween('reservation_at', [$todayStart, $todayStart->copy()->endOfDay()])->count(),
             'occupied_tables' => RestaurantTable::query()->active()->where('status', 'occupied')->count(),
             'available_tables' => RestaurantTable::query()->active()->where('status', 'free')->count(),
             'sales_today' => 0.0,

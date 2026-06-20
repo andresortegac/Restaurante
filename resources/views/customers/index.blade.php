@@ -12,7 +12,7 @@
     <div class="module-page">
         <section class="module-hero">
             <div>
-                <span class="module-kicker">Clientes / CRM basico</span>
+                <span class="module-kicker">Clientes</span>
                 <h1>Clientes del restaurante</h1>
             </div>
             <div class="summary-group">
@@ -83,8 +83,8 @@
                                     <td>
                                         <strong>${{ money($customer->available_balance ?? 0) }}</strong>
                                         <div class="table-note">
-                                            @if((float) ($customer->available_balance ?? 0) > 0)
-                                                Disponible para consumir
+                                            @if((float) ($customer->pending_credit_total ?? 0) > 0)
+                                                Cartera activa
                                             @else
                                                 Sin saldo a favor
                                             @endif
@@ -97,7 +97,7 @@
                                     </td>
                                     <td>
                                         <div class="table-actions justify-content-end">
-                                            <a href="{{ route('customers.credits.show', $customer) }}" class="btn btn-outline-secondary btn-sm px-3">Cartera</a>
+                                            <a href="{{ route('customers.credits.show', $customer) }}" class="btn btn-outline-secondary btn-sm px-3">Saldo</a>
                                             @if($canEditCustomer)
                                                 <a href="{{ route('customers.edit', $customer) }}" class="btn btn-outline-primary btn-sm px-3">Editar</a>
                                             @endif

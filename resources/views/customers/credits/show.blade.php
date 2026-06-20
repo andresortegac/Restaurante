@@ -1,19 +1,16 @@
 @extends('layouts.app')
 
-@section('title', 'Cartera de ' . $customer->name . ' - RestaurantePOS')
+@section('title', 'Saldo a favor de ' . $customer->name . ' - RestaurantePOS')
 
 @section('content')
     <div class="module-page">
         <section class="module-hero">
             <div>
-                <span class="module-kicker">Clientes / Cartera</span>
+                <span class="module-kicker">Clientes / Saldo a favor</span>
                 <h1>{{ $customer->name }}</h1>
             </div>
             <div class="summary-group">
-                <span class="summary-chip">${{ money($summary['pending']) }} pendiente</span>
                 <span class="summary-chip">${{ money($summary['available']) }} saldo a favor</span>
-                <span class="summary-chip">{{ $summary['pendingCount'] }} creditos pendientes</span>
-                <span class="summary-chip">{{ $summary['paidCount'] }} creditos pagados</span>
             </div>
         </section>
 
@@ -24,68 +21,20 @@
                 <div class="card module-card service-card">
                     <div class="card-header d-flex justify-content-between align-items-center gap-3">
                         <div>
-                            <h5 class="mb-1">Cobrar deuda del cliente</h5>
-                        </div>
-                        <div class="d-flex align-items-center gap-2">
-                            <a href="{{ route('customers.credits.history', $customer) }}" class="btn btn-outline-primary btn-sm">Ver historial del credito</a>
-                            <a href="{{ route('customers.credits.balance-history', $customer) }}" class="btn btn-outline-primary btn-sm">Ver historial del saldo a favor</a>
-                            <a href="{{ route('customers.credits.index') }}" class="btn btn-outline-secondary btn-sm">Volver</a>
-                        </div>
-                    </div>
-                    <div class="card-body">
-                        @if($summary['pending'] > 0)
-                            <div class="mb-4">
-                                <div class="table-note text-uppercase">Deuda total</div>
-                                <div class="display-6 fw-semibold mb-2">${{ money($summary['pending']) }}</div>
-                                <p class="mb-0">Puedes cobrar el valor completo o registrar un abono parcial sin perder el historial del cliente.</p>
-                            </div>
-
-                            <form method="POST" action="{{ route('customers.credits.collect', $customer) }}" data-customer-credit-collection-form data-full-amount="{{ money_input($summary['pending']) }}">
-                                @csrf
-                                <input type="hidden" name="payment_mode" value="{{ old('payment_mode', 'partial') }}">
-
-                                <div class="mb-3">
-                                    <label class="form-label" for="amount_received">Valor a cobrar</label>
-                                    <input
-                                        type="number"
-                                        class="form-control"
-                                        id="amount_received"
-                                        name="amount_received"
-                                        min="1"
-                                        max="{{ money_input($summary['pending']) }}"
-                                        step="1"
-                                        value="{{ money_input(old('amount_received', $summary['pending'])) }}"
-                                        required
-                                    >
-                                    <div class="form-help mt-1">Si registras un abono, el sistema descuenta primero las deudas mas antiguas.</div>
-                                </div>
-
-                                <div class="d-flex flex-wrap gap-2">
-                                    <button type="submit" class="btn btn-success" data-payment-mode="full">Pagar deuda completa</button>
-                                    <button type="submit" class="btn btn-outline-success" data-payment-mode="partial">Registrar abono</button>
-                                </div>
-                            </form>
-                        @else
-                            <div class="empty-state py-4">
-                                <i class="fas fa-check-circle"></i>
-                                <h5 class="mb-2">Sin deuda pendiente</h5>
-                                <p class="mb-0">Este cliente no tiene saldos por cobrar en este momento.</p>
-                            </div>
-                        @endif
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-lg-5">
-                <div class="card module-card service-card">
-                    <div class="card-header d-flex justify-content-between align-items-center gap-3">
-                        <div>
                             <h5 class="mb-1">Saldo a favor</h5>
                         </div>
-                        <span class="summary-chip">${{ money($summary['available']) }}</span>
+                        <div class="d-flex align-items-center gap-2">
+                            <a href="{{ route('customers.credits.balance-history', $customer) }}" class="btn btn-outline-primary btn-sm">Ver historial del saldo a favor</a>
+                            <a href="{{ route('customers.index') }}" class="btn btn-outline-secondary btn-sm">Volver</a>
+                        </div>
                     </div>
                     <div class="card-body">
-                        
+                        <div class="mb-4">
+                            <div class="table-note text-uppercase">Disponible</div>
+                            <div class="display-6 fw-semibold mb-2">${{ money($summary['available']) }}</div>
+                            <p class="mb-0">Este valor se puede descontar en cobros manuales o pedidos de mesa cuando selecciones al cliente.</p>
+                        </div>
+
                         <form method="POST" action="{{ route('customers.credits.balance.store', $customer) }}">
                             @csrf
 
@@ -106,27 +55,10 @@
                         </form>
                     </div>
                 </div>
+            </div>
 
-                <div class="card module-card service-card mt-4">
-                    <div class="card-header">
-                        <h5 class="mb-0">Asignar saldo pendiente</h5>
-                    </div>
-                    <div class="card-body">
-                        
-                        <form method="POST" action="{{ route('customers.credits.store', $customer) }}">
-                            @csrf
-
-                            <div class="mb-3">
-                                <label class="form-label" for="amount">Valor pendiente</label>
-                                <input type="number" class="form-control" id="amount" name="amount" min="1" step="1" value="{{ money_input(old('amount', 0)) }}" required>
-                            </div>
-
-                            <button type="submit" class="btn btn-primary w-100">Guardar saldo pendiente</button>
-                        </form>
-                    </div>
-                </div>
-
-                <div class="card module-card service-card mt-4">
+            <div class="col-lg-5">
+                <div class="card module-card service-card">
                     <div class="card-header">
                         <h5 class="mb-0">Datos del cliente</h5>
                     </div>
@@ -141,73 +73,4 @@
         </div>
     </div>
 
-    <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const form = document.querySelector('[data-customer-credit-collection-form]');
-
-        if (!form) {
-            return;
-        }
-
-        form.addEventListener('submit', async function (event) {
-            event.preventDefault();
-
-            const submitter = event.submitter;
-            const paymentModeInput = form.querySelector('input[name="payment_mode"]');
-            const amountInput = form.querySelector('input[name="amount_received"]');
-            const fullAmount = Number(form.dataset.fullAmount || 0);
-            const paymentMode = submitter?.dataset.paymentMode || 'partial';
-
-            if (paymentModeInput) {
-                paymentModeInput.value = paymentMode;
-            }
-
-            if (paymentMode === 'full' && amountInput && fullAmount > 0) {
-                amountInput.value = String(Math.round(fullAmount));
-            }
-
-            const amount = Number(amountInput?.value || 0);
-
-            if (!amount || amount <= 0) {
-                if (window.Swal) {
-                    await Swal.fire({
-                        icon: 'warning',
-                        title: 'Falta el valor',
-                        text: 'Ingresa un valor valido para registrar el cobro.',
-                        confirmButtonText: 'Aceptar',
-                        confirmButtonColor: '#2563eb',
-                    });
-                } else {
-                    alert('Ingresa un valor valido para registrar el cobro.');
-                }
-
-                return;
-            }
-
-            const isFullPayment = fullAmount > 0 && Math.abs(amount - fullAmount) < 0.01;
-            const confirmText = isFullPayment
-                ? 'Se cobrara la deuda completa del cliente por $' + Math.round(amount).toLocaleString('es-CO') + '.'
-                : 'Se registrara un abono de $' + Math.round(amount).toLocaleString('es-CO') + ' para la deuda del cliente.';
-
-            if (window.Swal) {
-                const result = await Swal.fire({
-                    icon: 'question',
-                    title: isFullPayment ? 'Confirmar pago total' : 'Confirmar abono',
-                    text: confirmText,
-                    showCancelButton: true,
-                    confirmButtonText: 'Registrar',
-                    cancelButtonText: 'Cancelar',
-                    confirmButtonColor: '#198754',
-                    cancelButtonColor: '#6c757d',
-                });
-
-                if (!result.isConfirmed) {
-                    return;
-                }
-            }
-
-            form.submit();
-        });
-    });
-    </script>
 @endsection

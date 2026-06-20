@@ -416,7 +416,7 @@
     </div>
 
     <script>
-        const fallbackCloseUrl = @json($sale->delivery ? route('deliveries.index') : route('billing.history'));
+        const fallbackCloseUrl = @json(route('billing.history'));
 
         function handleClose() {
             window.location.href = fallbackCloseUrl;

@@ -27,7 +27,6 @@ class CustomerManagementController extends Controller
 
         $customers = Customer::query()
             ->withCount(['tableOrders', 'sales'])
-            ->withSum(['pendingCredits as pending_credit_total' => fn ($query) => $query->where('status', 'pending')], 'balance')
             ->when($filters['search'] ?? null, function ($query, string $search) {
                 $query->where(function ($nestedQuery) use ($search) {
                     $nestedQuery
@@ -65,12 +64,10 @@ class CustomerManagementController extends Controller
 
         $filters = $request->validate([
             'search' => ['nullable', 'string', 'max:255'],
-            'balance' => ['nullable', 'in:all,activity,pending,favor'],
+            'balance' => ['nullable', 'in:all,favor'],
         ]);
 
         $customers = Customer::query()
-            ->withCount(['pendingCredits'])
-            ->withSum(['pendingCredits as pending_credit_total' => fn ($query) => $query->where('status', 'pending')], 'balance')
             ->when($filters['search'] ?? null, function ($query, string $search) {
                 $query->where(function ($nestedQuery) use ($search) {
                     $nestedQuery
@@ -80,16 +77,7 @@ class CustomerManagementController extends Controller
                         ->orWhere('email', 'like', '%' . $search . '%');
                 });
             })
-            ->when(($filters['balance'] ?? 'activity') === 'pending', fn ($query) => $query->has('pendingCredits'))
-            ->when(($filters['balance'] ?? 'activity') === 'favor', fn ($query) => $query->where('available_balance', '>', 0))
-            ->when(($filters['balance'] ?? 'activity') === 'activity', function ($query) {
-                $query->where(function ($nestedQuery) {
-                    $nestedQuery
-                        ->has('pendingCredits')
-                        ->orWhere('available_balance', '>', 0);
-                });
-            })
-            ->orderByDesc('pending_credit_total')
+            ->when(($filters['balance'] ?? 'favor') === 'favor', fn ($query) => $query->where('available_balance', '>', 0))
             ->orderByDesc('available_balance')
             ->orderBy('name')
             ->paginate(15)
@@ -99,15 +87,9 @@ class CustomerManagementController extends Controller
             'customers' => $customers,
             'filters' => $filters,
             'summary' => [
-                'customersWithCredit' => CustomerCredit::query()
-                    ->where('status', 'pending')
-                    ->distinct('customer_id')
-                    ->count('customer_id'),
                 'customersWithAvailableBalance' => Customer::query()
                     ->where('available_balance', '>', 0)
                     ->count(),
-                'pendingCredits' => CustomerCredit::query()->where('status', 'pending')->count(),
-                'creditPending' => (float) CustomerCredit::query()->where('status', 'pending')->sum('balance'),
                 'availableBalance' => (float) Customer::query()->sum('available_balance'),
             ],
         ]);
@@ -422,7 +404,7 @@ class CustomerManagementController extends Controller
     private function customerBalanceMovementsQuery(Customer $customer)
     {
         return $customer->balanceMovements()
-            ->with(['sale.tableOrder.table', 'createdBy'])
+            ->with(['sale.tableOrder.table', 'sale.invoice', 'sale.payments.paymentMethod', 'createdBy'])
             ->latest()
             ->orderByDesc('id');
     }

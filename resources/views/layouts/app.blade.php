@@ -78,10 +78,7 @@
                 $isTablesCatalogRoute = request()->routeIs('tables.index') || request()->routeIs('tables.show') || request()->routeIs('tables.edit');
                 $isTableHistoryRoute = request()->routeIs('tables.history.*');
                 $isCustomersRoute = request()->routeIs('customers.*');
-                $isCustomerCreditsRoute = request()->routeIs('customers.credits.*');
-                $isDeliveriesRoute = request()->routeIs('deliveries.*');
                 $isElectronicInvoicesRoute = request()->routeIs('electronic-invoices.*');
-                $isReservationsRoute = request()->routeIs('reservations.*');
                 $isOrdersHistoryRoute = request()->routeIs('orders.history.*');
                 $isOrdersRoute = request()->routeIs('orders.*') && ! $isOrdersHistoryRoute;
                 $isCashRoute = request()->routeIs('cash-management.*');
@@ -214,23 +211,6 @@
                 </li>
                 @endif
 
-                @if(Auth::user()->hasRole('Admin') || Auth::user()->hasAnyPermission(['reservations.view', 'reservations.create', 'reservations.edit', 'reservations.delete']))
-                <li>
-                    <a href="#" data-toggle-menu class="{{ $isReservationsRoute ? 'expanded' : '' }}">
-                        <i class="fas fa-calendar-check"></i> Reservas
-                        <span class="toggle-icon float-end"><i class="fas fa-chevron-right"></i></span>
-                    </a>
-                    <ul class="sidebar-submenu {{ $isReservationsRoute ? 'show' : '' }}">
-                        @if(Auth::user()->hasRole('Admin') || Auth::user()->hasPermission('reservations.view'))
-                        <li><a href="{{ route('reservations.index') }}" class="{{ request()->routeIs('reservations.index') || request()->routeIs('reservations.edit') ? 'active' : '' }}"><i class="fas fa-list"></i> Ver reservas</a></li>
-                        @endif
-                        @if(Auth::user()->hasRole('Admin') || Auth::user()->hasPermission('reservations.create'))
-                        <li><a href="{{ route('reservations.create') }}" class="{{ request()->routeIs('reservations.create') ? 'active' : '' }}"><i class="fas fa-plus"></i> Nueva reserva</a></li>
-                        @endif
-                    </ul>
-                </li>
-                @endif
-
                 @if(Auth::user()->hasRole('Admin') || Auth::user()->hasAnyPermission(['tables.view', 'tables.create', 'tables.edit', 'tables.delete']))
                 <li>
                     <a href="#" data-toggle-menu class="{{ $isTablesRoute ? 'expanded' : '' }}">
@@ -264,35 +244,9 @@
 
                 @if(Auth::user()->hasAnyPermission(['customers.view']))
                 <li>
-                    <a href="#" data-toggle-menu class="{{ $isCustomersRoute ? 'expanded' : '' }}">
+                    <a href="{{ route('customers.index') }}" class="{{ $isCustomersRoute ? 'active' : '' }}">
                         <i class="fas fa-users"></i> Clientes
-                        <span class="toggle-icon float-end"><i class="fas fa-chevron-right"></i></span>
                     </a>
-                    <ul class="sidebar-submenu {{ $isCustomersRoute ? 'show' : '' }}">
-                        <li><a href="{{ route('customers.index') }}" class="{{ request()->routeIs('customers.index') ? 'active' : '' }}"><i class="fas fa-list"></i> Listar</a></li>
-                        <li><a href="{{ route('customers.credits.index') }}" class="{{ $isCustomerCreditsRoute ? 'active' : '' }}"><i class="fas fa-wallet"></i> Creditos y cartera</a></li>
-                        @if(Auth::user()->hasRole('Admin') || Auth::user()->hasPermission('customers.create'))
-                        <li><a href="{{ route('customers.create') }}" class="{{ request()->routeIs('customers.create') ? 'active' : '' }}"><i class="fas fa-plus"></i> Nuevo</a></li>
-                        @endif
-                    </ul>
-                </li>
-                @endif
-
-                @if(Auth::user()->hasRole('Admin') || Auth::user()->hasAnyPermission(['deliveries.view', 'deliveries.create', 'deliveries.edit', 'deliveries.delete', 'delivery_drivers.view', 'delivery_drivers.create', 'delivery_drivers.edit', 'delivery_drivers.delete']))
-                <li>
-                    <a href="#" data-toggle-menu class="{{ $isDeliveriesRoute ? 'expanded' : '' }}">
-                        <i class="fas fa-motorcycle"></i> Domicilios
-                        <span class="toggle-icon float-end"><i class="fas fa-chevron-right"></i></span>
-                    </a>
-                    <ul class="sidebar-submenu {{ $isDeliveriesRoute ? 'show' : '' }}">
-                        <li><a href="{{ route('deliveries.index') }}" class="{{ request()->routeIs('deliveries.index') || request()->routeIs('deliveries.edit') ? 'active' : '' }}"><i class="fas fa-list"></i> Listar</a></li>
-                        @if(Auth::user()->hasRole('Admin') || Auth::user()->hasPermission('deliveries.create'))
-                        <li><a href="{{ route('deliveries.create') }}" class="{{ request()->routeIs('deliveries.create') ? 'active' : '' }}"><i class="fas fa-plus"></i> Nuevo</a></li>
-                        @endif
-                        @if(Auth::user()->hasRole('Admin') || Auth::user()->hasAnyPermission(['delivery_drivers.view', 'delivery_drivers.create', 'delivery_drivers.edit', 'delivery_drivers.delete']))
-                        <li><a href="{{ route('deliveries.drivers.index') }}" class="{{ request()->routeIs('deliveries.drivers.*') ? 'active' : '' }}"><i class="fas fa-id-card"></i> Domiciliarios</a></li>
-                        @endif
-                    </ul>
                 </li>
                 @endif
 

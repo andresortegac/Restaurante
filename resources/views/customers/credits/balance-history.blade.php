@@ -16,12 +16,10 @@
             <div>
                 <span class="module-kicker">Clientes / Historial de saldo a favor</span>
                 <h1>{{ $customer->name }}</h1>
-                <p>Consulta solo los movimientos del saldo a favor del cliente, sin mezclarlo con el dinero de caja.</p>
+                <p>Consulta entradas, ajustes y consumos de saldo a favor con su venta, recibo o factura cuando aplique.</p>
             </div>
             <div class="summary-group">
                 <span class="summary-chip">${{ money($summary['available']) }} disponible</span>
-                <span class="summary-chip">${{ money($summary['pending']) }} en cartera</span>
-                <span class="summary-chip">{{ $summary['pendingCount'] }} creditos pendientes</span>
             </div>
         </section>
 
@@ -29,11 +27,11 @@
             <div class="card-header d-flex justify-content-between align-items-center gap-3">
                 <div>
                     <h5 class="mb-1">Historial del saldo a favor</h5>
-                    <p class="table-note mb-0">Aqui puedes revisar entradas manuales, descuentos manuales y consumos aplicados en ventas.</p>
+                    <p class="table-note mb-0">Los consumos hechos en pedidos de mesa o cobros manuales incluyen acceso directo para imprimir el documento.</p>
                 </div>
                 <div class="d-flex align-items-center gap-2">
                     <a href="{{ route('customers.credits.show', $customer) }}" class="btn btn-primary btn-sm">Volver a gestionar</a>
-                    <a href="{{ route('customers.credits.index') }}" class="btn btn-outline-secondary btn-sm">Volver</a>
+                    <a href="{{ route('customers.index') }}" class="btn btn-outline-secondary btn-sm">Volver</a>
                 </div>
             </div>
             <div class="card-body">
@@ -51,8 +49,11 @@
                                     <th>Fecha</th>
                                     <th>Movimiento</th>
                                     <th>Concepto</th>
+                                    <th>Pedido o venta</th>
+                                    <th>Documento</th>
                                     <th>Monto</th>
                                     <th>Saldo resultante</th>
+                                    <th class="text-end">Acciones</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -60,6 +61,9 @@
                                     @php
                                         $amount = (float) $movement->amount;
                                         $isPositive = $amount >= 0;
+                                        $sale = $movement->sale;
+                                        $invoice = $sale?->invoice;
+                                        $order = $sale?->tableOrder;
                                     @endphp
                                     <tr>
                                         <td>
@@ -81,6 +85,33 @@
                                             </div>
                                         </td>
                                         <td>{{ $movement->description }}</td>
+                                        <td>
+                                            @if($sale)
+                                                <strong>Venta #{{ $sale->id }}</strong>
+                                                <div class="table-note">
+                                                    @if($order?->order_number)
+                                                        {{ $order->order_number }}{{ $order->table?->name ? ' | ' . $order->table->name : '' }}
+                                                    @elseif(str_contains((string) $sale->notes, 'Pedido de mesa manual'))
+                                                        Cobro manual en mesa
+                                                    @else
+                                                        Cobro manual
+                                                    @endif
+                                                </div>
+                                            @else
+                                                <span class="text-muted">Movimiento manual</span>
+                                            @endif
+                                        </td>
+                                        <td>
+                                            @if($invoice)
+                                                <strong>{{ $invoice->invoice_number }}</strong>
+                                                <div class="table-note">{{ $invoice->isElectronic() ? 'Factura electronica' : 'Recibo/Ticket' }}</div>
+                                            @elseif($sale)
+                                                <strong>Recibo pendiente</strong>
+                                                <div class="table-note">Se generara al imprimir</div>
+                                            @else
+                                                <span class="text-muted">No aplica</span>
+                                            @endif
+                                        </td>
                                         <td class="{{ $isPositive ? 'text-success' : 'text-danger' }}">
                                             <strong>{{ $isPositive ? '+' : '-' }}${{ money(abs($amount)) }}</strong>
                                             <div class="table-note">Antes: ${{ money($movement->balance_before) }}</div>
@@ -88,6 +119,15 @@
                                         <td>
                                             <strong>${{ money($movement->balance_after) }}</strong>
                                             <div class="table-note">Disponible despues del movimiento</div>
+                                        </td>
+                                        <td class="text-end">
+                                            @if($sale)
+                                                <a href="{{ route('pos.sales.print', $sale) }}" class="btn btn-outline-primary btn-sm" target="_blank" rel="noopener">
+                                                    Imprimir
+                                                </a>
+                                            @else
+                                                <span class="text-muted">-</span>
+                                            @endif
                                         </td>
                                     </tr>
                                 @endforeach

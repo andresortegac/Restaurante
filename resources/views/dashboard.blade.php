@@ -23,14 +23,6 @@
                 <div class="value">{{ number_format($stats['table_orders_today']) }}</div>
             </div>
             <div class="stat-card">
-                <h3><i class="fas fa-motorcycle"></i> Domicilios hoy</h3>
-                <div class="value">{{ number_format($stats['deliveries_today']) }}</div>
-            </div>
-            <div class="stat-card">
-                <h3><i class="fas fa-calendar-check"></i> Reservas hoy</h3>
-                <div class="value">{{ number_format($stats['reservations_today']) }}</div>
-            </div>
-            <div class="stat-card">
                 <h3><i class="fas fa-chair"></i> Mesas Ocupadas</h3>
                 <div class="value">{{ number_format($stats['occupied_tables']) }}</div>
             </div>

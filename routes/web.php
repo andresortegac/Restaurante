@@ -4,13 +4,10 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BillingManagementController;
 use App\Http\Controllers\CustomerManagementController;
 use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\DeliveryDriverManagementController;
 use App\Http\Controllers\OrderManagementController;
 use App\Http\Controllers\ProductManagementController;
-use App\Http\Controllers\ReservationManagementController;
 use App\Http\Controllers\TableManagementController;
 use App\Http\Controllers\CashManagementController;
-use App\Http\Controllers\DeliveryManagementController;
 use App\Http\Controllers\ElectronicInvoiceManagementController;
 use App\Http\Controllers\ReportManagementController;
 use App\Http\Controllers\UserManagementController;
@@ -133,50 +130,15 @@ Route::middleware('auth')->group(function () {
         Route::get('/create', [CustomerManagementController::class, 'create'])->name('create');
         Route::post('/', [CustomerManagementController::class, 'store'])->name('store');
         Route::prefix('credits')->name('credits.')->group(function () {
-            Route::get('/', [CustomerManagementController::class, 'credits'])->name('index');
-            Route::get('/{customer}/history', [CustomerManagementController::class, 'showCreditHistory'])->name('history');
+            Route::redirect('/', '/customers')->name('index');
             Route::get('/{customer}/balance-history', [CustomerManagementController::class, 'showBalanceHistory'])->name('balance-history');
             Route::get('/{customer}', [CustomerManagementController::class, 'showCredit'])->name('show');
             Route::post('/{customer}/balance', [CustomerManagementController::class, 'storeBalanceMovement'])->name('balance.store');
-            Route::post('/{customer}/collect', [CustomerManagementController::class, 'collectCredit'])->name('collect');
-            Route::post('/{customer}', [CustomerManagementController::class, 'storeCredit'])->name('store');
-            Route::post('/{customer}/{credit}/pay', [CustomerManagementController::class, 'payCredit'])->name('pay');
         });
         Route::get('/{customer}/edit', [CustomerManagementController::class, 'edit'])->name('edit');
         Route::put('/{customer}', [CustomerManagementController::class, 'update'])->name('update');
         Route::delete('/{customer}', [CustomerManagementController::class, 'destroy'])->name('destroy');
         Route::get('/api/search', [CustomerManagementController::class, 'search'])->name('search');
-    });
-
-    // Gestion de domicilios
-    Route::prefix('deliveries')->name('deliveries.')->group(function () {
-        Route::prefix('drivers')->name('drivers.')->group(function () {
-            Route::get('/', [DeliveryDriverManagementController::class, 'index'])->name('index');
-            Route::get('/create', [DeliveryDriverManagementController::class, 'create'])->name('create');
-            Route::post('/', [DeliveryDriverManagementController::class, 'store'])->name('store');
-            Route::get('/{driver}/edit', [DeliveryDriverManagementController::class, 'edit'])->name('edit');
-            Route::put('/{driver}', [DeliveryDriverManagementController::class, 'update'])->name('update');
-            Route::delete('/{driver}', [DeliveryDriverManagementController::class, 'destroy'])->name('destroy');
-        });
-        Route::get('/', [DeliveryManagementController::class, 'index'])->name('index');
-        Route::get('/create', [DeliveryManagementController::class, 'create'])->name('create');
-        Route::post('/', [DeliveryManagementController::class, 'store'])->name('store');
-        Route::get('/{delivery}/checkout', [DeliveryManagementController::class, 'showCheckout'])->name('checkout');
-        Route::post('/{delivery}/checkout', [DeliveryManagementController::class, 'processCheckout'])->name('checkout.store');
-        Route::put('/{delivery}/complete', [DeliveryManagementController::class, 'complete'])->name('complete');
-        Route::get('/{delivery}/edit', [DeliveryManagementController::class, 'edit'])->name('edit');
-        Route::put('/{delivery}', [DeliveryManagementController::class, 'update'])->name('update');
-        Route::delete('/{delivery}', [DeliveryManagementController::class, 'destroy'])->name('destroy');
-    });
-
-    // Gestion de reservas
-    Route::prefix('reservations')->name('reservations.')->group(function () {
-        Route::get('/', [ReservationManagementController::class, 'index'])->name('index');
-        Route::get('/create', [ReservationManagementController::class, 'create'])->name('create');
-        Route::post('/', [ReservationManagementController::class, 'store'])->name('store');
-        Route::get('/{reservation}/edit', [ReservationManagementController::class, 'edit'])->name('edit');
-        Route::put('/{reservation}', [ReservationManagementController::class, 'update'])->name('update');
-        Route::delete('/{reservation}', [ReservationManagementController::class, 'destroy'])->name('destroy');
     });
 
     // Gestion de mesas

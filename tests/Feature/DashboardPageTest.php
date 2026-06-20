@@ -4,9 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Box;
 use App\Models\Customer;
-use App\Models\Delivery;
 use App\Models\RestaurantTable;
-use App\Models\Reservation;
 use App\Models\Role;
 use App\Models\Sale;
 use App\Models\TableOrder;
@@ -98,28 +96,6 @@ class DashboardPageTest extends TestCase
             'updated_at' => Carbon::create(2026, 5, 10, 9, 0, 0),
         ])->saveQuietly();
 
-        Delivery::create([
-            'assigned_user_id' => $user->id,
-            'delivery_number' => 'DOM-DASH-001',
-            'customer_name' => 'Cliente Domicilio',
-            'customer_phone' => '3001234567',
-            'delivery_address' => 'Calle 1 # 2-3',
-            'order_total' => 40,
-            'delivery_fee' => 5,
-            'total_charge' => 45,
-            'status' => 'pending',
-        ]);
-
-        Reservation::create([
-            'restaurant_table_id' => $occupiedTable->id,
-            'reserved_by' => $user->id,
-            'customer_name' => 'Cliente Reserva',
-            'customer_phone' => '3000000000',
-            'reservation_at' => Carbon::create(2026, 5, 15, 20, 0, 0),
-            'party_size' => 2,
-            'status' => 'confirmed',
-        ]);
-
         $todaySale = Sale::create([
             'user_id' => $user->id,
             'box_id' => $box->id,
@@ -154,8 +130,8 @@ class DashboardPageTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('Pedidos de mesa hoy');
-        $response->assertSee('Domicilios hoy');
-        $response->assertSee('Reservas hoy');
+        $response->assertDontSee('Domicilios hoy');
+        $response->assertDontSee('Reservas hoy');
         $response->assertSee('Mesas disponibles');
         $response->assertSee('Ingresos mensuales');
         $response->assertSee('Acceso actual');
