@@ -334,15 +334,15 @@ class CashManagementTest extends TestCase
             'amount' => 80,
             'balance_before' => 150,
             'balance_after' => 230,
-            'description' => 'Ingreso de noche',
+            'description' => 'Ingreso de otra sesion',
             'occurred_at' => Carbon::parse('2026-06-22 20:00:00'),
         ]);
 
         $this->actingAs($user)
             ->get(route('cash-management.history'))
             ->assertOk()
-            ->assertSee('Cierre de la mañana')
-            ->assertSee('Cierre de la noche')
+            ->assertSee('Historial de cierres')
+            ->assertSee('Caja principal')
             ->assertSee('Ver movimientos');
 
         $this->actingAs($user)
@@ -354,6 +354,6 @@ class CashManagementTest extends TestCase
             ->assertSee('Ingresos del cierre')
             ->assertSee('TKT-202606-000123')
             ->assertSee('Cliente Factura')
-            ->assertDontSee('Ingreso de noche');
+            ->assertDontSee('Ingreso de otra sesion');
     }
 }

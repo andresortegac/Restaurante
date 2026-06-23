@@ -8,13 +8,11 @@
             <div>
                 <span class="module-kicker">POS / Gestion de Caja</span>
                 <h1>Historial de cierres</h1>
-                <p>Consulta cada cierre de caja por turno y entra al detalle para revisar solo los movimientos de esa sesion.</p>
+                <p>Consulta cada cierre de caja y entra al detalle para revisar solo los movimientos de esa sesion.</p>
             </div>
             <div class="summary-group">
                 <span class="summary-chip">{{ number_format($summary['closures']) }} cierres</span>
-                <span class="summary-chip">{{ number_format($summary['morning']) }} mañana</span>
-                <span class="summary-chip">{{ number_format($summary['afternoon']) }} tarde</span>
-                <span class="summary-chip">{{ number_format($summary['night']) }} noche</span>
+                <span class="summary-chip">{{ number_format($summary['today']) }} hoy</span>
             </div>
         </section>
 
@@ -62,7 +60,6 @@
                         <thead>
                             <tr>
                                 <th>Cierre</th>
-                                <th>Turno</th>
                                 <th>Caja</th>
                                 <th>Responsable</th>
                                 <th>Resumen</th>
@@ -71,17 +68,12 @@
                         </thead>
                         <tbody>
                             @forelse($sessions as $session)
-                                @php
-                                    $closedAt = $session->closed_at;
-                                    $hour = (int) ($closedAt ?? $session->opened_at ?? now())->format('H');
-                                    $turnLabel = $hour < 12 ? 'Cierre de la mañana' : ($hour < 18 ? 'Cierre de la tarde' : 'Cierre de la noche');
-                                @endphp
+                                @php($closedAt = $session->closed_at)
                                 <tr>
                                     <td>
                                         <strong>{{ $closedAt?->format('d/m/Y H:i') ?? 'Sin fecha de cierre' }}</strong>
                                         <div class="table-note">Apertura: {{ $session->opened_at?->format('d/m/Y H:i') ?? '-' }}</div>
                                     </td>
-                                    <td>{{ $turnLabel }}</td>
                                     <td>{{ $session->box?->name ?? 'Sin caja' }}</td>
                                     <td>
                                         {{ $session->user?->name ?? 'Sin responsable' }}
@@ -99,7 +91,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="6" class="text-center py-4 text-muted">No hay cierres para los filtros seleccionados.</td>
+                                    <td colspan="5" class="text-center py-4 text-muted">No hay cierres para los filtros seleccionados.</td>
                                 </tr>
                             @endforelse
                         </tbody>

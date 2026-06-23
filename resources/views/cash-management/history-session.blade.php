@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', $turnLabel . ' - ' . config('app.name', 'Solomo & Pomo'))
+@section('title', 'Cierre de caja - ' . config('app.name', 'Solomo & Pomo'))
 
 @section('content')
     @php
@@ -19,7 +19,7 @@
         <section class="module-hero">
             <div>
                 <span class="module-kicker">POS / Gestion de Caja</span>
-                <h1>{{ $turnLabel }}</h1>
+                <h1>Cierre de caja</h1>
                 <p>{{ $session->box?->name ?? 'Caja' }} | {{ $session->closed_at?->format('d/m/Y H:i') ?? 'Cierre sin fecha' }}</p>
             </div>
             <div class="summary-group">

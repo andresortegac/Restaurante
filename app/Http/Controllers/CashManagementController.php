@@ -409,14 +409,6 @@ class CashManagementController extends Controller
             ->paginate(20)
             ->withQueryString();
 
-        $sessionTotals = (clone $sessionsQuery)->get()
-            ->reduce(function (array $totals, BoxSession $session): array {
-                $turn = $this->sessionTurnLabel($session);
-                $totals[$turn] = ($totals[$turn] ?? 0) + 1;
-
-                return $totals;
-            }, []);
-
         return view('cash-management.history', [
             'sessions' => $sessions,
             'filters' => $filters,
@@ -424,9 +416,7 @@ class CashManagementController extends Controller
             'boxes' => Box::query()->orderBy('name')->get(['id', 'name']),
             'summary' => [
                 'closures' => (clone $sessionsQuery)->count(),
-                'morning' => $sessionTotals['Cierre de la mañana'] ?? 0,
-                'afternoon' => $sessionTotals['Cierre de la tarde'] ?? 0,
-                'night' => $sessionTotals['Cierre de la noche'] ?? 0,
+                'today' => (clone $sessionsQuery)->whereDate('closed_at', today())->count(),
             ],
         ]);
     }
@@ -483,7 +473,6 @@ class CashManagementController extends Controller
             'session' => $session,
             'movements' => $movements,
             'filters' => $filters,
-            'turnLabel' => $this->sessionTurnLabel($session),
             'summary' => [
                 'income_movements' => (clone $allIncomeMovements)->count(),
                 'income_total' => money_value((float) (clone $allIncomeMovements)->sum('amount')),
@@ -578,17 +567,6 @@ class CashManagementController extends Controller
         $user = auth()->user();
 
         return $user && ($user->hasRole('Admin') || $user->hasRole('Cajero') || $user->hasAnyPermission($permissions));
-    }
-
-    private function sessionTurnLabel(BoxSession $session): string
-    {
-        $hour = (int) ($session->closed_at ?? $session->opened_at ?? now())->format('H');
-
-        return match (true) {
-            $hour < 12 => 'Cierre de la mañana',
-            $hour < 18 => 'Cierre de la tarde',
-            default => 'Cierre de la noche',
-        };
     }
 
     private function logAudit(Box $box, BoxSession $session, string $action, string $description, array $metadata = []): void
