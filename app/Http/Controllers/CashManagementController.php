@@ -134,6 +134,7 @@ class CashManagementController extends Controller
             'automaticIncome' => $automaticIncome,
             'manualIncome' => $manualIncome,
             'manualExpense' => $manualExpense,
+            'canRegisterMovements' => $this->canAccess(['boxes.movements']),
         ]);
     }
 
@@ -143,17 +144,7 @@ class CashManagementController extends Controller
             return $response;
         }
 
-        $box->load(['activeSession.user', 'user']);
-
-        $currentSession = $box->activeSession ?: $box->sessions()
-            ->with(['user', 'closedBy'])
-            ->latest('opened_at')
-            ->first();
-
-        return view('cash-management.movement-form', [
-            'box' => $box,
-            'currentSession' => $currentSession,
-        ]);
+        return redirect(route('cash-management.show', ['box' => $box, 'panel' => 'movement']) . '#manual-movement');
     }
 
     public function edit(Box $box)
@@ -401,52 +392,103 @@ class CashManagementController extends Controller
             'date_from' => ['nullable', 'date'],
             'date_to' => ['nullable', 'date'],
             'user_id' => ['nullable', 'integer', 'exists:users,id'],
-            'action' => ['nullable', 'string', 'max:50'],
+            'box_id' => ['nullable', 'integer', 'exists:boxes,id'],
         ]);
 
-        $logsQuery = BoxAuditLog::query()
-            ->with(['box', 'session.user', 'user'])
-            ->when($filters['date_from'] ?? null, fn ($query, string $dateFrom) => $query->whereDate('occurred_at', '>=', $dateFrom))
-            ->when($filters['date_to'] ?? null, fn ($query, string $dateTo) => $query->whereDate('occurred_at', '<=', $dateTo))
+        $sessionsQuery = BoxSession::query()
+            ->with(['box', 'user', 'closedBy'])
+            ->withCount('movements')
+            ->where('status', 'closed')
+            ->when($filters['date_from'] ?? null, fn ($query, string $dateFrom) => $query->whereDate('closed_at', '>=', $dateFrom))
+            ->when($filters['date_to'] ?? null, fn ($query, string $dateTo) => $query->whereDate('closed_at', '<=', $dateTo))
             ->when($filters['user_id'] ?? null, fn ($query, int $userId) => $query->where('user_id', $userId))
-            ->when($filters['action'] ?? null, fn ($query, string $action) => $query->where('action', $action))
-            ->latest('occurred_at');
+            ->when($filters['box_id'] ?? null, fn ($query, int $boxId) => $query->where('box_id', $boxId))
+            ->latest('closed_at');
 
-        $logs = (clone $logsQuery)
+        $sessions = (clone $sessionsQuery)
             ->paginate(20)
             ->withQueryString();
 
-        $actionLabels = [
-            'box_opened' => 'Apertura de caja',
-            'box_closed' => 'Cierre de caja',
-            'manual_income' => 'Ingreso manual',
-            'manual_expense' => 'Egreso manual',
-            'sale_income' => 'Venta POS',
-            'table_order_payment' => 'Cobro de mesa',
-            'credit_payment' => 'Pago de credito',
-            'customer_credit_payment' => 'Pago de cartera',
-        ];
+        $sessionTotals = (clone $sessionsQuery)->get()
+            ->reduce(function (array $totals, BoxSession $session): array {
+                $turn = $this->sessionTurnLabel($session);
+                $totals[$turn] = ($totals[$turn] ?? 0) + 1;
+
+                return $totals;
+            }, []);
 
         return view('cash-management.history', [
-            'logs' => $logs,
+            'sessions' => $sessions,
             'filters' => $filters,
             'users' => User::query()->orderBy('name')->get(['id', 'name']),
-            'actions' => [
-                'box_opened',
-                'box_closed',
-                'manual_income',
-                'manual_expense',
-                'sale_income',
-                'table_order_payment',
-                'credit_payment',
-                'customer_credit_payment',
-            ],
-            'actionLabels' => $actionLabels,
+            'boxes' => Box::query()->orderBy('name')->get(['id', 'name']),
             'summary' => [
-                'total' => (clone $logsQuery)->count(),
-                'openings' => (clone $logsQuery)->where('action', 'box_opened')->count(),
-                'closings' => (clone $logsQuery)->where('action', 'box_closed')->count(),
-                'adjustments' => (clone $logsQuery)->whereIn('action', ['manual_income', 'manual_expense'])->count(),
+                'closures' => (clone $sessionsQuery)->count(),
+                'morning' => $sessionTotals['Cierre de la mañana'] ?? 0,
+                'afternoon' => $sessionTotals['Cierre de la tarde'] ?? 0,
+                'night' => $sessionTotals['Cierre de la noche'] ?? 0,
+            ],
+        ]);
+    }
+
+    public function showHistorySession(Request $request, BoxSession $session)
+    {
+        if ($response = $this->denyIfUnauthorized(['boxes.view', 'boxes.reports'])) {
+            return $response;
+        }
+
+        $filters = $request->validate([
+            'search' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $session->load(['box', 'user', 'closedBy']);
+
+        $movementsQuery = BoxMovement::query()
+            ->with([
+                'user',
+                'sale.customer',
+                'sale.invoice',
+                'sale.tableOrder.table',
+                'sale.items',
+            ])
+            ->where('box_session_id', $session->id)
+            ->where('amount', '>', 0)
+            ->when($filters['search'] ?? null, function ($query, string $search): void {
+                $query->where(function ($nestedQuery) use ($search): void {
+                    $nestedQuery
+                        ->where('description', 'like', '%' . $search . '%')
+                        ->orWhereHas('sale', function ($saleQuery) use ($search): void {
+                            $saleQuery
+                                ->where('id', $search)
+                                ->orWhere('customer_name', 'like', '%' . $search . '%')
+                                ->orWhereHas('customer', fn ($customerQuery) => $customerQuery->where('name', 'like', '%' . $search . '%'))
+                                ->orWhereHas('invoice', fn ($invoiceQuery) => $invoiceQuery
+                                    ->where('invoice_number', 'like', '%' . $search . '%')
+                                    ->orWhere('electronic_number', 'like', '%' . $search . '%')
+                                    ->orWhere('cufe', 'like', '%' . $search . '%'));
+                        });
+                });
+            })
+            ->oldest('occurred_at');
+
+        $movements = $movementsQuery
+            ->paginate(20)
+            ->withQueryString();
+
+        $allIncomeMovements = BoxMovement::query()
+            ->where('box_session_id', $session->id)
+            ->where('amount', '>', 0);
+
+        return view('cash-management.history-session', [
+            'session' => $session,
+            'movements' => $movements,
+            'filters' => $filters,
+            'turnLabel' => $this->sessionTurnLabel($session),
+            'summary' => [
+                'income_movements' => (clone $allIncomeMovements)->count(),
+                'income_total' => money_value((float) (clone $allIncomeMovements)->sum('amount')),
+                'sales_income' => money_value((float) (clone $allIncomeMovements)->whereNotNull('sale_id')->sum('amount')),
+                'manual_income' => money_value((float) (clone $allIncomeMovements)->whereNull('sale_id')->sum('amount')),
             ],
         ]);
     }
@@ -524,13 +566,29 @@ class CashManagementController extends Controller
 
     private function denyIfUnauthorized(array $permissions): ?Response
     {
-        $user = auth()->user();
-
-        if ($user && ($user->hasRole('Admin') || $user->hasRole('Cajero') || $user->hasAnyPermission($permissions))) {
+        if ($this->canAccess($permissions)) {
             return null;
         }
 
         return response()->view('errors.403', [], 403);
+    }
+
+    private function canAccess(array $permissions): bool
+    {
+        $user = auth()->user();
+
+        return $user && ($user->hasRole('Admin') || $user->hasRole('Cajero') || $user->hasAnyPermission($permissions));
+    }
+
+    private function sessionTurnLabel(BoxSession $session): string
+    {
+        $hour = (int) ($session->closed_at ?? $session->opened_at ?? now())->format('H');
+
+        return match (true) {
+            $hour < 12 => 'Cierre de la mañana',
+            $hour < 18 => 'Cierre de la tarde',
+            default => 'Cierre de la noche',
+        };
     }
 
     private function logAudit(Box $box, BoxSession $session, string $action, string $description, array $metadata = []): void

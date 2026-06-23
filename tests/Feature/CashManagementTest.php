@@ -3,8 +3,13 @@
 namespace Tests\Feature;
 
 use App\Models\Box;
+use App\Models\BoxMovement;
+use App\Models\BoxSession;
+use App\Models\Invoice;
 use App\Models\Role;
+use App\Models\Sale;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -160,7 +165,7 @@ class CashManagementTest extends TestCase
         ]);
     }
 
-    public function test_admin_can_open_manual_movement_form_for_an_open_box(): void
+    public function test_admin_sees_manual_movement_form_in_box_detail(): void
     {
         $user = User::factory()->create();
         $adminRole = Role::create([
@@ -182,12 +187,28 @@ class CashManagementTest extends TestCase
             ->assertRedirect(route('cash-management.show', $box));
 
         $response = $this->actingAs($user)
-            ->get(route('cash-management.movements.create', $box));
+            ->get(route('cash-management.show', $box));
 
         $response->assertOk();
-        $response->assertSee('Movimiento manual en Caja auxiliar');
+        $response->assertSee('Movimiento manual');
         $response->assertSee('Ingreso manual');
         $response->assertSee('Egreso manual');
+
+        $this->actingAs($user)
+            ->get(route('cash-management.movements.create', $box))
+            ->assertRedirect(route('cash-management.show', ['box' => $box, 'panel' => 'movement']) . '#manual-movement');
+
+        $this->actingAs($user)
+            ->get(route('cash-management.show', ['box' => $box, 'panel' => 'close']))
+            ->assertOk()
+            ->assertSee('Cierre diario')
+            ->assertDontSee('Movimiento manual');
+
+        $this->actingAs($user)
+            ->get(route('cash-management.show', ['box' => $box, 'panel' => 'movement']))
+            ->assertOk()
+            ->assertSee('Movimiento manual')
+            ->assertDontSee('Cierre diario');
     }
 
     public function test_user_gets_a_form_error_when_trying_to_open_a_second_box(): void
@@ -231,5 +252,108 @@ class CashManagementTest extends TestCase
             'box_id' => $secondBox->id,
             'status' => 'open',
         ]);
+    }
+
+    public function test_cash_history_groups_closures_and_filters_session_income_movements(): void
+    {
+        $user = User::factory()->create();
+        $adminRole = Role::create([
+            'name' => 'Admin',
+            'description' => 'Administrador',
+        ]);
+        $user->roles()->attach($adminRole);
+
+        $box = Box::create([
+            'name' => 'Caja principal',
+            'code' => 'BOX-001',
+            'status' => 'closed',
+        ]);
+
+        $morningSession = BoxSession::create([
+            'box_id' => $box->id,
+            'user_id' => $user->id,
+            'opening_balance' => 100,
+            'status' => 'closed',
+            'counted_balance' => 300,
+            'difference_amount' => 0,
+            'closed_by_user_id' => $user->id,
+            'opened_at' => Carbon::parse('2026-06-22 07:00:00'),
+            'closed_at' => Carbon::parse('2026-06-22 11:30:00'),
+        ]);
+
+        $nightSession = BoxSession::create([
+            'box_id' => $box->id,
+            'user_id' => $user->id,
+            'opening_balance' => 150,
+            'status' => 'closed',
+            'counted_balance' => 500,
+            'difference_amount' => 0,
+            'closed_by_user_id' => $user->id,
+            'opened_at' => Carbon::parse('2026-06-22 18:00:00'),
+            'closed_at' => Carbon::parse('2026-06-22 22:30:00'),
+        ]);
+
+        $sale = Sale::create([
+            'user_id' => $user->id,
+            'box_id' => $box->id,
+            'customer_name' => 'Cliente Factura',
+            'subtotal' => 120,
+            'tax_amount' => 0,
+            'total' => 120,
+            'status' => 'completed',
+            'payment_status' => 'paid',
+        ]);
+
+        Invoice::create([
+            'sale_id' => $sale->id,
+            'invoice_number' => 'TKT-202606-000123',
+            'invoice_type' => Invoice::TYPE_TICKET,
+            'provider' => 'local',
+            'status' => 'issued',
+            'issued_at' => now(),
+        ]);
+
+        BoxMovement::create([
+            'box_id' => $box->id,
+            'box_session_id' => $morningSession->id,
+            'sale_id' => $sale->id,
+            'user_id' => $user->id,
+            'movement_type' => 'table_order_payment',
+            'amount' => 120,
+            'balance_before' => 100,
+            'balance_after' => 220,
+            'description' => 'Cobro de mesa',
+            'occurred_at' => Carbon::parse('2026-06-22 09:00:00'),
+        ]);
+
+        BoxMovement::create([
+            'box_id' => $box->id,
+            'box_session_id' => $nightSession->id,
+            'user_id' => $user->id,
+            'movement_type' => 'manual_income',
+            'amount' => 80,
+            'balance_before' => 150,
+            'balance_after' => 230,
+            'description' => 'Ingreso de noche',
+            'occurred_at' => Carbon::parse('2026-06-22 20:00:00'),
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('cash-management.history'))
+            ->assertOk()
+            ->assertSee('Cierre de la mañana')
+            ->assertSee('Cierre de la noche')
+            ->assertSee('Ver movimientos');
+
+        $this->actingAs($user)
+            ->get(route('cash-management.history.sessions.show', [
+                'session' => $morningSession,
+                'search' => 'TKT-202606-000123',
+            ]))
+            ->assertOk()
+            ->assertSee('Ingresos del cierre')
+            ->assertSee('TKT-202606-000123')
+            ->assertSee('Cliente Factura')
+            ->assertDontSee('Ingreso de noche');
     }
 }

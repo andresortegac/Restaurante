@@ -69,7 +69,6 @@
             @php
                 $isDashboardRoute = request()->routeIs('dashboard');
                 $isPosSalesHistoryRoute = request()->routeIs('pos.sales-history.*');
-                $isPosPromoCodesRoute = request()->routeIs('pos.promo-codes.*');
                 $isBillingRoute = request()->routeIs('billing.*');
                 $isBillingHistoryRoute = request()->routeIs('billing.history') || $isPosSalesHistoryRoute;
                 $isProductsRoute = request()->routeIs('products.*');
@@ -87,7 +86,7 @@
                 $isAdminRolesRoute = request()->routeIs('admin.roles.*');
                 $isAdminPermissionsRoute = request()->routeIs('admin.permissions.*');
                 $isAdminAccessRoute = $isAdminRolesRoute || $isAdminPermissionsRoute;
-                $isOrdersMenuExpanded = $isOrdersRoute || $isOrdersHistoryRoute || $isPosPromoCodesRoute;
+                $isOrdersMenuExpanded = $isOrdersRoute || $isOrdersHistoryRoute;
                 $isBillingMenuExpanded = $isBillingRoute || $isElectronicInvoicesRoute || $isPosSalesHistoryRoute;
             @endphp
             
@@ -157,9 +156,6 @@
                     </a>
                     <ul class="sidebar-submenu {{ $isCashRoute ? 'show' : '' }}">
                         <li><a href="{{ route('cash-management.index') }}" class="{{ request()->routeIs('cash-management.index') || request()->routeIs('cash-management.show') || request()->routeIs('cash-management.edit') ? 'active' : '' }}"><i class="fas fa-wallet"></i> Cajas</a></li>
-                        @if(Auth::user()->hasRole('Admin'))
-                        <li><a href="{{ route('cash-management.create') }}" class="{{ request()->routeIs('cash-management.create') ? 'active' : '' }}"><i class="fas fa-plus"></i> Nueva caja</a></li>
-                        @endif
                         <li><a href="{{ route('cash-management.history') }}" class="{{ request()->routeIs('cash-management.history') ? 'active' : '' }}"><i class="fas fa-clock-rotate-left"></i> Historial</a></li>
                         <li><a href="{{ route('cash-management.monthly') }}" class="{{ request()->routeIs('cash-management.monthly') ? 'active' : '' }}"><i class="fas fa-calendar-days"></i> Cierre mensual</a></li>
                     </ul>
@@ -181,7 +177,6 @@
                         @endif
                         @if(Auth::user()->hasRole('Admin') || Auth::user()->hasPermission('orders.view'))
                         <li><a href="{{ route('orders.history.index') }}" class="{{ $isOrdersHistoryRoute ? 'active' : '' }}"><i class="fas fa-clock-rotate-left"></i> Historial de pedidos</a></li>
-                        <li><a href="{{ route('pos.promo-codes.create') }}" class="{{ $isPosPromoCodesRoute ? 'active' : '' }}"><i class="fas fa-ticket-alt"></i> Codigos promocionales</a></li>
                         @endif
                     </ul>
                 </li>

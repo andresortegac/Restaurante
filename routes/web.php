@@ -50,6 +50,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/create', [CashManagementController::class, 'create'])->name('create');
         Route::post('/', [CashManagementController::class, 'store'])->name('store');
         Route::get('/history', [CashManagementController::class, 'history'])->name('history');
+        Route::get('/history/sessions/{session}', [CashManagementController::class, 'showHistorySession'])->name('history.sessions.show');
         Route::get('/monthly', [CashManagementController::class, 'monthlyReport'])->name('monthly');
         Route::get('/{box}/movements/create', [CashManagementController::class, 'createMovement'])->name('movements.create');
         Route::get('/{box}/edit', [CashManagementController::class, 'edit'])->name('edit');
@@ -179,9 +180,7 @@ Route::middleware('auth')->group(function () {
         Route::redirect('/', '/orders')->name('index');
         Route::get('/sales-history', [\App\Http\Controllers\POS\POSController::class, 'salesHistory'])->name('sales-history.index');
         Route::get('/sales/{sale}/print', [\App\Http\Controllers\POS\InvoiceController::class, 'printSale'])->name('sales.print');
-        Route::get('/promo-codes/create', [\App\Http\Controllers\POS\DiscountController::class, 'create'])->name('promo-codes.create');
-        Route::post('/promo-codes', [\App\Http\Controllers\POS\DiscountController::class, 'store'])->name('promo-codes.store');
-        
+
         // Productos
         Route::get('/api/products', [\App\Http\Controllers\POS\ProductController::class, 'index']);
         Route::get('/api/products/{id}', [\App\Http\Controllers\POS\ProductController::class, 'show']);
@@ -204,8 +203,5 @@ Route::middleware('auth')->group(function () {
         Route::post('/api/boxes/{id}/close', [\App\Http\Controllers\POS\BoxController::class, 'close']);
         Route::get('/api/boxes', [\App\Http\Controllers\POS\BoxController::class, 'index']);
         
-        // Descuentos y promociones
-        Route::get('/api/discounts', [\App\Http\Controllers\POS\DiscountController::class, 'index']);
-        Route::post('/api/validate-coupon', [\App\Http\Controllers\POS\DiscountController::class, 'validateCoupon']);
     });
 });

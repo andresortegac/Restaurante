@@ -232,7 +232,7 @@
 
                                     <div>
                                         <label class="form-label" for="notes">Notas del pedido</label>
-                                        <input type="text" class="form-control" id="notes" name="notes" value="{{ old('notes', $openOrder?->notes) }}" placeholder="Ej: sin cebolla, termino medio, mesa de cumpleanos">
+                                        <textarea class="form-control order-notes-textarea" id="notes" name="notes" rows="4" placeholder="Ej: sin cebolla, termino medio, mesa de cumpleanos">{{ old('notes', $openOrder?->notes) }}</textarea>
                                         <div class="form-help">Estas notas viajaran junto con la comanda enviada a cocina.</div>
                                     </div>
                                 </div>
@@ -251,7 +251,7 @@
                                                 <h6 class="mb-1">Selecciona productos para la comanda</h6>
                                                 <p class="table-note mb-0">Toca un producto para agregarlo al resumen en tiempo real.</p>
                                             </div>
-                                            <div class="waiter-menu-search">
+                                            <div class="waiter-menu-search waiter-menu-search-emphasis">
                                                 <label class="form-label" for="menuProductSearch">Filtrar por nombre</label>
                                                 <input type="search" class="form-control" id="menuProductSearch" placeholder="Ej: churrasco, limonada, postre">
                                             </div>
@@ -369,6 +369,10 @@ document.addEventListener('DOMContentLoaded', function () {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
+    const normalizeText = value => String(value || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase();
     const money = value => '$' + Math.round(Number(value || 0)).toLocaleString('es-CO');
     const typeLabel = () => 'Producto';
     const placeholderMarkup = icon => '<div class="waiter-image-placeholder"><i class="' + icon + '"></i></div>';
@@ -440,13 +444,30 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     const filteredProducts = () => {
-        const searchTerm = (productSearchInput?.value || '').toString().trim().toLowerCase();
+        const searchTerm = normalizeText(productSearchInput?.value).trim();
 
-        return products.filter(product => {
+        const visibleProducts = products.filter(product => {
             const matchesCategory = activeCategory === 'all' || product.categoryId === activeCategory;
-            const matchesSearch = searchTerm === '' || String(product.searchText || '').includes(searchTerm);
+            const matchesSearch = searchTerm === '' || normalizeText(product.searchText).includes(searchTerm);
 
             return matchesCategory && matchesSearch;
+        });
+
+        if (searchTerm === '') {
+            return visibleProducts;
+        }
+
+        return visibleProducts.sort((left, right) => {
+            const leftName = normalizeText(left.name).trim();
+            const rightName = normalizeText(right.name).trim();
+            const leftStartsWithSearch = leftName.startsWith(searchTerm);
+            const rightStartsWithSearch = rightName.startsWith(searchTerm);
+
+            if (leftStartsWithSearch !== rightStartsWithSearch) {
+                return leftStartsWithSearch ? -1 : 1;
+            }
+
+            return left.catalogIndex - right.catalogIndex;
         });
     };
 

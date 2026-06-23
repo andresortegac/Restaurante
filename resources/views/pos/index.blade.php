@@ -49,10 +49,6 @@
                             <div class="col-6 text-end"><strong id="subtotal">$0.00</strong></div>
                         </div>
                         <div class="row mb-2">
-                            <div class="col-6">Descuento:</div>
-                            <div class="col-6 text-end"><strong id="discount">$0.00</strong></div>
-                        </div>
-                        <div class="row mb-2">
                             <div class="col-6">Impuesto:</div>
                             <div class="col-6 text-end"><strong id="tax">$0.00</strong></div>
                         </div>
@@ -60,12 +56,6 @@
                         <div class="row mb-3">
                             <div class="col-6">Total:</div>
                             <div class="col-6 text-end"><h5 id="total">$0.00</h5></div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label">Cupon de Descuento</label>
-                            <input type="text" id="couponCode" class="form-control" placeholder="Ingrese codigo...">
-                            <button class="btn btn-sm btn-secondary mt-2 w-100" onclick="applyCoupon()">Aplicar Cupon</button>
                         </div>
 
                         <div class="mb-3">
@@ -465,7 +455,6 @@ function renderCart() {
 
 function updateTotals() {
     const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    const discount = 0;
     const tax = cart.reduce((sum, item) => {
         const lineSubtotal = Number(item.price || 0) * Number(item.quantity || 0);
         const rate = Number(item.tax_rate || 0);
@@ -489,10 +478,9 @@ function updateTotals() {
         }
 
         return sum + lineSubtotal + (lineSubtotal * (rate / 100));
-    }, 0) - discount;
+    }, 0);
 
     document.getElementById('subtotal').textContent = '$' + Math.round(subtotal).toLocaleString('es-CO');
-    document.getElementById('discount').textContent = '$' + Math.round(discount).toLocaleString('es-CO');
     document.getElementById('tax').textContent = '$' + Math.round(tax).toLocaleString('es-CO');
     document.getElementById('total').textContent = '$' + Math.round(total).toLocaleString('es-CO');
 }
@@ -505,17 +493,6 @@ async function clearCart() {
         renderCart();
         updateTotals();
     }
-}
-
-function applyCoupon() {
-    const code = document.getElementById('couponCode').value;
-
-    if (!code) {
-        showMessage('info', 'Cupon requerido', 'Ingrese un codigo de cupon.');
-        return;
-    }
-
-    showMessage('info', 'En desarrollo', 'La funcionalidad de cupones estara disponible pronto.');
 }
 
 async function completeSale() {
@@ -575,7 +552,6 @@ async function completeSale() {
         renderCart();
         updateTotals();
         document.getElementById('paymentMethod').value = '';
-        document.getElementById('couponCode').value = '';
         await showSaleSuccess(data);
     } catch (error) {
         console.error('Error al completar la venta:', error);

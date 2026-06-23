@@ -177,6 +177,12 @@
     margin-bottom: 1.5rem;
 }
 
+.order-notes-textarea {
+    min-height: 128px;
+    resize: vertical;
+    line-height: 1.45;
+}
+
 .billing-manual-stack {
     display: grid;
     grid-template-columns: 1fr;

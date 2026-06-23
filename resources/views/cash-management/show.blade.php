@@ -9,6 +9,9 @@
         $closingDifference = $currentSession && ! $currentSession->isOpen()
             ? (float) $currentSession->difference_amount
             : 0;
+        $requestedPanel = request('panel');
+        $showManualMovement = $currentSession && $currentSession->isOpen() && $canRegisterMovements && $requestedPanel !== 'close';
+        $showClosing = $currentSession && $currentSession->isOpen() && $requestedPanel !== 'movement';
     @endphp
 
     <div class="module-page">
@@ -16,7 +19,9 @@
             <div>
                 <span class="module-kicker">POS / Gestion de Caja</span>
                 <h1>{{ $box->name }}</h1>
-                <p>{{ $box->description ?: 'Configura la caja una sola vez y luego opera el turno diario con apertura, movimientos y cierre conciliado.' }}</p>
+                @if($box->description)
+                    <p>{{ $box->description }}</p>
+                @endif
             </div>
             <div class="summary-group">
                 <span class="summary-chip">{{ $currentSession?->isOpen() ? 'Sesion abierta' : 'Sesion cerrada' }}</span>
@@ -60,63 +65,64 @@
 
             @if($currentSession)
                 <div class="card module-card">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0"><i class="fas fa-circle-info"></i> 2. Estado</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="meta-box mb-3">
-                            <div class="summary-kicker">Diferencia clave</div>
-                            <div class="seat-note">La caja es el punto fisico. La sesion es el turno diario que abres y cierras.</div>
-                        </div>
-                        <div class="module-list">
-                            <div class="module-list-item">
-                                <div>
-                                    <strong>Responsable</strong>
-                                    <div class="table-note">{{ $currentSession?->user?->name ?? $box->user?->name ?? 'Sin responsable' }}</div>
-                                </div>
-                            </div>
-                            <div class="module-list-item">
-                                <div>
-                                    <strong>Apertura</strong>
-                                    <div class="table-note">{{ $currentSession->opened_at ? $currentSession->opened_at->format('d/m/Y H:i') : 'Sin sesion activa' }}</div>
-                                </div>
-                            </div>
-                            <div class="module-list-item">
-                                <div>
-                                    <strong>Base inicial</strong>
-                                    <div class="table-note">${{ money($currentSession->opening_balance) }}</div>
-                                </div>
-                            </div>
-                            <div class="module-list-item">
-                                <div>
-                                    <strong>Saldo esperado</strong>
-                                    <div class="table-note">${{ money($currentBalance) }}</div>
-                                </div>
-                            </div>
+                    <div class="card-body py-3">
+                        <div class="d-flex flex-wrap align-items-center gap-3">
+                            <strong><i class="fas fa-circle-info"></i> Estado</strong>
+                            <span class="table-note">Responsable: {{ $currentSession?->user?->name ?? $box->user?->name ?? 'Sin responsable' }}</span>
+                            <span class="table-note">Apertura: {{ $currentSession->opened_at ? $currentSession->opened_at->format('d/m/Y H:i') : 'Sin sesion activa' }}</span>
+                            <span class="table-note">Base: ${{ money($currentSession->opening_balance) }}</span>
+                            <span class="table-note">Saldo: ${{ money($currentBalance) }}</span>
                             @if(! $currentSession->isOpen())
-                                <div class="module-list-item">
-                                    <div>
-                                        <strong>Diferencia del ultimo cierre</strong>
-                                        <div class="table-note">${{ money($currentSession->difference_amount) }}</div>
-                                    </div>
-                                </div>
+                                <span class="table-note">Diferencia: ${{ money($currentSession->difference_amount) }}</span>
                             @endif
                         </div>
-                        @if($currentSession->isOpen())
-                            <div class="detail-actions mt-4">
-                                <a href="{{ route('cash-management.movements.create', $box) }}" class="btn btn-outline-primary">
-                                    <i class="fas fa-money-bill-transfer"></i> Realizar movimiento manual
-                                </a>
-                            </div>
-                        @endif
                     </div>
                 </div>
             @endif
 
             @if($currentSession && $currentSession->isOpen())
-                <div class="card module-card">
+                @if($showManualMovement)
+                    <div class="card module-card" id="manual-movement">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0"><i class="fas fa-money-bill-transfer"></i> Movimiento manual</h5>
+                        </div>
+                        <div class="card-body">
+                            <p class="table-note">Registra ingresos o egresos del turno sin salir del detalle de la caja. El saldo esperado se actualizara automaticamente.</p>
+
+                            <div class="table-note mb-3">Saldo esperado actual: ${{ money($currentBalance) }}</div>
+
+                            <form method="POST" action="{{ route('cash-management.movements.store', $box) }}">
+                                @csrf
+                                <div class="row g-3">
+                                    <div class="col-md-4">
+                                        <label class="form-label" for="movement_type">Tipo de movimiento</label>
+                                        <select class="form-select" id="movement_type" name="movement_type" required>
+                                            <option value="">Selecciona una opcion</option>
+                                            <option value="manual_income" @selected(old('movement_type') === 'manual_income')>Ingreso manual</option>
+                                            <option value="manual_expense" @selected(old('movement_type') === 'manual_expense')>Egreso manual</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label" for="amount">Monto</label>
+                                        <input type="number" step="1" min="1" class="form-control" id="amount" name="amount" value="{{ money_input(old('amount', 0)) }}" required>
+                                    </div>
+                                    <div class="col-md-12">
+                                        <label class="form-label" for="description">Motivo</label>
+                                        <textarea class="form-control" id="description" name="description" rows="3" maxlength="255" required>{{ old('description') }}</textarea>
+                                    </div>
+                                </div>
+                                <div class="form-actions">
+                                    <button type="submit" class="btn btn-primary">Guardar movimiento</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                @endif
+
+                @if($showClosing)
+                <div class="card module-card" id="closing-session">
                     <div class="card-header">
-                        <h5 class="card-title mb-0"><i class="fas fa-right-from-bracket"></i> 3. Cierre diario</h5>
+                        <h5 class="card-title mb-0"><i class="fas fa-right-from-bracket"></i> Cierre diario</h5>
                     </div>
                     <div class="card-body">
                         <div class="row g-3 mb-3">
@@ -179,6 +185,7 @@
                         </form>
                     </div>
                 </div>
+                @endif
             @endif
         </div>
     </div>

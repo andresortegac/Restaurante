@@ -58,6 +58,9 @@ class TableOrderShowPageTest extends TestCase
         $response->assertSee('Todo el menu');
         $response->assertSee('Limonada de coco');
         $response->assertSee('Bebidas');
+        $response->assertSee('waiter-menu-search waiter-menu-search-emphasis', false);
+        $response->assertSee('order-notes-textarea', false);
+        $response->assertSee('const normalizeText = value', false);
     }
 
     private function createAdminUser(): User
