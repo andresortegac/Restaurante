@@ -217,9 +217,6 @@
                         <li><a href="{{ route('tables.index') }}" class="{{ $isTablesCatalogRoute ? 'active' : '' }}"><i class="fas fa-list"></i> Ver mesas</a></li>
                         <li><a href="{{ route('tables.history.index') }}" class="{{ $isTableHistoryRoute ? 'active' : '' }}"><i class="fas fa-clock-rotate-left"></i> Historial por mesa</a></li>
                         @endif
-                        @if(Auth::user()->hasRole('Admin') || Auth::user()->hasPermission('tables.create'))
-                        <li><a href="{{ route('tables.create') }}" class="{{ request()->routeIs('tables.create') ? 'active' : '' }}"><i class="fas fa-plus"></i> Nueva mesa</a></li>
-                        @endif
                     </ul>
                 </li>
                 @endif

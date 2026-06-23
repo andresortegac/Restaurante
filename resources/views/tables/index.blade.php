@@ -9,6 +9,7 @@
         $canEditTable = $user->hasRole('Admin') || $user->hasPermission('tables.edit');
         $canDeleteTable = $user->hasRole('Admin') || $user->hasPermission('tables.delete');
         $canManageOrders = $user->hasRole('Admin') || $user->hasAnyPermission(['orders.view', 'orders.create', 'orders.edit']);
+        $showCreatePanel = $canCreateTable && request('panel') === 'create';
     @endphp
 
     <div class="module-page">
@@ -62,12 +63,31 @@
                     </a>
                 @endif
                 @if($canCreateTable)
-                    <a href="{{ route('tables.create') }}" class="btn btn-primary">
+                    <a href="{{ route('tables.index', ['panel' => 'create']) }}#new-table" class="btn btn-primary">
                         <i class="fas fa-plus"></i> Nueva mesa
                     </a>
                 @endif
             </div>
         </div>
+
+        @if($showCreatePanel)
+            <div class="card module-card mb-4" id="new-table">
+                <div class="card-header">
+                    <h5 class="card-title mb-0"><i class="fas fa-plus"></i> Nueva mesa</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ route('tables.store') }}">
+                        @csrf
+                        @include('tables.partials.form-fields', ['restaurantTable' => $newTable])
+
+                        <div class="form-actions">
+                            <a href="{{ route('tables.index') }}" class="btn btn-outline-secondary">Cancelar</a>
+                            <button type="submit" class="btn btn-primary">Guardar mesa</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        @endif
 
         @if($tables->isEmpty())
             <div class="card module-card">

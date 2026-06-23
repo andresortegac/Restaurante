@@ -20,8 +20,15 @@ class TableManagementTest extends TestCase
             ->actingAs($user)
             ->get(route('tables.create'));
 
-        $createResponse->assertOk();
-        $createResponse->assertDontSee('Codigo interno');
+        $createResponse->assertRedirect(route('tables.index', ['panel' => 'create']) . '#new-table');
+
+        $indexResponse = $this
+            ->actingAs($user)
+            ->get(route('tables.index', ['panel' => 'create']));
+
+        $indexResponse->assertOk();
+        $indexResponse->assertSee('Nueva mesa');
+        $indexResponse->assertDontSee('Codigo interno');
 
         $storeResponse = $this
             ->actingAs($user)

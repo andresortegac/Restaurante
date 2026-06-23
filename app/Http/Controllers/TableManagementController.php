@@ -26,6 +26,7 @@ class TableManagementController extends Controller
 
         return view('tables.index', [
             'tables' => $tables,
+            'newTable' => new RestaurantTable(['status' => 'free', 'is_active' => true, 'capacity' => 4]),
             'summary' => [
                 'total' => $tables->where('is_active', true)->count(),
                 'free' => $tables->where('status', 'free')->where('is_active', true)->count(),
@@ -41,12 +42,7 @@ class TableManagementController extends Controller
             return $response;
         }
 
-        return view('tables.form', [
-            'pageTitle' => 'Crear mesa',
-            'restaurantTable' => new RestaurantTable(['status' => 'free', 'is_active' => true, 'capacity' => 4]),
-            'formAction' => route('tables.store'),
-            'submitLabel' => 'Guardar mesa',
-        ]);
+        return redirect(route('tables.index', ['panel' => 'create']) . '#new-table');
     }
 
     public function store(Request $request): Response|RedirectResponse
