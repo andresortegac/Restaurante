@@ -4,14 +4,17 @@ namespace Tests\Feature;
 
 use App\Models\Box;
 use App\Models\Customer;
-use App\Models\ElectronicInvoiceSetting;
+use App\Models\Invoice;
 use App\Models\PaymentMethod;
 use App\Models\Product;
 use App\Models\Role;
 use App\Models\Sale;
 use App\Models\User;
 use App\Services\Factus\ElectronicInvoiceService;
+use App\Services\Factus\FactusApiClient;
+use App\Services\Factus\FactusApiException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
@@ -22,14 +25,11 @@ class ElectronicInvoiceFactusTest extends TestCase
 
     public function test_service_sends_invoice_to_factus_and_stores_artifacts(): void
     {
+        Cache::flush();
         Storage::fake('local');
+        $this->configureFactus();
 
-        $user = User::factory()->create();
-        $role = Role::create([
-            'name' => 'Admin',
-            'description' => 'Administrador',
-        ]);
-        $user->roles()->attach($role);
+        $user = $this->adminUser();
 
         $customer = Customer::create([
             'name' => 'Cliente Factus',
@@ -46,13 +46,7 @@ class ElectronicInvoiceFactusTest extends TestCase
             'is_active' => true,
         ]);
 
-        $box = Box::create([
-            'name' => 'Caja 1',
-            'code' => 'BOX-001',
-            'status' => 'open',
-            'opening_balance' => 100,
-            'opened_at' => now(),
-        ]);
+        $box = $this->openBox('BOX-001', 100);
 
         $sale = Sale::create([
             'user_id' => $user->id,
@@ -99,25 +93,6 @@ class ElectronicInvoiceFactusTest extends TestCase
             'status' => 'completed',
         ]);
 
-        ElectronicInvoiceSetting::create([
-            'is_enabled' => true,
-            'environment' => 'sandbox',
-            'client_id' => 'client-id',
-            'client_secret' => 'client-secret',
-            'username' => 'api@example.com',
-            'password' => 'secret-password',
-            'numbering_range_id' => 4,
-            'document_code' => '01',
-            'operation_type' => '10',
-            'send_email' => false,
-            'default_identification_document_code' => '13',
-            'default_legal_organization_code' => '2',
-            'default_tribute_code' => 'ZZ',
-            'default_municipality_code' => '68001',
-            'default_unit_measure_code' => '94',
-            'default_standard_code' => '999',
-        ]);
-
         Http::fake([
             'https://api-sandbox.factus.com.co/oauth/token' => Http::response([
                 'token_type' => 'Bearer',
@@ -127,7 +102,7 @@ class ElectronicInvoiceFactusTest extends TestCase
             ], 200),
             'https://api-sandbox.factus.com.co/v2/bills/validate' => Http::response([
                 'status' => 'Created',
-                'message' => 'Documento registrado y validado con éxito',
+                'message' => 'Documento registrado y validado con exito',
                 'data' => [
                     'reference_code' => 'SALE-REF',
                     'number' => 'SETP990001103',
@@ -175,5 +150,232 @@ class ElectronicInvoiceFactusTest extends TestCase
 
         Storage::disk('local')->assertExists($invoice->pdf_path);
         Storage::disk('local')->assertExists($invoice->xml_path);
+    }
+
+    public function test_index_filters_electronic_invoices_by_customer_and_shows_download_actions(): void
+    {
+        $admin = $this->adminUser();
+
+        $matchingCustomer = Customer::create([
+            'name' => 'Cliente Alicia',
+            'document_number' => '900111222',
+            'email' => 'alicia@example.com',
+            'is_active' => true,
+        ]);
+
+        $otherCustomer = Customer::create([
+            'name' => 'Cliente Bruno',
+            'document_number' => '900333444',
+            'email' => 'bruno@example.com',
+            'is_active' => true,
+        ]);
+        $box = $this->openBox('BOX-FILTER');
+
+        $matchingSale = Sale::create([
+            'user_id' => $admin->id,
+            'box_id' => $box->id,
+            'customer_id' => $matchingCustomer->id,
+            'customer_name' => $matchingCustomer->name,
+            'status' => 'completed',
+            'total' => 25000,
+        ]);
+
+        $otherSale = Sale::create([
+            'user_id' => $admin->id,
+            'box_id' => $box->id,
+            'customer_id' => $otherCustomer->id,
+            'customer_name' => $otherCustomer->name,
+            'status' => 'completed',
+            'total' => 18000,
+        ]);
+
+        $matchingInvoice = Invoice::create([
+            'sale_id' => $matchingSale->id,
+            'invoice_number' => 'INV-ALICIA',
+            'invoice_type' => Invoice::TYPE_ELECTRONIC,
+            'provider' => 'factus',
+            'reference_code' => 'REF-ALICIA',
+            'electronic_number' => 'SETP990001',
+            'cufe' => 'CUFE-ALICIA',
+            'status' => 'validated',
+            'issued_at' => now(),
+        ]);
+
+        Invoice::create([
+            'sale_id' => $otherSale->id,
+            'invoice_number' => 'INV-BRUNO',
+            'invoice_type' => Invoice::TYPE_ELECTRONIC,
+            'provider' => 'factus',
+            'status' => 'validated',
+            'issued_at' => now(),
+        ]);
+
+        Invoice::create([
+            'sale_id' => $matchingSale->id,
+            'invoice_number' => 'TKT-LOCAL',
+            'invoice_type' => Invoice::TYPE_TICKET,
+            'provider' => 'local',
+            'status' => 'issued',
+            'issued_at' => now(),
+        ]);
+
+        $response = $this
+            ->actingAs($admin)
+            ->get(route('electronic-invoices.index', ['search' => 'Alicia']));
+
+        $response->assertOk();
+        $response->assertSee('INV-ALICIA');
+        $response->assertSee('Cliente Alicia');
+        $response->assertSee(route('electronic-invoices.pdf', $matchingInvoice), false);
+        $response->assertSee(route('electronic-invoices.xml', $matchingInvoice), false);
+        $response->assertDontSee('INV-BRUNO');
+        $response->assertDontSee('TKT-LOCAL');
+    }
+
+    public function test_pdf_download_fetches_artifacts_from_factus_when_missing_locally(): void
+    {
+        Cache::flush();
+        Storage::fake('local');
+        $this->configureFactus();
+
+        $admin = $this->adminUser();
+        $box = $this->openBox('BOX-DOWNLOAD');
+        $sale = Sale::create([
+            'user_id' => $admin->id,
+            'box_id' => $box->id,
+            'customer_name' => 'Cliente Descarga',
+            'status' => 'completed',
+            'total' => 12000,
+        ]);
+
+        $invoice = Invoice::create([
+            'sale_id' => $sale->id,
+            'invoice_number' => 'INV-DOWNLOAD',
+            'invoice_type' => Invoice::TYPE_ELECTRONIC,
+            'provider' => 'factus',
+            'electronic_number' => 'SETP990002',
+            'status' => 'validated',
+            'issued_at' => now(),
+        ]);
+
+        Http::fake([
+            'https://api-sandbox.factus.com.co/oauth/token' => Http::response([
+                'token_type' => 'Bearer',
+                'expires_in' => 600,
+                'access_token' => 'token-123',
+            ], 200),
+            'https://api-sandbox.factus.com.co/v2/bills/SETP990002/download-pdf' => Http::response([
+                'data' => [
+                    'file_name' => 'factura-descarga',
+                    'pdf_base_64_encoded' => base64_encode('pdf-content'),
+                ],
+            ], 200),
+            'https://api-sandbox.factus.com.co/v2/bills/SETP990002/download-xml/' => Http::response([
+                'data' => [
+                    'file_name' => 'factura-descarga',
+                    'xml_base_64_encoded' => base64_encode('<xml>demo</xml>'),
+                ],
+            ], 200),
+        ]);
+
+        $response = $this
+            ->actingAs($admin)
+            ->get(route('electronic-invoices.pdf', $invoice));
+
+        $response->assertOk();
+
+        $invoice->refresh();
+        Storage::disk('local')->assertExists($invoice->pdf_path);
+        Storage::disk('local')->assertExists($invoice->xml_path);
+    }
+
+    public function test_service_uses_internal_factus_configuration(): void
+    {
+        $this->configureFactus([
+            'factus.client_id' => 'configured-client',
+            'factus.username' => 'configured@example.com',
+            'factus.numbering_range_id' => 7,
+            'factus.default_municipality_code' => '68001',
+        ]);
+
+        $settings = app(ElectronicInvoiceService::class)->settings();
+
+        $this->assertTrue($settings->is_enabled);
+        $this->assertSame('configured-client', $settings->client_id);
+        $this->assertSame('configured@example.com', $settings->username);
+        $this->assertSame(7, $settings->numbering_range_id);
+        $this->assertFalse($settings->send_email);
+        $this->assertSame('68001', $settings->default_municipality_code);
+    }
+
+    public function test_factus_api_version_403_returns_clear_message(): void
+    {
+        Cache::flush();
+        $this->configureFactus();
+
+        Http::fake([
+            'https://api-sandbox.factus.com.co/oauth/token' => Http::response([
+                'token_type' => 'Bearer',
+                'expires_in' => 600,
+                'access_token' => 'token-123',
+            ], 200),
+            'https://api-sandbox.factus.com.co/v2/bills/validate' => Http::response([
+                'message' => 'Version de API no disponible para esta empresa',
+            ], 403),
+        ]);
+
+        $this->expectException(FactusApiException::class);
+        $this->expectExceptionMessage('Factus autentico las credenciales, pero esta empresa no tiene habilitada la API v2.');
+
+        app(FactusApiClient::class)->createBill(
+            app(ElectronicInvoiceService::class)->settings(),
+            ['reference_code' => 'TEST-403']
+        );
+    }
+
+    private function configureFactus(array $overrides = []): void
+    {
+        config(array_merge([
+            'factus.enabled' => true,
+            'factus.environment' => 'sandbox',
+            'factus.client_id' => 'client-id',
+            'factus.client_secret' => 'client-secret',
+            'factus.username' => 'api@example.com',
+            'factus.password' => 'secret-password',
+            'factus.numbering_range_id' => 4,
+            'factus.document_code' => '01',
+            'factus.operation_type' => '10',
+            'factus.send_email' => false,
+            'factus.default_identification_document_code' => '13',
+            'factus.default_legal_organization_code' => '2',
+            'factus.default_tribute_code' => 'ZZ',
+            'factus.default_municipality_code' => '68001',
+            'factus.default_unit_measure_code' => '94',
+            'factus.default_standard_code' => '999',
+        ], $overrides));
+    }
+
+    private function adminUser(): User
+    {
+        $user = User::factory()->create();
+        $role = Role::firstOrCreate([
+            'name' => 'Admin',
+        ], [
+            'description' => 'Administrador',
+        ]);
+        $user->roles()->attach($role);
+
+        return $user;
+    }
+
+    private function openBox(string $code, int $openingBalance = 0): Box
+    {
+        return Box::create([
+            'name' => $code,
+            'code' => $code,
+            'status' => 'open',
+            'opening_balance' => $openingBalance,
+            'opened_at' => now(),
+        ]);
     }
 }

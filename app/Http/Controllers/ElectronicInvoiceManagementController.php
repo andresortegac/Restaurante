@@ -26,21 +26,36 @@ class ElectronicInvoiceManagementController extends Controller
         $filters = $request->validate([
             'search' => ['nullable', 'string', 'max:255'],
             'status' => ['nullable', 'string', 'max:50'],
+            'date_from' => ['nullable', 'date'],
+            'date_to' => ['nullable', 'date'],
         ]);
 
-        $invoices = Invoice::query()
+        $invoiceQuery = Invoice::query()
             ->with(['sale.customer', 'logs'])
+            ->where('invoice_type', Invoice::TYPE_ELECTRONIC)
             ->when($filters['search'] ?? null, function ($query, string $search) {
                 $query->where(function ($nestedQuery) use ($search) {
                     $nestedQuery
                         ->where('invoice_number', 'like', '%' . $search . '%')
                         ->orWhere('reference_code', 'like', '%' . $search . '%')
                         ->orWhere('electronic_number', 'like', '%' . $search . '%')
-                        ->orWhereHas('sale', fn ($saleQuery) => $saleQuery->where('customer_name', 'like', '%' . $search . '%'));
+                        ->orWhere('cufe', 'like', '%' . $search . '%')
+                        ->orWhereHas('sale', fn ($saleQuery) => $saleQuery
+                            ->where('id', $search)
+                            ->orWhere('customer_name', 'like', '%' . $search . '%')
+                            ->orWhereHas('customer', fn ($customerQuery) => $customerQuery
+                                ->where('name', 'like', '%' . $search . '%')
+                                ->orWhere('document_number', 'like', '%' . $search . '%')
+                                ->orWhere('email', 'like', '%' . $search . '%')));
                 });
             })
             ->when($filters['status'] ?? null, fn ($query, string $status) => $query->where('status', $status))
-            ->latest()
+            ->when($filters['date_from'] ?? null, fn ($query, string $dateFrom) => $query->whereDate('issued_at', '>=', $dateFrom))
+            ->when($filters['date_to'] ?? null, fn ($query, string $dateTo) => $query->whereDate('issued_at', '<=', $dateTo));
+
+        $invoices = (clone $invoiceQuery)
+            ->latest('issued_at')
+            ->latest('id')
             ->paginate(15)
             ->withQueryString();
 
@@ -48,10 +63,10 @@ class ElectronicInvoiceManagementController extends Controller
             'invoices' => $invoices,
             'filters' => $filters,
             'summary' => [
-                'total' => Invoice::count(),
-                'validated' => Invoice::where('status', 'validated')->count(),
-                'failed' => Invoice::where('status', 'failed')->count(),
-                'pending' => Invoice::whereIn('status', ['queued', 'submitting', 'submitted', 'draft'])->count(),
+                'total' => (clone $invoiceQuery)->count(),
+                'validated' => (clone $invoiceQuery)->where('status', 'validated')->count(),
+                'failed' => (clone $invoiceQuery)->where('status', 'failed')->count(),
+                'pending' => (clone $invoiceQuery)->whereIn('status', ['queued', 'submitting', 'submitted', 'draft'])->count(),
             ],
         ]);
     }
@@ -101,71 +116,34 @@ class ElectronicInvoiceManagementController extends Controller
             ->with('success', 'Estado de factura sincronizado correctamente.');
     }
 
-    public function settings()
+    public function syncPending(): RedirectResponse|Response
     {
-        if ($response = $this->denyIfUnauthorized(['electronic_invoices.settings'])) {
+        if ($response = $this->denyIfUnauthorized(['electronic_invoices.manage', 'electronic_invoices.retry'])) {
             return $response;
         }
 
-        try {
-            $numberingRanges = $this->service->numberingRanges();
-        } catch (\Throwable) {
-            $numberingRanges = [];
-        }
+        $synced = 0;
+        $failed = 0;
 
-        return view('electronic-invoices.settings', [
-            'settings' => $this->service->settings(),
-            'numberingRanges' => $numberingRanges,
-        ]);
-    }
-
-    public function updateSettings(Request $request): RedirectResponse|Response
-    {
-        if ($response = $this->denyIfUnauthorized(['electronic_invoices.settings'])) {
-            return $response;
-        }
-
-        $validated = $request->validate([
-            'is_enabled' => ['nullable', 'boolean'],
-            'environment' => ['required', 'in:sandbox,production'],
-            'client_id' => ['nullable', 'string', 'max:255'],
-            'client_secret' => ['nullable', 'string'],
-            'username' => ['nullable', 'string', 'max:255'],
-            'password' => ['nullable', 'string'],
-            'numbering_range_id' => ['nullable', 'integer'],
-            'document_code' => ['required', 'string', 'max:10'],
-            'operation_type' => ['required', 'string', 'max:10'],
-            'send_email' => ['nullable', 'boolean'],
-            'default_identification_document_code' => ['nullable', 'string', 'max:10'],
-            'default_legal_organization_code' => ['nullable', 'string', 'max:10'],
-            'default_tribute_code' => ['nullable', 'string', 'max:10'],
-            'default_municipality_code' => ['nullable', 'string', 'max:20'],
-            'default_unit_measure_code' => ['required', 'string', 'max:10'],
-            'default_standard_code' => ['required', 'string', 'max:20'],
-        ]);
-
-        $validated['is_enabled'] = $request->boolean('is_enabled');
-        $validated['send_email'] = $request->boolean('send_email');
-
-        $settings = $this->service->settings();
-
-        foreach (['client_secret', 'password'] as $sensitiveField) {
-            if (blank($validated[$sensitiveField] ?? null)) {
-                unset($validated[$sensitiveField]);
-            }
-        }
-
-        foreach (['client_id', 'username'] as $plainField) {
-            if (blank($validated[$plainField] ?? null) && $settings->{$plainField}) {
-                unset($validated[$plainField]);
-            }
-        }
-
-        $this->service->storeSettings($validated);
+        Invoice::query()
+            ->where('invoice_type', Invoice::TYPE_ELECTRONIC)
+            ->whereNotNull('electronic_number')
+            ->whereIn('status', ['submitted', 'submitting', 'queued', 'failed'])
+            ->latest()
+            ->limit(25)
+            ->get()
+            ->each(function (Invoice $invoice) use (&$synced, &$failed): void {
+                try {
+                    $this->service->syncStatus($invoice);
+                    $synced++;
+                } catch (\Throwable) {
+                    $failed++;
+                }
+            });
 
         return redirect()
-            ->route('electronic-invoices.settings')
-            ->with('success', 'Configuración de Factus actualizada correctamente.');
+            ->route('electronic-invoices.index')
+            ->with('success', 'Sincronizacion terminada. Actualizadas: ' . $synced . '. Con error: ' . $failed . '.');
     }
 
     public function downloadPdf(Invoice $invoice)
@@ -174,7 +152,15 @@ class ElectronicInvoiceManagementController extends Controller
             return $response;
         }
 
-        abort_unless($invoice->pdf_path && Storage::disk('local')->exists($invoice->pdf_path), 404);
+        if (!$invoice->pdf_path || !Storage::disk('local')->exists($invoice->pdf_path)) {
+            try {
+                $invoice = $this->service->ensureArtifacts($invoice);
+            } catch (\Throwable) {
+                abort(404);
+            }
+        }
+
+        abort_if(!$invoice->pdf_path || !Storage::disk('local')->exists($invoice->pdf_path), 404);
 
         return Storage::disk('local')->download($invoice->pdf_path);
     }
@@ -185,7 +171,15 @@ class ElectronicInvoiceManagementController extends Controller
             return $response;
         }
 
-        abort_unless($invoice->xml_path && Storage::disk('local')->exists($invoice->xml_path), 404);
+        if (!$invoice->xml_path || !Storage::disk('local')->exists($invoice->xml_path)) {
+            try {
+                $invoice = $this->service->ensureArtifacts($invoice);
+            } catch (\Throwable) {
+                abort(404);
+            }
+        }
+
+        abort_if(!$invoice->xml_path || !Storage::disk('local')->exists($invoice->xml_path), 404);
 
         return Storage::disk('local')->download($invoice->xml_path);
     }

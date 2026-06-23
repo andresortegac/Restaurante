@@ -5,7 +5,6 @@ namespace Tests\Feature;
 use App\Models\Box;
 use App\Models\Customer;
 use App\Models\CustomerCredit;
-use App\Models\ElectronicInvoiceSetting;
 use App\Models\PaymentMethod;
 use App\Models\Product;
 use App\Models\RestaurantTable;
@@ -152,23 +151,23 @@ class BillingManagementTest extends TestCase
         ]);
         $order->recalculateTotals();
 
-        ElectronicInvoiceSetting::create([
-            'is_enabled' => true,
-            'environment' => 'sandbox',
-            'client_id' => 'client-id',
-            'client_secret' => 'client-secret',
-            'username' => 'api@example.com',
-            'password' => 'secret-password',
-            'numbering_range_id' => 4,
-            'document_code' => '01',
-            'operation_type' => '10',
-            'send_email' => false,
-            'default_identification_document_code' => '13',
-            'default_legal_organization_code' => '2',
-            'default_tribute_code' => 'ZZ',
-            'default_municipality_code' => '68001',
-            'default_unit_measure_code' => '94',
-            'default_standard_code' => '999',
+        config([
+            'factus.enabled' => true,
+            'factus.environment' => 'sandbox',
+            'factus.client_id' => 'client-id',
+            'factus.client_secret' => 'client-secret',
+            'factus.username' => 'api@example.com',
+            'factus.password' => 'secret-password',
+            'factus.numbering_range_id' => 4,
+            'factus.document_code' => '01',
+            'factus.operation_type' => '10',
+            'factus.send_email' => false,
+            'factus.default_identification_document_code' => '13',
+            'factus.default_legal_organization_code' => '2',
+            'factus.default_tribute_code' => 'ZZ',
+            'factus.default_municipality_code' => '68001',
+            'factus.default_unit_measure_code' => '94',
+            'factus.default_standard_code' => '999',
         ]);
 
         Http::fake([
@@ -239,6 +238,152 @@ class BillingManagementTest extends TestCase
         $this->assertDatabaseHas('restaurant_tables', [
             'id' => $table->id,
             'status' => 'free',
+        ]);
+    }
+
+    public function test_paid_now_electronic_invoice_does_not_consume_customer_balance_unless_requested(): void
+    {
+        Storage::fake('local');
+
+        $user = $this->createAdminUser();
+
+        $paymentMethod = PaymentMethod::create([
+            'name' => 'Efectivo',
+            'code' => 'CASH',
+            'description' => 'Pago en efectivo',
+            'active' => true,
+        ]);
+
+        Box::create([
+            'name' => 'Caja FE sin saldo',
+            'code' => 'BOX-FE-NO-BALANCE',
+            'user_id' => $user->id,
+            'opening_balance' => 100,
+            'status' => 'open',
+            'opened_at' => now(),
+        ]);
+
+        $customer = Customer::create([
+            'name' => 'Cliente FE con saldo',
+            'document_number' => '123456789',
+            'billing_identification' => '123456789',
+            'identification_document_code' => '13',
+            'legal_organization_code' => '2',
+            'tribute_code' => 'ZZ',
+            'municipality_code' => '68001',
+            'phone' => '3001234567',
+            'billing_address' => 'Calle 1 # 2-3',
+            'trade_name' => 'Cliente FE con saldo',
+            'email' => 'cliente-saldo@example.com',
+            'available_balance' => 50000,
+            'is_active' => true,
+        ]);
+
+        $table = RestaurantTable::create([
+            'name' => 'Mesa FE saldo',
+            'code' => 'M-FE-SALDO',
+            'area' => 'Salon',
+            'capacity' => 4,
+            'status' => 'occupied',
+            'is_active' => true,
+        ]);
+
+        $order = TableOrder::create([
+            'restaurant_table_id' => $table->id,
+            'order_number' => 'PED-FE-NO-BALANCE',
+            'status' => 'open',
+            'opened_by_user_id' => $user->id,
+        ]);
+
+        $order->items()->create([
+            'product_name' => 'Consumo factura electronica',
+            'unit_price' => 10000,
+            'quantity' => 1,
+            'subtotal' => 10000,
+            'split_group' => 1,
+        ]);
+        $order->recalculateTotals();
+
+        config([
+            'factus.enabled' => true,
+            'factus.environment' => 'sandbox',
+            'factus.client_id' => 'client-id',
+            'factus.client_secret' => 'client-secret',
+            'factus.username' => 'api@example.com',
+            'factus.password' => 'secret-password',
+            'factus.numbering_range_id' => 4,
+            'factus.document_code' => '01',
+            'factus.operation_type' => '10',
+            'factus.send_email' => false,
+            'factus.default_identification_document_code' => '13',
+            'factus.default_legal_organization_code' => '2',
+            'factus.default_tribute_code' => 'ZZ',
+            'factus.default_municipality_code' => '68001',
+            'factus.default_unit_measure_code' => '94',
+            'factus.default_standard_code' => '999',
+        ]);
+
+        Http::fake([
+            'https://api-sandbox.factus.com.co/oauth/token' => Http::response([
+                'token_type' => 'Bearer',
+                'expires_in' => 600,
+                'access_token' => 'token-123',
+            ], 200),
+            'https://api-sandbox.factus.com.co/v2/bills/validate' => Http::response([
+                'message' => 'Documento registrado y validado con exito',
+                'data' => [
+                    'number' => 'SETP990001104',
+                    'is_validated' => true,
+                    'errors' => null,
+                    'cufe' => 'CUFE-456',
+                ],
+            ], 201),
+            'https://api-sandbox.factus.com.co/v2/bills/SETP990001104/download-pdf' => Http::response([
+                'data' => [
+                    'file_name' => 'factura-demo',
+                    'pdf_base_64_encoded' => base64_encode('pdf-content'),
+                ],
+            ], 200),
+            'https://api-sandbox.factus.com.co/v2/bills/SETP990001104/download-xml/' => Http::response([
+                'data' => [
+                    'file_name' => 'factura-demo',
+                    'xml_base_64_encoded' => base64_encode('<xml>demo</xml>'),
+                ],
+            ], 200),
+        ]);
+
+        $response = $this
+            ->actingAs($user)
+            ->postJson(route('billing.checkout.store', $order), [
+                'customer_id' => $customer->id,
+                'payment_method_id' => $paymentMethod->id,
+                'amount_received' => 10000,
+                'document_type' => 'electronic',
+            ]);
+
+        $response->assertOk();
+        $response->assertJsonPath('cufe', 'CUFE-456');
+
+        $sale = Sale::query()->firstOrFail();
+
+        $this->assertDatabaseHas('customers', [
+            'id' => $customer->id,
+            'available_balance' => 50000,
+        ]);
+
+        $this->assertDatabaseMissing('customer_balance_movements', [
+            'customer_id' => $customer->id,
+            'sale_id' => $sale->id,
+            'movement_type' => 'sale_consumption',
+        ]);
+
+        $this->assertDatabaseHas('payments', [
+            'sale_id' => $sale->id,
+            'payment_method_id' => $paymentMethod->id,
+            'amount' => 10000,
+            'received_amount' => 10000,
+            'change_amount' => 0,
+            'status' => 'completed',
         ]);
     }
 
@@ -850,6 +995,7 @@ class BillingManagementTest extends TestCase
                 'origin_type' => 'table',
                 'customer_id' => $customer->id,
                 'document_type' => 'ticket',
+                'payment_mode' => 'customer_balance',
                 'amount_received' => 0,
                 'items' => [
                     [
@@ -963,6 +1109,7 @@ class BillingManagementTest extends TestCase
             ->actingAs($user)
             ->postJson(route('billing.checkout.store', $order), [
                 'payment_method_id' => $paymentMethod->id,
+                'payment_mode' => 'customer_balance',
                 'amount_received' => 18000,
                 'document_type' => 'ticket',
             ]);

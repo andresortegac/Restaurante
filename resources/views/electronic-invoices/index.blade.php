@@ -1,14 +1,14 @@
 @extends('layouts.app')
 
-@section('title', 'Facturación Electrónica - RestaurantePOS')
+@section('title', 'Facturacion Electronica - RestaurantePOS')
 
 @section('content')
     <div class="module-page">
         <section class="module-hero">
             <div>
-                <span class="module-kicker">Facturación / Factus</span>
-                <h1>Facturas electrónicas</h1>
-                <p>Monitorea el envío a Factus, revisa estados DIAN, consulta CUFE y detecta facturas con error o pendientes de reintento.</p>
+                <span class="module-kicker">Facturacion / Factus</span>
+                <h1>Facturas electronicas</h1>
+                <p>Consulta facturas emitidas, valida si viajaron a Factus y descarga los documentos cuando esten disponibles.</p>
             </div>
             <div class="summary-group">
                 <span class="summary-chip">{{ $summary['total'] }} facturas</span>
@@ -18,13 +18,20 @@
             </div>
         </section>
 
-        <div class="module-toolbar">
+        <div class="module-toolbar align-items-start">
             <form method="GET" action="{{ route('electronic-invoices.index') }}" class="row g-2 align-items-end flex-grow-1">
-                <div class="col-md-8">
+                <div class="col-lg-4 col-md-6">
                     <label class="form-label" for="search">Buscar</label>
-                    <input type="text" class="form-control" id="search" name="search" value="{{ $filters['search'] ?? '' }}" placeholder="Número interno, referencia, número Factus o cliente">
+                    <input
+                        type="text"
+                        class="form-control"
+                        id="search"
+                        name="search"
+                        value="{{ $filters['search'] ?? '' }}"
+                        placeholder="Factura, Factus, CUFE, cliente, documento o email"
+                    >
                 </div>
-                <div class="col-md-4">
+                <div class="col-lg-2 col-md-6">
                     <label class="form-label" for="status">Estado</label>
                     <select class="form-select" id="status" name="status">
                         <option value="">Todos</option>
@@ -33,15 +40,26 @@
                         @endforeach
                     </select>
                 </div>
-                <div class="col-12 d-flex gap-2">
-                    <button type="submit" class="btn btn-outline-primary">Filtrar</button>
+                <div class="col-lg-2 col-md-6">
+                    <label class="form-label" for="date_from">Desde</label>
+                    <input type="date" class="form-control" id="date_from" name="date_from" value="{{ $filters['date_from'] ?? '' }}">
+                </div>
+                <div class="col-lg-2 col-md-6">
+                    <label class="form-label" for="date_to">Hasta</label>
+                    <input type="date" class="form-control" id="date_to" name="date_to" value="{{ $filters['date_to'] ?? '' }}">
+                </div>
+                <div class="col-lg-2 col-md-12 d-flex gap-2">
+                    <button type="submit" class="btn btn-outline-primary flex-fill">Filtrar</button>
                     <a href="{{ route('electronic-invoices.index') }}" class="btn btn-outline-secondary">Limpiar</a>
                 </div>
             </form>
 
-            <a href="{{ route('electronic-invoices.settings') }}" class="btn btn-primary">
-                <i class="fas fa-sliders"></i> Configuración Factus
-            </a>
+            <form method="POST" action="{{ route('electronic-invoices.sync-pending') }}">
+                @csrf
+                <button type="submit" class="btn btn-outline-primary">
+                    <i class="fas fa-rotate"></i> Validar pendientes
+                </button>
+            </form>
         </div>
 
         <div class="card module-card">
@@ -64,14 +82,16 @@
                                     <td>
                                         <strong>{{ $invoice->invoice_number }}</strong>
                                         <div class="table-note">{{ $invoice->reference_code ?: 'Sin referencia' }}</div>
+                                        <div class="table-note">{{ $invoice->issued_at?->format('d/m/Y H:i') ?? 'Sin fecha' }}</div>
                                     </td>
                                     <td>
                                         <div>{{ $invoice->sale?->customer?->name ?: $invoice->sale?->customer_name ?: 'Sin cliente' }}</div>
+                                        <div class="table-note">{{ $invoice->sale?->customer?->document_number ?: 'Sin documento' }}</div>
                                         <div class="table-note">{{ $invoice->sale?->customer?->email ?: 'Sin email' }}</div>
                                     </td>
                                     <td>
                                         <div>{{ $invoice->electronic_number ?: 'Pendiente' }}</div>
-                                        <div class="table-note">{{ $invoice->cufe ?: 'Sin CUFE todavía' }}</div>
+                                        <div class="table-note">{{ $invoice->cufe ?: 'Sin CUFE todavia' }}</div>
                                     </td>
                                     <td>${{ money($invoice->sale?->total ?? 0) }}</td>
                                     <td>
@@ -92,12 +112,20 @@
                                     <td>
                                         <div class="table-actions justify-content-end">
                                             <a href="{{ route('electronic-invoices.show', $invoice) }}" class="btn btn-outline-primary btn-sm">Ver</a>
+                                            @if($invoice->electronic_number)
+                                                <form method="POST" action="{{ route('electronic-invoices.sync', $invoice) }}">
+                                                    @csrf
+                                                    <button type="submit" class="btn btn-outline-secondary btn-sm">Validar</button>
+                                                </form>
+                                                <a href="{{ route('electronic-invoices.pdf', $invoice) }}" class="btn btn-outline-success btn-sm">PDF</a>
+                                                <a href="{{ route('electronic-invoices.xml', $invoice) }}" class="btn btn-outline-dark btn-sm">XML</a>
+                                            @endif
                                         </div>
                                     </td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="6" class="text-center py-4 text-muted">Todavía no hay facturas electrónicas registradas.</td>
+                                    <td colspan="6" class="text-center py-4 text-muted">Todavia no hay facturas electronicas registradas.</td>
                                 </tr>
                             @endforelse
                         </tbody>

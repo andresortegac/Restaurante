@@ -140,10 +140,18 @@ class BillingManagementController extends Controller
             'payment_method_id' => ['nullable', 'exists:payment_methods,id'],
             'amount_received' => ['required', 'numeric', 'min:0'],
             'document_type' => ['nullable', 'in:ticket,electronic'],
+            'payment_mode' => ['nullable', 'in:paid_now,customer_balance,credit'],
             'is_credit' => ['nullable', 'boolean'],
+            'apply_customer_balance' => ['nullable', 'boolean'],
         ]);
 
-        $validated['apply_customer_balance'] = true;
+        $paymentMode = $validated['payment_mode'] ?? null;
+        $validated['is_credit'] = $paymentMode
+            ? $paymentMode === 'credit'
+            : $request->boolean('is_credit');
+        $validated['apply_customer_balance'] = $paymentMode
+            ? $paymentMode === 'customer_balance'
+            : $request->boolean('apply_customer_balance');
 
         $result = $this->billingService->checkout($order, $validated, Auth::id());
         $sale = $result['sale'];
@@ -223,7 +231,9 @@ class BillingManagementController extends Controller
             'amount_received' => ['required', 'numeric', 'min:0'],
             'tip_amount' => ['nullable', 'numeric', 'min:0'],
             'reference' => ['nullable', 'string', 'max:255'],
+            'payment_mode' => ['nullable', 'in:paid_now,customer_balance,credit'],
             'is_credit' => ['nullable', 'boolean'],
+            'apply_customer_balance' => ['nullable', 'boolean'],
             'credit_due_at' => ['nullable', 'date', 'after_or_equal:today'],
             'items' => ['required', 'array', 'min:1'],
             'items.*.product_id' => ['nullable', 'exists:products,id'],
@@ -232,7 +242,13 @@ class BillingManagementController extends Controller
             'items.*.unit_price' => ['required', 'numeric', 'min:0.01'],
         ]);
 
-        $validated['apply_customer_balance'] = true;
+        $paymentMode = $validated['payment_mode'] ?? null;
+        $validated['is_credit'] = $paymentMode
+            ? $paymentMode === 'credit'
+            : $request->boolean('is_credit');
+        $validated['apply_customer_balance'] = $paymentMode
+            ? $paymentMode === 'customer_balance'
+            : $request->boolean('apply_customer_balance');
 
         $result = $this->manualBillingService->checkout($validated, Auth::id());
         $sale = $result['sale'];

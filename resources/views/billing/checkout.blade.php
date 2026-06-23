@@ -6,6 +6,7 @@
 @php
     $baseTotal = (float) $order->total;
     $initialIsCredit = (string) old('is_credit', '0') === '1';
+    $initialPaymentMode = old('payment_mode', $initialIsCredit ? 'credit' : 'paid_now');
     $initialReceived = $initialIsCredit ? 0.0 : (float) old('amount_received', $baseTotal);
     $initialChange = $initialIsCredit ? 0.0 : max(0, $initialReceived - $baseTotal);
     $initialDocumentType = old('document_type', 'ticket');
@@ -141,9 +142,10 @@
 
                             <div class="mb-3">
                                 <label class="form-label" for="is_credit">Tipo de cobro</label>
-                                <select class="form-select" id="is_credit" name="is_credit">
-                                    <option value="0" @selected(! $initialIsCredit)>Pagado ahora</option>
-                                    <option value="1" @selected($initialIsCredit)>Agregar a credito del cliente</option>
+                                <select class="form-select" id="is_credit" name="payment_mode">
+                                    <option value="paid_now" @selected($initialPaymentMode === 'paid_now')>Pagado ahora</option>
+                                    <option value="customer_balance" @selected($initialPaymentMode === 'customer_balance')>Usar saldo a favor</option>
+                                    <option value="credit" @selected($initialPaymentMode === 'credit')>Agregar a credito del cliente</option>
                                 </select>
                                 <div class="form-help mt-1" id="creditModeHelp"></div>
                             </div>
@@ -247,11 +249,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const selectedMethod = () => paymentMethods.find(method => String(method.id) === String(methodSelect.value)) || null;
     const selectedCustomer = () => customers.find(customer => String(customer.id) === String(customerSelect.value)) || null;
-    const isCreditSale = () => String(creditMode.value || '0') === '1';
+    const paymentMode = () => String(creditMode.value || 'paid_now');
+    const isCreditSale = () => paymentMode() === 'credit';
+    const shouldApplyCustomerBalance = () => paymentMode() === 'customer_balance';
     const availableBalanceToApply = () => {
         const customer = selectedCustomer();
 
-        if (!customer || isCreditSale()) {
+        if (!customer || !shouldApplyCustomerBalance()) {
             return 0;
         }
 
@@ -260,7 +264,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const showCustomerBalanceWarning = async () => {
         const customer = selectedCustomer();
 
-        if (!customer || isCreditSale()) {
+        if (!customer || !shouldApplyCustomerBalance()) {
             return false;
         }
 
@@ -317,7 +321,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (isCreditSale()) {
             details.push('Quedara en: ' + money((customer.pendingCreditTotal || 0) + baseTotal));
-        } else if ((customer.availableBalance || 0) > 0) {
+        } else if (shouldApplyCustomerBalance() && (customer.availableBalance || 0) > 0) {
             details.push('Se aplicaran: ' + money(availableBalanceToApply()));
         }
 
@@ -409,10 +413,10 @@ document.addEventListener('DOMContentLoaded', function () {
         changeLabel.textContent = money(changeAmount);
         creditModeHelp.textContent = isCreditSale()
             ? 'El cliente quedara vinculado desde este formulario.'
-            : (appliedBalance > 0
-                ? 'Si el cliente tiene saldo a favor, se descuenta antes de registrar el cobro restante.'
+            : (shouldApplyCustomerBalance()
+                ? 'Se descontara el saldo a favor disponible del cliente.'
                 : 'El cobro se registrara de inmediato en la venta.');
-        customerSelect.required = isCreditSale() || documentTypeSelect.value === 'electronic';
+        customerSelect.required = isCreditSale() || shouldApplyCustomerBalance() || documentTypeSelect.value === 'electronic';
         syncCustomerHelp();
     };
 
@@ -429,7 +433,11 @@ document.addEventListener('DOMContentLoaded', function () {
         syncAmounts();
     });
 
-    creditMode.addEventListener('change', syncAmounts);
+    creditMode.addEventListener('change', function () {
+        amountReceivedInput.dataset.userEdited = 'false';
+        syncAmounts();
+        showCustomerBalanceWarning();
+    });
     customerSelect.addEventListener('change', function () {
         amountReceivedInput.dataset.userEdited = 'false';
         syncCustomerHelp();
@@ -456,6 +464,22 @@ document.addEventListener('DOMContentLoaded', function () {
                 });
             } else {
                 alert('Selecciona un cliente antes de enviar la cuenta a credito.');
+            }
+
+            return;
+        }
+
+        if (shouldApplyCustomerBalance() && !selectedCustomer()) {
+            if (window.Swal) {
+                await Swal.fire({
+                    icon: 'warning',
+                    title: 'Falta el cliente',
+                    text: 'Selecciona un cliente antes de usar saldo a favor.',
+                    confirmButtonText: 'Aceptar',
+                    confirmButtonColor: '#2563eb',
+                });
+            } else {
+                alert('Selecciona un cliente antes de usar saldo a favor.');
             }
 
             return;

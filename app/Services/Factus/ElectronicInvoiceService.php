@@ -114,6 +114,32 @@ class ElectronicInvoiceService
         return $invoice->fresh();
     }
 
+    public function ensureArtifacts(Invoice $invoice): Invoice
+    {
+        $settings = $this->settings();
+
+        if (!$invoice->electronic_number) {
+            throw new FactusApiException('La factura no tiene número electrónico asignado en Factus.');
+        }
+
+        $this->downloadArtifacts($invoice, $settings);
+
+        return $invoice->fresh();
+    }
+
+    public function testConnection(): array
+    {
+        $settings = $this->settings();
+        $auth = $this->client->authenticate($settings);
+        $ranges = $this->numberingRanges();
+
+        return [
+            'token_type' => $auth['token_type'] ?? 'Bearer',
+            'expires_in' => $auth['expires_in'] ?? null,
+            'ranges' => $ranges,
+        ];
+    }
+
     public function retry(Invoice $invoice): Invoice
     {
         $invoice->update([
@@ -139,15 +165,14 @@ class ElectronicInvoiceService
 
     public function settings(): ElectronicInvoiceSetting
     {
-        return ElectronicInvoiceSetting::query()->firstOrCreate([], [
-            'is_enabled' => false,
-            'environment' => 'sandbox',
-            'document_code' => '01',
-            'operation_type' => '10',
-            'send_email' => true,
-            'default_unit_measure_code' => '94',
-            'default_standard_code' => '999',
-        ]);
+        $settings = ElectronicInvoiceSetting::query()->firstOrNew();
+        $settings->fill($this->configuredDefaults());
+
+        if (!$settings->exists || $settings->isDirty()) {
+            $settings->save();
+        }
+
+        return $settings;
     }
 
     public function numberingRanges(): array
@@ -213,6 +238,28 @@ class ElectronicInvoiceService
     private function referenceCode(Sale $sale, Invoice $invoice): string
     {
         return 'SALE-' . now()->format('Ymd') . '-' . $sale->id . '-' . ($invoice->id ?: 'draft');
+    }
+
+    private function configuredDefaults(): array
+    {
+        return [
+            'is_enabled' => (bool) config('factus.enabled'),
+            'environment' => config('factus.environment', 'sandbox'),
+            'client_id' => config('factus.client_id'),
+            'client_secret' => config('factus.client_secret'),
+            'username' => config('factus.username'),
+            'password' => config('factus.password'),
+            'numbering_range_id' => filled(config('factus.numbering_range_id')) ? (int) config('factus.numbering_range_id') : null,
+            'document_code' => config('factus.document_code', '01'),
+            'operation_type' => config('factus.operation_type', '10'),
+            'send_email' => (bool) config('factus.send_email', true),
+            'default_identification_document_code' => config('factus.default_identification_document_code', '13'),
+            'default_legal_organization_code' => config('factus.default_legal_organization_code', '2'),
+            'default_tribute_code' => config('factus.default_tribute_code', 'ZZ'),
+            'default_municipality_code' => config('factus.default_municipality_code'),
+            'default_unit_measure_code' => config('factus.default_unit_measure_code', '94'),
+            'default_standard_code' => config('factus.default_standard_code', '999'),
+        ];
     }
 
     private function log(Invoice $invoice, string $level, string $event, string $message, array $context = []): void

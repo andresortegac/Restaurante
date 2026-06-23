@@ -8,7 +8,7 @@
             <div>
                 <span class="module-kicker">Clientes</span>
                 <h1>{{ $pageTitle }}</h1>
-                <p>Guarda los datos basicos del cliente para reutilizarlos al tomar pedidos y en ventas futuras.</p>
+                <p>Registra los datos necesarios para emitir factura electronica cuando el cliente la solicite.</p>
             </div>
         </section>
 
@@ -24,31 +24,63 @@
 
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <label class="form-label" for="name">Nombre</label>
+                            <label class="form-label" for="name">Nombre o razon social</label>
                             <input type="text" class="form-control" id="name" name="name" value="{{ old('name', $customer->name) }}" required>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label" for="document_number">Documento</label>
-                            <input type="text" class="form-control" id="document_number" name="document_number" value="{{ old('document_number', $customer->document_number) }}">
+                            <label class="form-label" for="document_number">Documento / NIT</label>
+                            <input type="text" class="form-control" id="document_number" name="document_number" value="{{ old('document_number', $customer->document_number) }}" required>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label" for="phone">Telefono</label>
-                            <input type="text" class="form-control" id="phone" name="phone" value="{{ old('phone', $customer->phone) }}">
+                            <input type="text" class="form-control" id="phone" name="phone" value="{{ old('phone', $customer->phone) }}" required>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label" for="email">Email</label>
-                            <input type="email" class="form-control" id="email" name="email" value="{{ old('email', $customer->email) }}">
+                            <input type="email" class="form-control" id="email" name="email" value="{{ old('email', $customer->email) }}" required>
                         </div>
                         <div class="col-12">
-                            <label class="form-label" for="notes">Notas</label>
-                            <textarea class="form-control" id="notes" name="notes" rows="4">{{ old('notes', $customer->notes) }}</textarea>
+                            <label class="form-label" for="billing_address">Direccion de facturacion</label>
+                            <input type="text" class="form-control" id="billing_address" name="billing_address" value="{{ old('billing_address', $customer->billing_address) }}" required>
                         </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label" for="identification_document_code">Tipo de documento</label>
+                            <select class="form-select" id="identification_document_code" name="identification_document_code">
+                                @foreach(['13' => 'Cedula de ciudadania', '31' => 'NIT', '22' => 'Cedula de extranjeria', '41' => 'Pasaporte'] as $value => $label)
+                                    <option value="{{ $value }}" @selected(old('identification_document_code', $customer->identification_document_code ?: config('factus.default_identification_document_code', '13')) === $value)>{{ $label }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="legal_organization_code">Tipo de persona</label>
+                            <select class="form-select" id="legal_organization_code" name="legal_organization_code">
+                                @foreach(['2' => 'Persona natural', '1' => 'Persona juridica'] as $value => $label)
+                                    <option value="{{ $value }}" @selected(old('legal_organization_code', $customer->legal_organization_code ?: config('factus.default_legal_organization_code', '2')) === $value)>{{ $label }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="tribute_code">Responsabilidad tributaria</label>
+                            <select class="form-select" id="tribute_code" name="tribute_code">
+                                @foreach(['ZZ' => 'No responsable de IVA', '01' => 'IVA'] as $value => $label)
+                                    <option value="{{ $value }}" @selected(old('tribute_code', $customer->tribute_code ?: config('factus.default_tribute_code', 'ZZ')) === $value)>{{ $label }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="municipality_code">Municipio DIAN</label>
+                            <input type="text" class="form-control" id="municipality_code" name="municipality_code" value="{{ old('municipality_code', $customer->municipality_code ?: config('factus.default_municipality_code', '68001')) }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="trade_name">Nombre comercial</label>
+                            <input type="text" class="form-control" id="trade_name" name="trade_name" value="{{ old('trade_name', $customer->trade_name) }}" placeholder="Opcional">
+                        </div>
+
                         <div class="col-12">
                             <div class="form-check">
                                 <input class="form-check-input" type="checkbox" id="is_active" name="is_active" value="1" @checked(old('is_active', $customer->is_active))>
-                                <label class="form-check-label" for="is_active">
-                                    Cliente activo
-                                </label>
+                                <label class="form-check-label" for="is_active">Cliente activo</label>
                             </div>
                         </div>
                     </div>

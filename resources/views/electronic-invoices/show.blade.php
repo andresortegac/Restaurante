@@ -1,18 +1,18 @@
 @extends('layouts.app')
 
-@section('title', $invoice->invoice_number . ' - Facturación Electrónica')
+@section('title', $invoice->invoice_number . ' - Facturacion Electronica')
 
 @section('content')
     <div class="module-page">
         <section class="module-hero">
             <div>
-                <span class="module-kicker">Facturación / Factus</span>
+                <span class="module-kicker">Facturacion / Factus</span>
                 <h1>{{ $invoice->invoice_number }}</h1>
-                <p>Detalle de envío, respuesta de Factus, comprobantes XML/PDF y trazabilidad completa de la factura electrónica.</p>
+                <p>Detalle de envio, respuesta de Factus, comprobantes XML/PDF y trazabilidad completa de la factura electronica.</p>
             </div>
             <div class="summary-group">
                 <span class="summary-chip">{{ $invoice->status }}</span>
-                <span class="summary-chip">{{ $invoice->electronic_number ?: 'Sin número Factus' }}</span>
+                <span class="summary-chip">{{ $invoice->electronic_number ?: 'Sin numero Factus' }}</span>
                 <span class="summary-chip">{{ $invoice->cufe ?: 'Sin CUFE' }}</span>
             </div>
         </section>
@@ -45,7 +45,7 @@
                             </div>
                             <div class="module-list-item">
                                 <div>
-                                    <strong>Último intento</strong>
+                                    <strong>Ultimo intento</strong>
                                     <div class="table-note">{{ $invoice->last_attempt_at?->format('d/m/Y H:i') ?? 'Sin intentos' }}</div>
                                 </div>
                             </div>
@@ -58,14 +58,13 @@
                             </form>
                             <form method="POST" action="{{ route('electronic-invoices.sync', $invoice) }}">
                                 @csrf
-                                <button type="submit" class="btn btn-outline-primary">Sincronizar</button>
+                                <button type="submit" class="btn btn-outline-primary">Validar estado</button>
                             </form>
-                            @if($invoice->pdf_path)
+                            @if($invoice->electronic_number)
                                 <a href="{{ route('electronic-invoices.pdf', $invoice) }}" class="btn btn-outline-success">PDF</a>
-                            @endif
-                            @if($invoice->xml_path)
                                 <a href="{{ route('electronic-invoices.xml', $invoice) }}" class="btn btn-outline-secondary">XML</a>
                             @endif
+                            <a href="{{ route('electronic-invoices.index') }}" class="btn btn-outline-secondary">Volver</a>
                         </div>
                     </div>
                 </div>
@@ -88,7 +87,7 @@
                                     <span class="badge rounded-pill {{ $log->level === 'error' ? 'bg-danger' : ($log->level === 'warning' ? 'bg-warning text-dark' : 'bg-success') }}">{{ $log->level }}</span>
                                 </div>
                             @empty
-                                <p class="text-muted mb-0">Todavía no hay logs para esta factura.</p>
+                                <p class="text-muted mb-0">Todavia no hay logs para esta factura.</p>
                             @endforelse
                         </div>
                     </div>

@@ -258,7 +258,7 @@ class CustomerManagementController extends Controller
 
         return view('customers.form', [
             'pageTitle' => 'Nuevo cliente',
-            'customer' => new Customer(['is_active' => true]),
+            'customer' => new Customer($this->defaultCustomerData()),
             'formAction' => route('customers.store'),
             'submitLabel' => 'Guardar cliente',
         ]);
@@ -359,23 +359,40 @@ class CustomerManagementController extends Controller
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'document_number' => ['nullable', 'string', 'max:255', Rule::unique('customers', 'document_number')->ignore($customer?->id)],
+            'document_number' => ['required', 'string', 'max:255', Rule::unique('customers', 'document_number')->ignore($customer?->id)],
             'billing_identification' => ['nullable', 'string', 'max:255'],
             'identification_document_code' => ['nullable', 'string', 'max:10'],
             'legal_organization_code' => ['nullable', 'string', 'max:10'],
             'tribute_code' => ['nullable', 'string', 'max:10'],
             'municipality_code' => ['nullable', 'string', 'max:20'],
-            'phone' => ['nullable', 'string', 'max:50'],
-            'billing_address' => ['nullable', 'string', 'max:255'],
+            'phone' => ['required', 'string', 'max:50'],
+            'billing_address' => ['required', 'string', 'max:255'],
             'trade_name' => ['nullable', 'string', 'max:255'],
-            'email' => ['nullable', 'email', 'max:255', Rule::unique('customers', 'email')->ignore($customer?->id)],
+            'email' => ['required', 'email', 'max:255', Rule::unique('customers', 'email')->ignore($customer?->id)],
             'notes' => ['nullable', 'string'],
             'is_active' => ['nullable', 'boolean'],
         ]);
 
         $validated['is_active'] = $request->boolean('is_active');
+        $validated['billing_identification'] = filled($validated['billing_identification'] ?? null) ? $validated['billing_identification'] : $validated['document_number'];
+        $validated['identification_document_code'] = filled($validated['identification_document_code'] ?? null) ? $validated['identification_document_code'] : config('factus.default_identification_document_code', '13');
+        $validated['legal_organization_code'] = filled($validated['legal_organization_code'] ?? null) ? $validated['legal_organization_code'] : config('factus.default_legal_organization_code', '2');
+        $validated['tribute_code'] = filled($validated['tribute_code'] ?? null) ? $validated['tribute_code'] : config('factus.default_tribute_code', 'ZZ');
+        $validated['municipality_code'] = filled($validated['municipality_code'] ?? null) ? $validated['municipality_code'] : config('factus.default_municipality_code', '68001');
+        $validated['trade_name'] = filled($validated['trade_name'] ?? null) ? $validated['trade_name'] : $validated['name'];
 
         return $validated;
+    }
+
+    private function defaultCustomerData(): array
+    {
+        return [
+            'is_active' => true,
+            'identification_document_code' => config('factus.default_identification_document_code', '13'),
+            'legal_organization_code' => config('factus.default_legal_organization_code', '2'),
+            'tribute_code' => config('factus.default_tribute_code', 'ZZ'),
+            'municipality_code' => config('factus.default_municipality_code', '68001'),
+        ];
     }
 
     private function customerPermissions(): array

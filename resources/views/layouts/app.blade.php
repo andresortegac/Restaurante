@@ -182,7 +182,7 @@
                 </li>
                 @endif
 
-                @if(Auth::user()->hasRole('Admin') || Auth::user()->hasRole('Cajero') || Auth::user()->hasAnyPermission(['billing.view', 'billing.charge', 'billing.history', 'electronic_invoices.view', 'electronic_invoices.manage', 'electronic_invoices.retry', 'electronic_invoices.settings']))
+                @if(Auth::user()->hasRole('Admin') || Auth::user()->hasRole('Cajero') || Auth::user()->hasAnyPermission(['billing.view', 'billing.charge', 'billing.history', 'electronic_invoices.view', 'electronic_invoices.manage', 'electronic_invoices.retry']))
                 <li>
                     <a href="#" data-toggle-menu class="{{ $isBillingMenuExpanded ? 'expanded' : '' }}">
                         <i class="fas fa-file-invoice-dollar"></i> Facturación
@@ -198,9 +198,6 @@
                         @endif
                         @if(Auth::user()->hasRole('Admin') || Auth::user()->hasAnyPermission(['electronic_invoices.view', 'electronic_invoices.manage']))
                         <li><a href="{{ route('electronic-invoices.index') }}" class="{{ request()->routeIs('electronic-invoices.index') || request()->routeIs('electronic-invoices.show') ? 'active' : '' }}"><i class="fas fa-list"></i> Facturas electrónicas</a></li>
-                        @endif
-                        @if(Auth::user()->hasRole('Admin') || Auth::user()->hasPermission('electronic_invoices.settings'))
-                        <li><a href="{{ route('electronic-invoices.settings') }}" class="{{ request()->routeIs('electronic-invoices.settings') ? 'active' : '' }}"><i class="fas fa-sliders"></i> Configuración Factus</a></li>
                         @endif
                     </ul>
                 </li>

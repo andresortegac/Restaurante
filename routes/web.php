@@ -63,8 +63,7 @@ Route::middleware('auth')->group(function () {
 
     Route::prefix('electronic-invoices')->name('electronic-invoices.')->group(function () {
         Route::get('/', [ElectronicInvoiceManagementController::class, 'index'])->name('index');
-        Route::get('/settings', [ElectronicInvoiceManagementController::class, 'settings'])->name('settings');
-        Route::put('/settings', [ElectronicInvoiceManagementController::class, 'updateSettings'])->name('settings.update');
+        Route::post('/sync-pending', [ElectronicInvoiceManagementController::class, 'syncPending'])->name('sync-pending');
         Route::get('/{invoice}', [ElectronicInvoiceManagementController::class, 'show'])->name('show');
         Route::post('/{invoice}/retry', [ElectronicInvoiceManagementController::class, 'retry'])->name('retry');
         Route::post('/{invoice}/sync', [ElectronicInvoiceManagementController::class, 'sync'])->name('sync');

@@ -31,6 +31,11 @@ class CustomerManagementTest extends TestCase
                 'document_number' => 'CC-1001',
                 'phone' => '3001234567',
                 'email' => 'laura@example.com',
+                'billing_address' => 'Calle 10 # 20-30',
+                'identification_document_code' => '13',
+                'legal_organization_code' => '2',
+                'tribute_code' => 'ZZ',
+                'municipality_code' => '68001',
                 'notes' => 'Cliente frecuente',
                 'is_active' => 1,
             ]);
@@ -43,6 +48,8 @@ class CustomerManagementTest extends TestCase
             'id' => $customer->id,
             'name' => 'Laura Gomez',
             'document_number' => 'CC-1001',
+            'billing_identification' => 'CC-1001',
+            'billing_address' => 'Calle 10 # 20-30',
             'is_active' => true,
         ]);
 
@@ -53,6 +60,11 @@ class CustomerManagementTest extends TestCase
                 'document_number' => 'CC-1001',
                 'phone' => '3007654321',
                 'email' => 'laura.restrepo@example.com',
+                'billing_address' => 'Carrera 5 # 6-70',
+                'identification_document_code' => '13',
+                'legal_organization_code' => '2',
+                'tribute_code' => 'ZZ',
+                'municipality_code' => '68001',
                 'notes' => 'Actualizada',
                 'is_active' => 1,
             ]);

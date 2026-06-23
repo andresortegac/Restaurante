@@ -90,7 +90,6 @@ class PermissionSeeder extends Seeder
             ['name' => 'electronic_invoices.view', 'description' => 'Ver facturas electronicas'],
             ['name' => 'electronic_invoices.manage', 'description' => 'Gestionar envio y consulta de facturas electronicas'],
             ['name' => 'electronic_invoices.retry', 'description' => 'Reintentar facturas electronicas fallidas'],
-            ['name' => 'electronic_invoices.settings', 'description' => 'Configurar integracion con Factus'],
 
             // Reservas
             ['name' => 'reservations.view', 'description' => 'Ver reservas'],
