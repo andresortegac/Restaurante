@@ -477,11 +477,20 @@ class CustomerManagementController extends Controller
 
     private function customerCreditSummary(Customer $customer): array
     {
+        $consumedBalance = abs((float) $customer->balanceMovements()
+            ->where('movement_type', 'sale_consumption')
+            ->sum('amount'));
+        $availableBalance = money_value($customer->available_balance ?? 0);
+        $balanceTop = money_value($availableBalance + $consumedBalance);
+
         return [
             'pending' => (float) ($customer->pending_credit_total ?? 0),
             'pendingCount' => (int) ($customer->pending_credits_count ?? 0),
             'paidCount' => (int) ($customer->paid_credits_count ?? 0),
-            'available' => money_value($customer->available_balance ?? 0),
+            'available' => $availableBalance,
+            'consumed' => $consumedBalance,
+            'top' => $balanceTop,
+            'remainingToTop' => $availableBalance,
         ];
     }
 

@@ -229,7 +229,7 @@ class BillingManagementController extends Controller
             'amount_received' => ['required', 'numeric', 'min:0'],
             'tip_amount' => ['nullable', 'numeric', 'min:0'],
             'reference' => ['nullable', 'string', 'max:255'],
-            'payment_mode' => ['nullable', 'in:paid_now,customer_balance,credit'],
+            'payment_mode' => ['nullable', 'in:paid_now,customer_balance,credit,customer_balance_credit'],
             'is_credit' => ['nullable', 'boolean'],
             'apply_customer_balance' => ['nullable', 'boolean'],
             'credit_due_at' => ['nullable', 'date', 'after_or_equal:today'],
@@ -242,10 +242,10 @@ class BillingManagementController extends Controller
 
         $paymentMode = $validated['payment_mode'] ?? null;
         $validated['is_credit'] = $paymentMode
-            ? $paymentMode === 'credit'
+            ? in_array($paymentMode, ['credit', 'customer_balance_credit'], true)
             : $request->boolean('is_credit');
         $validated['apply_customer_balance'] = $paymentMode
-            ? $paymentMode === 'customer_balance'
+            ? in_array($paymentMode, ['customer_balance', 'customer_balance_credit'], true)
             : $request->boolean('apply_customer_balance');
 
         $result = $this->manualBillingService->checkout($validated, Auth::id());

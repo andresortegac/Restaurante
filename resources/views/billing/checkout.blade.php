@@ -261,7 +261,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         return Math.min(Number(customer.availableBalance || 0), baseTotal);
     };
-    const showCustomerBalanceWarning = async () => {
+    const confirmCustomerBalanceOverrun = async () => {
         const customer = selectedCustomer();
 
         if (!customer || !shouldApplyCustomerBalance()) {
@@ -270,25 +270,29 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const availableBalance = Number(customer.availableBalance || 0);
 
-        if (availableBalance <= baseTotal) {
+        if (availableBalance >= baseTotal) {
             return false;
         }
 
-        const message = 'El cliente tiene ' + money(availableBalance) + ' de saldo a favor y el pedido vale ' + money(baseTotal) + '. El saldo a favor no puede superar el valor del pedido.';
+        const remaining = Math.max(0, baseTotal - availableBalance);
+        const message = 'El cliente tiene ' + money(availableBalance) + ' de saldo a favor y el pedido vale ' + money(baseTotal) + '. Faltan ' + money(remaining) + ' por cobrar.';
 
         if (window.Swal) {
-            await Swal.fire({
+            const result = await Swal.fire({
                 icon: 'warning',
-                title: 'Saldo a favor superior al pedido',
+                title: 'Supera el saldo a favor',
                 text: message,
-                confirmButtonText: 'Aceptar',
-                confirmButtonColor: '#dc3545',
+                showCancelButton: true,
+                confirmButtonText: 'Continuar cobrando',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#2563eb',
+                cancelButtonColor: '#6b7280',
             });
-        } else {
-            alert(message);
-        }
 
-        return true;
+            return !result.isConfirmed;
+        } else {
+            return !confirm(message + '\n\nDeseas continuar cobrando el valor restante?');
+        }
     };
     const outstandingAmount = () => Math.max(0, baseTotal - availableBalanceToApply());
     const ensureDefaultCashMethod = () => {
@@ -419,14 +423,12 @@ document.addEventListener('DOMContentLoaded', function () {
     creditMode.addEventListener('change', function () {
         amountReceivedInput.dataset.userEdited = 'false';
         syncAmounts();
-        showCustomerBalanceWarning();
     });
     customerSelect.addEventListener('change', function () {
         amountReceivedInput.dataset.userEdited = 'false';
         syncCustomerHelp();
         syncDocumentHelp();
         syncAmounts();
-        showCustomerBalanceWarning();
     });
     documentTypeSelect.addEventListener('change', function () {
         syncDocumentHelp();
@@ -468,7 +470,7 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        if (await showCustomerBalanceWarning()) {
+        if (await confirmCustomerBalanceOverrun()) {
             return;
         }
 

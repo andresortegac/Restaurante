@@ -19,15 +19,15 @@
         <div class="row g-4">
             <div class="col-lg-7">
                 <div class="card module-card service-card">
-                    <div class="card-header d-flex justify-content-between align-items-center gap-3">
+                    <div class="card-header d-flex flex-wrap justify-content-between align-items-start gap-3">
                         <div>
                             <h5 class="mb-1">Saldo a favor</h5>
+                            <div class="table-note">Disponible, consumido y movimientos del cliente</div>
                         </div>
-                        <div class="d-flex align-items-center gap-2">
-                            <a href="{{ route('customers.credits.consumed-invoices', $customer) }}" class="btn btn-outline-success btn-sm">Facturas consumidas</a>
-                            <a href="{{ route('customers.credits.debt-summary.print', $customer) }}" class="btn btn-outline-dark btn-sm" target="_blank" rel="noopener">Imprimir deuda</a>
-                            <a href="{{ route('customers.credits.balance-history', $customer) }}" class="btn btn-outline-primary btn-sm">Ver historial del saldo a favor</a>
-                            <a href="{{ route('customers.index') }}" class="btn btn-outline-secondary btn-sm">Volver</a>
+                        <div class="d-flex flex-wrap align-items-center justify-content-start justify-content-lg-end gap-2">
+                            <a href="{{ route('customers.credits.consumed-invoices', $customer) }}" class="btn btn-outline-success btn-sm px-3">Facturas</a>
+                            <a href="{{ route('customers.credits.debt-summary.print', $customer) }}" class="btn btn-outline-dark btn-sm px-3" target="_blank" rel="noopener">Tirilla deuda</a>
+                            <a href="{{ route('customers.credits.balance-history', $customer) }}" class="btn btn-outline-primary btn-sm px-3">Historial saldo a favor</a>
                         </div>
                     </div>
                     <div class="card-body">
@@ -35,6 +35,30 @@
                             <div class="table-note text-uppercase">Disponible</div>
                             <div class="display-6 fw-semibold mb-2">${{ money($summary['available']) }}</div>
                             <p class="mb-0">Este valor se puede descontar en cobros manuales o pedidos de mesa cuando selecciones al cliente.</p>
+                        </div>
+
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-4">
+                                <div class="border rounded-3 p-3 h-100">
+                                    <div class="table-note text-uppercase">Consumido</div>
+                                    <div class="h5 mb-1">${{ money($summary['consumed']) }}</div>
+                                    <div class="table-note">Usado en facturas</div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="border rounded-3 p-3 h-100">
+                                    <div class="table-note text-uppercase">Le queda</div>
+                                    <div class="h5 mb-1">${{ money($summary['remainingToTop']) }}</div>
+                                    <div class="table-note">Para consumir</div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="border rounded-3 p-3 h-100">
+                                    <div class="table-note text-uppercase">Tope</div>
+                                    <div class="h5 mb-1">${{ money($summary['top']) }}</div>
+                                    <div class="table-note">Consumido + disponible</div>
+                                </div>
+                            </div>
                         </div>
 
                         <form method="POST" action="{{ route('customers.credits.balance.store', $customer) }}">

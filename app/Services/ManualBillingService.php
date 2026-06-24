@@ -28,7 +28,7 @@ class ManualBillingService
     {
         $documentType = $payload['document_type'] ?? Invoice::TYPE_TICKET;
         $originType = $payload['origin_type'] ?? 'table';
-        $isCredit = (bool) ($payload['is_credit'] ?? false);
+        $requestedCredit = (bool) ($payload['is_credit'] ?? false);
         $applyCustomerBalance = (bool) ($payload['apply_customer_balance'] ?? false);
 
         $customer = null;
@@ -50,9 +50,15 @@ class ManualBillingService
             $this->saleDocumentService->assertElectronicInvoiceRequirements($customer);
         }
 
-        if ($isCredit && ! $customer) {
+        if ($requestedCredit && ! $customer) {
             throw ValidationException::withMessages([
                 'customer_id' => 'Selecciona un cliente creado para registrar el credito.',
+            ]);
+        }
+
+        if ($applyCustomerBalance && ! $customer) {
+            throw ValidationException::withMessages([
+                'customer_id' => 'Selecciona un cliente creado para descontar saldo a favor.',
             ]);
         }
 
@@ -71,7 +77,7 @@ class ManualBillingService
             }
         }
 
-        $tipAmount = $isCredit
+        $tipAmount = $requestedCredit
             ? 0.0
             : money_value($payload['tip_amount'] ?? 0);
         $amountReceived = money_value($payload['amount_received']);
@@ -87,7 +93,7 @@ class ManualBillingService
 
         $sale = null;
 
-        DB::transaction(function () use ($payload, $paymentMethod, $items, $tipAmount, $amountReceived, $userId, $originType, $customer, $isCredit, $applyCustomerBalance, &$sale): void {
+        DB::transaction(function () use ($payload, $paymentMethod, $items, $tipAmount, $amountReceived, $userId, $originType, $customer, $requestedCredit, $applyCustomerBalance, &$sale): void {
             $box = Box::query()
                 ->where('status', 'open')
                 ->where('user_id', $userId)
@@ -131,9 +137,9 @@ class ManualBillingService
                 'box_id' => $box->id,
                 'customer_id' => $customer?->id,
                 'customer_name' => $customer?->name ?: ($payload['customer_name'] ?? null),
-                'status' => $isCredit ? 'credit' : 'completed',
-                'payment_status' => $isCredit ? 'credit' : 'paid',
-                'credit_due_at' => $isCredit ? ($payload['credit_due_at'] ?? null) : null,
+                'status' => $requestedCredit ? 'credit' : 'completed',
+                'payment_status' => $requestedCredit ? 'credit' : 'paid',
+                'credit_due_at' => $requestedCredit ? ($payload['credit_due_at'] ?? null) : null,
                 'notes' => $this->saleNotes($payload, $originType),
             ]);
 
@@ -182,7 +188,7 @@ class ManualBillingService
             $appliedCustomerBalance = 0.0;
             $remainingSaleAmount = money_value($sale->total);
 
-            if (! $isCredit && $applyCustomerBalance && $customer) {
+            if ($applyCustomerBalance && $customer) {
                 $balanceApplication = $this->customerBalanceService->applyAvailableBalance(
                     $customer,
                     $sale,
@@ -193,6 +199,16 @@ class ManualBillingService
 
                 $appliedCustomerBalance = $balanceApplication['applied_amount'];
                 $remainingSaleAmount = $balanceApplication['remaining_amount'];
+            }
+
+            $isCredit = $requestedCredit && $remainingSaleAmount > 0;
+
+            if (! $isCredit && $requestedCredit) {
+                $sale->update([
+                    'status' => 'completed',
+                    'payment_status' => 'paid',
+                    'credit_due_at' => null,
+                ]);
             }
 
             $amountDue = money_value($remainingSaleAmount + $tipAmount);
@@ -275,7 +291,8 @@ class ManualBillingService
                     'manual_charge',
                     $payload['origin_reference'] ?? null,
                     'Saldo enviado a credito desde cobro manual #' . $sale->id,
-                    $payload['credit_due_at'] ?? null
+                    $payload['credit_due_at'] ?? null,
+                    $remainingSaleAmount
                 );
             }
         });

@@ -6,7 +6,10 @@
 @php
     $initialDocumentType = old('document_type', 'ticket');
     $initialIsCredit = (string) old('is_credit', '0') === '1';
-    $initialPaymentMode = old('payment_mode', $initialIsCredit ? 'credit' : 'paid_now');
+    $oldPaymentMode = old('payment_mode', $initialIsCredit ? 'customer_balance_credit' : 'paid_now');
+    $initialPaymentMode = in_array($oldPaymentMode, ['customer_balance', 'credit'], true)
+        ? 'customer_balance_credit'
+        : $oldPaymentMode;
     $oldItems = collect(old('items', [['product_id' => '', 'name' => '', 'quantity' => 1, 'unit_price' => 0]]))->values();
     $paymentMethodOptions = $paymentMethods->map(fn ($method) => [
         'id' => (int) $method->id,
@@ -101,10 +104,9 @@
                                 <label class="form-label" for="is_credit">Tipo de cobro</label>
                                 <select class="form-select" id="is_credit" name="payment_mode">
                                     <option value="paid_now" @selected($initialPaymentMode === 'paid_now')>Pagado ahora</option>
-                                    <option value="customer_balance" @selected($initialPaymentMode === 'customer_balance')>Usar saldo a favor</option>
-                                    <option value="credit" @selected($initialPaymentMode === 'credit')>Credito al cliente</option>
+                                    <option value="customer_balance_credit" @selected($initialPaymentMode === 'customer_balance_credit')>Saldo a favor / credito al cliente</option>
                                 </select>
-                                <div class="form-help mt-1">Pagado ahora no descuenta saldo. Usa saldo a favor solo cuando elijas esa opcion.</div>
+                                <div class="form-help mt-1">Pagado ahora no descuenta saldo. El modo combinado usa saldo a favor y deja el restante a credito.</div>
                             </div>
 
                             <div>
@@ -272,14 +274,22 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const selectedMethod = () => paymentMethods.find(method => String(method.id) === String(paymentMethod.value)) || null;
     const paymentMode = () => String(creditMode?.value || 'paid_now');
-    const isCreditSale = () => paymentMode() === 'credit';
+    const isBalanceCreditMode = () => paymentMode() === 'customer_balance_credit';
+    const creditBalanceRemainder = amount => {
+        if (!isBalanceCreditMode()) {
+            return 0;
+        }
+
+        return Math.max(0, Number(amount || 0) - availableBalanceToApply(amount));
+    };
+    const isCreditSale = () => isBalanceCreditMode() && creditBalanceRemainder(calculateSubtotal()) > 0;
     const isCashPayment = () => {
         const method = selectedMethod();
         return !method || method.code === 'CASH';
     };
     const calculateSubtotal = () => Array.from(selectedItems.values())
         .reduce((sum, entry) => sum + (entry.quantity * entry.unitPrice), 0);
-    const shouldApplyCustomerBalance = () => paymentMode() === 'customer_balance';
+    const shouldApplyCustomerBalance = () => isBalanceCreditMode();
     const availableBalanceToApply = amount => {
         const customer = selectedCustomer();
 
@@ -289,11 +299,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
         return Math.min(Number(customer.availableBalance || 0), Math.max(0, Number(amount || 0)));
     };
-
     const selectedCustomer = () => customers.find(customer => String(customer.id) === String(customerSelect.value)) || null;
     const findProduct = productId => products.find(product => String(product.id) === String(productId)) || null;
     const placeholderMarkup = icon => '<div class="waiter-image-placeholder"><i class="' + icon + '"></i></div>';
-    const requiresRegisteredCustomer = () => isCreditSale() || documentType.value === 'electronic';
+    const requiresRegisteredCustomer = () => isBalanceCreditMode() || documentType.value === 'electronic';
 
     const syncCustomerSummary = (projectedAmount = null, appliedBalance = 0) => {
         const customer = selectedCustomer();
@@ -311,8 +320,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 details.push('Cartera actual: ' + money(customer.pendingCreditTotal));
             }
 
-            if (isCreditSale() && projectedAmount && projectedAmount > 0) {
-                details.push('Quedara en: ' + money(customer.pendingCreditTotal + projectedAmount));
+            const creditRemainder = creditBalanceRemainder(projectedAmount || 0);
+
+            if (creditRemainder > 0) {
+                details.push('Quedara en cartera: ' + money(customer.pendingCreditTotal + creditRemainder));
             } else if (shouldApplyCustomerBalance() && appliedBalance > 0) {
                 details.push('Se aplicaran: ' + money(appliedBalance));
             }
@@ -334,8 +345,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
         customerSelect.required = requiresRegisteredCustomer() || shouldApplyCustomerBalance();
 
-        if (isCreditSale()) {
-            customerFieldHelp.textContent = 'Obligatorio para enviar el cobro a credito.';
+        if (isBalanceCreditMode()) {
+            customerFieldHelp.textContent = 'Obligatorio para usar saldo a favor y dejar restante a credito.';
             return;
         }
 
@@ -366,19 +377,24 @@ document.addEventListener('DOMContentLoaded', function () {
         const subtotal = calculateSubtotal();
         const appliedBalance = availableBalanceToApply(subtotal);
         const due = Math.max(0, subtotal - appliedBalance);
+        const creditRemainder = creditBalanceRemainder(subtotal);
         const method = selectedMethod();
         const exactPayment = Boolean(method) && !isCashPayment();
         const submitButton = form.querySelector('button[type="submit"]');
 
-        if (isCreditSale()) {
+        if (isBalanceCreditMode()) {
             paymentMethod.value = '';
             paymentMethod.disabled = true;
             amountReceived.value = '0';
             amountReceived.readOnly = true;
             amountReceived.classList.add('bg-light');
-            amountHelp.textContent = 'Credito pendiente: no se registra dinero recibido ni cambio.';
+            amountHelp.textContent = creditRemainder > 0
+                ? 'Se descuenta el saldo a favor disponible y el restante queda a credito.'
+                : 'El saldo a favor cubre todo el cobro. No se registra ingreso en caja.';
             if (submitButton) {
-                submitButton.textContent = 'Registrar cobro manual';
+                submitButton.textContent = creditRemainder > 0
+                    ? 'Aplicar saldo y dejar credito'
+                    : 'Aplicar saldo a favor';
             }
         } else if (due <= 0 && subtotal > 0) {
             paymentMethod.value = '';
@@ -420,9 +436,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const received = Math.max(0, Number(amountReceived.value || 0));
         subtotalLabel.textContent = money(subtotal);
-        dueLabel.textContent = money(isCreditSale() ? subtotal : due);
-        appliedBalanceLabel.textContent = money(isCreditSale() ? 0 : appliedBalance);
-        changeLabel.textContent = money(!isCreditSale() && isCashPayment() ? Math.max(0, received - due) : 0);
+        dueLabel.textContent = money(isBalanceCreditMode() ? creditRemainder : due);
+        appliedBalanceLabel.textContent = money(appliedBalance);
+        changeLabel.textContent = money(!isBalanceCreditMode() && isCashPayment() ? Math.max(0, received - due) : 0);
         syncCustomerSummary(subtotal, appliedBalance);
     };
 
@@ -660,14 +676,8 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        if (isCreditSale() && !selectedCustomer()) {
-            const message = 'Para registrar un credito debes seleccionar un cliente creado.';
-            window.Swal ? await Swal.fire({ icon: 'warning', title: 'Falta el cliente', text: message, confirmButtonText: 'Aceptar', confirmButtonColor: '#2563eb' }) : alert(message);
-            return;
-        }
-
         if (shouldApplyCustomerBalance() && !selectedCustomer()) {
-            const message = 'Para usar saldo a favor debes seleccionar un cliente creado.';
+            const message = 'Para usar saldo a favor o dejar credito debes seleccionar un cliente creado.';
             window.Swal ? await Swal.fire({ icon: 'warning', title: 'Falta el cliente', text: message, confirmButtonText: 'Aceptar', confirmButtonColor: '#2563eb' }) : alert(message);
             return;
         }

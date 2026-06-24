@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Box;
+use App\Models\BoxSession;
 use App\Models\Customer;
 use App\Models\CustomerCredit;
 use App\Models\PaymentMethod;
@@ -452,9 +453,17 @@ class BillingManagementTest extends TestCase
     {
         $user = $this->createAdminUser();
 
-        Box::create([
+        $box = Box::create([
             'name' => 'Caja manual vista',
             'code' => 'BOX-MANUAL-VIEW',
+            'user_id' => $user->id,
+            'opening_balance' => 50000,
+            'status' => 'open',
+            'opened_at' => now(),
+        ]);
+
+        BoxSession::create([
+            'box_id' => $box->id,
             'user_id' => $user->id,
             'opening_balance' => 50000,
             'status' => 'open',
@@ -473,6 +482,9 @@ class BillingManagementTest extends TestCase
         $response->assertDontSee('Referencia del pago');
         $response->assertDontSee('Vence el credito');
         $response->assertDontSee('Propina');
+        $response->assertDontSee('Usar saldo a favor');
+        $response->assertDontSee('Credito al cliente');
+        $response->assertSee('Saldo a favor / credito al cliente');
     }
 
     public function test_manual_billing_registers_table_charge_by_default(): void
@@ -986,6 +998,96 @@ class BillingManagementTest extends TestCase
             'received_amount' => 0,
             'change_amount' => 0,
             'status' => 'completed',
+        ]);
+
+        $this->assertDatabaseHas('box_movements', [
+            'sale_id' => $sale->id,
+            'movement_type' => 'manual_payment',
+            'amount' => 0,
+            'balance_before' => 50000,
+            'balance_after' => 50000,
+        ]);
+    }
+
+    public function test_manual_billing_can_apply_customer_balance_and_send_remainder_to_credit(): void
+    {
+        $user = $this->createAdminUser();
+
+        $box = Box::create([
+            'name' => 'Caja saldo y credito manual',
+            'code' => 'BOX-BALANCE-CREDIT-MANUAL',
+            'user_id' => $user->id,
+            'opening_balance' => 50000,
+            'status' => 'open',
+            'opened_at' => now(),
+        ]);
+
+        $customer = Customer::create([
+            'name' => 'Cliente Saldo y Credito',
+            'document_number' => '778899',
+            'available_balance' => 15000,
+            'is_active' => true,
+        ]);
+
+        $response = $this
+            ->actingAs($user)
+            ->postJson(route('billing.manual.store'), [
+                'origin_type' => 'table',
+                'customer_id' => $customer->id,
+                'document_type' => 'ticket',
+                'payment_mode' => 'customer_balance_credit',
+                'amount_received' => 0,
+                'items' => [
+                    [
+                        'name' => 'Cobro con saldo parcial',
+                        'quantity' => 1,
+                        'unit_price' => 40000,
+                    ],
+                ],
+            ]);
+
+        $response->assertOk();
+
+        $sale = Sale::query()->firstOrFail();
+
+        $this->assertDatabaseHas('sales', [
+            'id' => $sale->id,
+            'box_id' => $box->id,
+            'customer_id' => $customer->id,
+            'status' => 'credit',
+            'payment_status' => 'credit',
+            'total' => 40000,
+        ]);
+
+        $this->assertDatabaseHas('customers', [
+            'id' => $customer->id,
+            'available_balance' => 0,
+        ]);
+
+        $this->assertDatabaseHas('customer_balance_movements', [
+            'customer_id' => $customer->id,
+            'sale_id' => $sale->id,
+            'movement_type' => 'sale_consumption',
+            'amount' => -15000,
+            'balance_before' => 15000,
+            'balance_after' => 0,
+        ]);
+
+        $this->assertDatabaseHas('customer_credits', [
+            'customer_id' => $customer->id,
+            'sale_id' => $sale->id,
+            'amount' => 25000,
+            'balance' => 25000,
+            'status' => 'pending',
+        ]);
+
+        $this->assertDatabaseHas('payments', [
+            'sale_id' => $sale->id,
+            'payment_method_id' => null,
+            'amount' => 40000,
+            'received_amount' => 0,
+            'change_amount' => 0,
+            'status' => 'pending',
         ]);
 
         $this->assertDatabaseHas('box_movements', [

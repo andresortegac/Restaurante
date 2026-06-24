@@ -20,9 +20,16 @@ class CustomerCreditService
         string $sourceType,
         ?string $sourceReference = null,
         ?string $description = null,
-        mixed $dueAt = null
+        mixed $dueAt = null,
+        ?float $creditAmount = null
     ): ?CustomerCredit {
         if (! $sale->customer_id) {
+            return null;
+        }
+
+        $amount = money_value($creditAmount ?? $sale->total);
+
+        if ($amount <= 0) {
             return null;
         }
 
@@ -35,8 +42,8 @@ class CustomerCreditService
                 'source_type' => $sourceType,
                 'source_reference' => $sourceReference,
                 'description' => $description ?: $this->defaultSaleDescription($sale, $sourceType),
-                'amount' => money_value($sale->total),
-                'balance' => money_value($sale->total),
+                'amount' => $amount,
+                'balance' => $amount,
                 'status' => 'pending',
                 'due_at' => $dueAt ?: $sale->credit_due_at,
                 'paid_at' => null,

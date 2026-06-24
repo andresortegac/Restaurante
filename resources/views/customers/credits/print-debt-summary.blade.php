@@ -1,95 +1,323 @@
-<!doctype html>
+@php
+    $brandName = 'Solomo & Pomo';
+    $pendingTotal = (float) ($summary['pending'] ?? 0);
+    $availableBalance = (float) ($summary['available'] ?? 0);
+    $netToCollect = max($pendingTotal - $availableBalance, 0);
+@endphp
+<!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="utf-8">
-    <title>Resumen de deuda - {{ $customer->name }}</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tirilla de deuda - {{ $customer->name }} | {{ $brandName }}</title>
     <style>
-        body { font-family: Arial, sans-serif; color: #111827; margin: 24px; }
-        h1, h2 { margin: 0 0 8px; }
-        .muted { color: #6b7280; font-size: 12px; }
-        .header { display: flex; justify-content: space-between; gap: 24px; border-bottom: 1px solid #d1d5db; padding-bottom: 16px; margin-bottom: 18px; }
-        .summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 18px 0; }
-        .box { border: 1px solid #d1d5db; padding: 10px; border-radius: 6px; }
-        .label { color: #6b7280; font-size: 11px; text-transform: uppercase; }
-        .value { font-size: 18px; font-weight: 700; margin-top: 4px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 14px; }
-        th, td { border-bottom: 1px solid #e5e7eb; padding: 8px; text-align: left; vertical-align: top; }
-        th { background: #f3f4f6; font-size: 12px; text-transform: uppercase; }
-        .right { text-align: right; }
-        .actions { margin-bottom: 18px; }
-        button { padding: 8px 12px; border: 1px solid #111827; background: #111827; color: white; border-radius: 4px; cursor: pointer; }
+        :root {
+            color-scheme: light;
+        }
+
+        @page {
+            size: 80mm auto;
+            margin: 4mm;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 16px;
+            background: #efefef;
+            color: #111111;
+            font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+        }
+
+        .receipt {
+            width: min(100%, 302px);
+            margin: 0 auto;
+            padding: 18px 16px 20px;
+            background: #ffffff;
+            border-radius: 18px;
+            box-shadow: 0 14px 32px rgba(17, 17, 17, 0.10);
+        }
+
+        .brand {
+            margin-bottom: 10px;
+            text-align: center;
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 0.28em;
+            text-transform: uppercase;
+        }
+
+        .title {
+            margin: 0;
+            text-align: center;
+            font-size: 24px;
+            line-height: 1.08;
+            font-weight: 800;
+        }
+
+        .subtitle {
+            margin-top: 6px;
+            text-align: center;
+            font-size: 12px;
+            color: #575757;
+        }
+
+        .rule {
+            margin: 14px 0;
+            border-top: 1px dashed #d6d6d6;
+        }
+
+        .meta,
+        .summary,
+        .debts {
+            display: grid;
+            gap: 8px;
+        }
+
+        .row {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 12px;
+            font-size: 13px;
+            line-height: 1.35;
+        }
+
+        .row span {
+            color: #666666;
+        }
+
+        .row strong {
+            text-align: right;
+            font-weight: 700;
+            color: #111111;
+        }
+
+        .total {
+            padding-top: 10px;
+            border-top: 1px dashed #d6d6d6;
+            font-size: 17px;
+            font-weight: 800;
+        }
+
+        .debt {
+            padding-top: 10px;
+            border-top: 1px dashed #dddddd;
+        }
+
+        .debt:first-child {
+            padding-top: 0;
+            border-top: 0;
+        }
+
+        .debt-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .debt-title {
+            font-size: 13px;
+            line-height: 1.25;
+            font-weight: 800;
+        }
+
+        .debt-amount {
+            font-size: 14px;
+            line-height: 1.2;
+            font-weight: 800;
+            white-space: nowrap;
+        }
+
+        .debt-meta {
+            margin-top: 4px;
+            font-size: 11px;
+            line-height: 1.35;
+            color: #666666;
+        }
+
+        .empty {
+            text-align: center;
+            font-size: 13px;
+            line-height: 1.4;
+            color: #555555;
+        }
+
+        .thanks {
+            margin-top: 14px;
+            text-align: center;
+            font-size: 12px;
+            font-weight: 800;
+            text-transform: uppercase;
+        }
+
+        .paper-feed {
+            height: 18mm;
+        }
+
+        .actions {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin: 16px auto 0;
+            width: min(100%, 302px);
+        }
+
+        .btn {
+            appearance: none;
+            border: 0;
+            border-radius: 999px;
+            padding: 11px 16px;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .btn-primary {
+            background: #111111;
+            color: #ffffff;
+        }
+
+        .btn-secondary {
+            background: #e8e8e8;
+            color: #111111;
+        }
+
         @media print {
-            .actions { display: none; }
-            body { margin: 0; }
+            @page {
+                size: 80mm auto;
+                margin: 3mm 4mm 8mm;
+            }
+
+            html,
+            body {
+                width: 80mm;
+                padding: 0;
+                background: #ffffff;
+            }
+
+            .receipt {
+                width: auto;
+                max-width: none;
+                border-radius: 0;
+                box-shadow: none;
+                padding: 0;
+            }
+
+            .actions {
+                display: none;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="actions">
-        <button onclick="window.print()">Imprimir</button>
-    </div>
+    <div class="receipt">
+        <div class="brand">{{ strtoupper($brandName) }}</div>
+        <h1 class="title">Deuda cliente</h1>
+        <div class="subtitle">Generado el {{ $printedAt->format('d/m/Y H:i') }}</div>
 
-    <div class="header">
-        <div>
-            <h1>Resumen detallado de deuda</h1>
-            <div class="muted">Generado el {{ $printedAt->format('d/m/Y H:i') }}</div>
-        </div>
-        <div>
-            <h2>{{ $customer->name }}</h2>
-            <div class="muted">Documento: {{ $customer->document_number ?: 'Sin documento' }}</div>
-            <div class="muted">Telefono: {{ $customer->phone ?: 'Sin telefono' }}</div>
-            <div class="muted">Email: {{ $customer->email ?: 'Sin email' }}</div>
-        </div>
-    </div>
+        <div class="rule"></div>
 
-    <div class="summary">
-        <div class="box">
-            <div class="label">Total pendiente</div>
-            <div class="value">${{ money($summary['pending']) }}</div>
+        <div class="meta">
+            <div class="row">
+                <span>Cliente</span>
+                <strong>{{ $customer->name }}</strong>
+            </div>
+            <div class="row">
+                <span>Documento</span>
+                <strong>{{ $customer->document_number ?: 'Sin documento' }}</strong>
+            </div>
+            @if($customer->phone)
+                <div class="row">
+                    <span>Telefono</span>
+                    <strong>{{ $customer->phone }}</strong>
+                </div>
+            @endif
         </div>
-        <div class="box">
-            <div class="label">Creditos pendientes</div>
-            <div class="value">{{ number_format($summary['pendingCount']) }}</div>
-        </div>
-        <div class="box">
-            <div class="label">Saldo a favor disponible</div>
-            <div class="value">${{ money($summary['available']) }}</div>
-        </div>
-    </div>
 
-    <table>
-        <thead>
-            <tr>
-                <th>Fecha</th>
-                <th>Concepto</th>
-                <th>Origen</th>
-                <th class="right">Valor original</th>
-                <th class="right">Saldo pendiente</th>
-            </tr>
-        </thead>
-        <tbody>
+        <div class="rule"></div>
+
+        <div class="summary">
+            <div class="row">
+                <span>Creditos pendientes</span>
+                <strong>{{ number_format($summary['pendingCount'] ?? $credits->count()) }}</strong>
+            </div>
+            <div class="row">
+                <span>Total pendiente</span>
+                <strong>${{ money($pendingTotal) }}</strong>
+            </div>
+            <div class="row">
+                <span>Saldo a favor</span>
+                <strong>${{ money($availableBalance) }}</strong>
+            </div>
+            <div class="row total">
+                <span>Total a cobrar</span>
+                <strong>${{ money($netToCollect) }}</strong>
+            </div>
+        </div>
+
+        <div class="rule"></div>
+
+        <div class="debts">
             @forelse($credits as $credit)
-                <tr>
-                    <td>
+                <div class="debt">
+                    <div class="debt-head">
+                        <div class="debt-title">{{ $credit->description ?: 'Saldo pendiente' }}</div>
+                        <div class="debt-amount">${{ money($credit->balance) }}</div>
+                    </div>
+                    <div class="debt-meta">
                         {{ $credit->created_at?->format('d/m/Y') }}
-                        <div class="muted">{{ $credit->due_at ? 'Vence: ' . $credit->due_at->format('d/m/Y') : 'Sin vencimiento' }}</div>
-                    </td>
-                    <td>{{ $credit->description ?: 'Saldo pendiente' }}</td>
-                    <td>
+                        @if($credit->due_at)
+                            | Vence {{ $credit->due_at->format('d/m/Y') }}
+                        @endif
+                        <br>
                         {{ $credit->sale_id ? 'Venta #' . $credit->sale_id : 'Registro manual' }}
                         @if($credit->sale?->tableOrder?->order_number)
-                            <div class="muted">{{ $credit->sale->tableOrder->order_number }}{{ $credit->sale->tableOrder->table?->name ? ' | ' . $credit->sale->tableOrder->table->name : '' }}</div>
+                            | {{ $credit->sale->tableOrder->order_number }}
                         @endif
-                    </td>
-                    <td class="right">${{ money($credit->amount) }}</td>
-                    <td class="right">${{ money($credit->balance) }}</td>
-                </tr>
+                        @if($credit->sale?->tableOrder?->table?->name)
+                            | {{ $credit->sale->tableOrder->table->name }}
+                        @endif
+                    </div>
+                </div>
             @empty
-                <tr>
-                    <td colspan="5">El cliente no tiene deuda pendiente.</td>
-                </tr>
+                <div class="empty">El cliente no tiene deuda pendiente.</div>
             @endforelse
-        </tbody>
-    </table>
+        </div>
+
+        <div class="thanks">Resumen de deuda</div>
+        <div class="paper-feed" aria-hidden="true"></div>
+    </div>
+
+    <div class="actions">
+        <button class="btn btn-secondary" type="button" onclick="handleClose()">Cerrar</button>
+        <button class="btn btn-primary" type="button" onclick="window.print()">Imprimir</button>
+    </div>
+
+    <script>
+        const fallbackCloseUrl = @json(route('customers.credits.show', $customer));
+
+        function handleClose() {
+            window.close();
+
+            setTimeout(function () {
+                if (window.closed) {
+                    return;
+                }
+
+                window.location.href = fallbackCloseUrl;
+            }, 150);
+        }
+
+        window.addEventListener('load', function () {
+            setTimeout(function () {
+                window.print();
+            }, 300);
+        });
+    </script>
 </body>
 </html>

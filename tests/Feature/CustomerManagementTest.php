@@ -166,7 +166,12 @@ class CustomerManagementTest extends TestCase
 
         $showResponse->assertOk();
         $showResponse->assertSee('Saldo a favor');
-        $showResponse->assertSee('Ver historial del saldo a favor');
+        $showResponse->assertSee('Facturas');
+        $showResponse->assertSee('Tirilla deuda');
+        $showResponse->assertSee('Historial saldo a favor');
+        $showResponse->assertSee('Consumido');
+        $showResponse->assertSee('Le queda');
+        $showResponse->assertSee('Tope');
         $showResponse->assertDontSee('Asignar saldo pendiente');
         $showResponse->assertDontSee('Ver historial del credito');
         $showResponse->assertDontSee('Cobrar deuda del cliente');

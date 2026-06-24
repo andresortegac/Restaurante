@@ -1,5 +1,5 @@
 @php
-    $brandName = config('app.name', 'Solomo & Pomo');
+    $brandName = 'Solomo & Pomo';
     $printedAt = now();
 @endphp
 <!DOCTYPE html>
