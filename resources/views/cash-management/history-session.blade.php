@@ -24,9 +24,13 @@
             </div>
             <div class="summary-group">
                 <span class="summary-chip">{{ number_format($summary['income_movements']) }} ingresos</span>
-                <span class="summary-chip">${{ money($summary['income_total']) }} total</span>
+                <span class="summary-chip">${{ money($summary['income_total']) }} caja fisica</span>
+                <span class="summary-chip">${{ money($summary['reported_payment_total']) }} informado</span>
                 <span class="summary-chip">${{ money($summary['sales_income']) }} consumo</span>
                 <span class="summary-chip">${{ money($summary['manual_income']) }} manual</span>
+                <a href="{{ route('cash-management.history.sessions.print', $session) }}" class="btn btn-outline-dark" target="_blank" rel="noopener">
+                    <i class="fas fa-print"></i> Imprimir detallado
+                </a>
                 <a href="{{ route('cash-management.history') }}" class="btn btn-outline-secondary">
                     <i class="fas fa-arrow-left"></i> Volver
                 </a>
@@ -63,6 +67,41 @@
                 </div>
             </div>
         </div>
+
+        @if($paymentBreakdown->isNotEmpty())
+            <div class="card module-card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0"><i class="fas fa-credit-card"></i> Entradas por metodo de pago</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Metodo</th>
+                                    <th class="text-end">Operaciones</th>
+                                    <th class="text-end">Total informado</th>
+                                    <th class="text-end">Impacto en caja</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($paymentBreakdown as $paymentRow)
+                                    <tr>
+                                        <td>
+                                            <strong>{{ $paymentRow['name'] }}</strong>
+                                            <div class="table-note">{{ $paymentRow['affects_box'] ? 'Afecta caja fisica' : 'Solo informativo' }}</div>
+                                        </td>
+                                        <td class="text-end">{{ number_format($paymentRow['count']) }}</td>
+                                        <td class="text-end">${{ money($paymentRow['total']) }}</td>
+                                        <td class="text-end">${{ money($paymentRow['box_impact']) }}</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        @endif
 
         <div class="card module-card mb-4">
             <div class="card-body">

@@ -5,10 +5,11 @@
 @section('content')
 @php
     $baseTotal = (float) $order->total;
-    $initialIsCredit = (string) old('is_credit', '0') === '1';
-    $initialPaymentMode = old('payment_mode', $initialIsCredit ? 'credit' : 'paid_now');
-    $initialReceived = $initialIsCredit ? 0.0 : (float) old('amount_received', $baseTotal);
-    $initialChange = $initialIsCredit ? 0.0 : max(0, $initialReceived - $baseTotal);
+    $initialPaymentMode = in_array(old('payment_mode'), ['paid_now', 'customer_balance'], true)
+        ? old('payment_mode')
+        : 'paid_now';
+    $initialReceived = (float) old('amount_received', $baseTotal);
+    $initialChange = max(0, $initialReceived - $baseTotal);
     $initialDocumentType = old('document_type', 'ticket');
     $initialCustomerId = (string) old('customer_id', $order->customer_id);
     $currentCustomerName = $order->customer?->name ?: $order->customer_name;
@@ -145,7 +146,6 @@
                                 <select class="form-select" id="is_credit" name="payment_mode">
                                     <option value="paid_now" @selected($initialPaymentMode === 'paid_now')>Pagado ahora</option>
                                     <option value="customer_balance" @selected($initialPaymentMode === 'customer_balance')>Usar saldo a favor</option>
-                                    <option value="credit" @selected($initialPaymentMode === 'credit')>Agregar a credito del cliente</option>
                                 </select>
                                 <div class="form-help mt-1" id="creditModeHelp"></div>
                             </div>
@@ -250,7 +250,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const selectedMethod = () => paymentMethods.find(method => String(method.id) === String(methodSelect.value)) || null;
     const selectedCustomer = () => customers.find(customer => String(customer.id) === String(customerSelect.value)) || null;
     const paymentMode = () => String(creditMode.value || 'paid_now');
-    const isCreditSale = () => paymentMode() === 'credit';
+    const isCreditSale = () => false;
     const shouldApplyCustomerBalance = () => paymentMode() === 'customer_balance';
     const availableBalanceToApply = () => {
         const customer = selectedCustomer();
@@ -305,9 +305,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const customer = selectedCustomer();
 
         if (!customer) {
-            customerHelp.textContent = isCreditSale()
-                ? 'Selecciona un cliente para enviar esta cuenta a credito.'
-                : 'Opcional para ticket normal y obligatorio para credito o factura electronica.';
+            customerHelp.textContent = 'Opcional para ticket normal y obligatorio para saldo a favor o factura electronica.';
             return;
         }
 
@@ -319,9 +317,7 @@ document.addEventListener('DOMContentLoaded', function () {
             'Saldo a favor: ' + money(customer.availableBalance || 0),
         ].filter(Boolean);
 
-        if (isCreditSale()) {
-            details.push('Quedara en: ' + money((customer.pendingCreditTotal || 0) + baseTotal));
-        } else if (shouldApplyCustomerBalance() && (customer.availableBalance || 0) > 0) {
+        if (shouldApplyCustomerBalance() && (customer.availableBalance || 0) > 0) {
             details.push('Se aplicaran: ' + money(availableBalanceToApply()));
         }
 
@@ -351,18 +347,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const amountDue = outstandingAmount();
         const submitButton = checkoutForm.querySelector('button[type="submit"]');
 
-        if (isCreditSale()) {
-            methodSelect.value = '';
-            methodSelect.disabled = true;
-            amountReceivedInput.value = '0';
-            amountReceivedInput.readOnly = true;
-            amountReceivedInput.classList.add('bg-light');
-            amountReceivedHelp.textContent = 'Esta cuenta quedara pendiente y no registrara ingreso en caja por ahora.';
-
-            if (submitButton) {
-                submitButton.textContent = 'Enviar a credito y liberar mesa';
-            }
-        } else if (amountDue <= 0) {
+        if (amountDue <= 0) {
             methodSelect.value = '';
             methodSelect.disabled = true;
             amountReceivedInput.value = '0';
@@ -411,11 +396,9 @@ document.addEventListener('DOMContentLoaded', function () {
         amountDueLabel.textContent = money(isCreditSale() ? baseTotal : amountDue);
         appliedBalanceLabel.textContent = money(isCreditSale() ? 0 : appliedBalance);
         changeLabel.textContent = money(changeAmount);
-        creditModeHelp.textContent = isCreditSale()
-            ? 'El cliente quedara vinculado desde este formulario.'
-            : (shouldApplyCustomerBalance()
-                ? 'Se descontara el saldo a favor disponible del cliente.'
-                : 'El cobro se registrara de inmediato en la venta.');
+        creditModeHelp.textContent = shouldApplyCustomerBalance()
+            ? 'Se descontara el saldo a favor disponible del cliente.'
+            : 'El cobro se registrara de inmediato en la venta.';
         customerSelect.required = isCreditSale() || shouldApplyCustomerBalance() || documentTypeSelect.value === 'electronic';
         syncCustomerHelp();
     };
@@ -452,22 +435,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
     checkoutForm.addEventListener('submit', async function (event) {
         event.preventDefault();
-
-        if (isCreditSale() && !selectedCustomer()) {
-            if (window.Swal) {
-                await Swal.fire({
-                    icon: 'warning',
-                    title: 'Falta el cliente',
-                    text: 'Selecciona un cliente antes de enviar la cuenta a credito.',
-                    confirmButtonText: 'Aceptar',
-                    confirmButtonColor: '#2563eb',
-                });
-            } else {
-                alert('Selecciona un cliente antes de enviar la cuenta a credito.');
-            }
-
-            return;
-        }
 
         if (shouldApplyCustomerBalance() && !selectedCustomer()) {
             if (window.Swal) {

@@ -21,6 +21,7 @@
                 <span class="summary-chip">{{ $summary['inactive'] }} inactivos</span>
                 <span class="summary-chip">{{ $summary['customersWithAvailableBalance'] }} con saldo a favor</span>
                 <span class="summary-chip">${{ money($summary['availableBalance']) }} a favor</span>
+                <span class="summary-chip">${{ money($summary['consumedBalance']) }} consumido</span>
             </div>
         </section>
 
@@ -60,6 +61,7 @@
                                 <th>Cliente</th>
                                 <th>Contacto</th>
                                 <th>Movimientos</th>
+                                <th>Consumido</th>
                                 <th>Saldo a favor</th>
                                 <th>Estado</th>
                                 <th class="text-end">Acciones</th>
@@ -79,6 +81,10 @@
                                     <td>
                                         <div>{{ $customer->table_orders_count }} pedidos</div>
                                         <div class="table-note">{{ $customer->sales_count }} ventas</div>
+                                    </td>
+                                    <td>
+                                        <strong>${{ money(abs((float) ($customer->consumed_balance_total ?? 0))) }}</strong>
+                                        <div class="table-note">Desde saldo a favor</div>
                                     </td>
                                     <td>
                                         <strong>${{ money($customer->available_balance ?? 0) }}</strong>
@@ -113,7 +119,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="6" class="text-center py-4 text-muted">Todavia no hay clientes registrados.</td>
+                                    <td colspan="7" class="text-center py-4 text-muted">Todavia no hay clientes registrados.</td>
                                 </tr>
                             @endforelse
                         </tbody>

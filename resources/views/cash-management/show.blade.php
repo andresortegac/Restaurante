@@ -134,7 +134,7 @@
                             </div>
                             <div class="col-md-3">
                                 <div class="meta-box h-100">
-                                    <div class="summary-kicker">Ventas del turno</div>
+                                    <div class="summary-kicker">Ventas efectivo</div>
                                     <div class="fw-bold">${{ money($automaticIncome) }}</div>
                                 </div>
                             </div>
@@ -151,6 +151,45 @@
                                 </div>
                             </div>
                         </div>
+
+                        @if($paymentBreakdown->isNotEmpty())
+                            <div class="meta-box mb-3">
+                                <div class="d-flex flex-wrap justify-content-between gap-3 mb-2">
+                                    <div>
+                                        <div class="summary-kicker">Entradas por metodo de pago</div>
+                                        <div class="h5 mb-0">${{ money($reportedPaymentTotal) }} informado</div>
+                                    </div>
+                                    <a href="{{ route('cash-management.history.sessions.print', $currentSession) }}" class="btn btn-outline-dark btn-sm" target="_blank" rel="noopener">
+                                        <i class="fas fa-print"></i> Imprimir detallado
+                                    </a>
+                                </div>
+                                <div class="table-responsive">
+                                    <table class="table table-sm align-middle mb-0">
+                                        <thead>
+                                            <tr>
+                                                <th>Metodo</th>
+                                                <th class="text-end">Operaciones</th>
+                                                <th class="text-end">Informado</th>
+                                                <th class="text-end">A caja fisica</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach($paymentBreakdown as $paymentRow)
+                                                <tr>
+                                                    <td>
+                                                        <strong>{{ $paymentRow['name'] }}</strong>
+                                                        <div class="table-note">{{ $paymentRow['affects_box'] ? 'Afecta caja' : 'Solo informativo' }}</div>
+                                                    </td>
+                                                    <td class="text-end">{{ number_format($paymentRow['count']) }}</td>
+                                                    <td class="text-end">${{ money($paymentRow['total']) }}</td>
+                                                    <td class="text-end">${{ money($paymentRow['box_impact']) }}</td>
+                                                </tr>
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        @endif
 
                         <div class="meta-box mb-3">
                             <div class="d-flex flex-wrap justify-content-between gap-3">
@@ -180,7 +219,12 @@
                                 <div class="table-note">Si el valor contado coincide con el saldo esperado, la diferencia quedara en $0.</div>
                             </div>
                             <div class="col-12">
-                                <button type="submit" class="btn btn-primary">Cerrar caja</button>
+                                <div class="d-flex flex-wrap gap-2">
+                                    <button type="submit" class="btn btn-primary">Cerrar caja</button>
+                                    <a href="{{ route('cash-management.history.sessions.print', $currentSession) }}" class="btn btn-outline-dark" target="_blank" rel="noopener">
+                                        <i class="fas fa-print"></i> Imprimir detallado
+                                    </a>
+                                </div>
                             </div>
                         </form>
                     </div>

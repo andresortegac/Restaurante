@@ -258,15 +258,18 @@ class CustomerCreditService
         $creditBalance = money_value($credit->balance);
         $remainingBalance = money_value(max(0, $creditBalance - $amountReceived));
         $balanceBefore = $runningBalance;
-        $balanceAfter = money_value($balanceBefore + $amountReceived);
+        $boxImpact = $this->boxImpactAmount($amountReceived, $paymentMethod);
+        $balanceAfter = money_value($balanceBefore + $boxImpact);
         $description = ($remainingBalance <= 0 ? 'Pago final de cartera #' : 'Abono de cartera #') . $credit->id
-            . ' | Cliente ' . $credit->customer->name;
+            . ' | Cliente ' . $credit->customer->name
+            . ' | Metodo ' . ($paymentMethod?->name ?? 'Efectivo')
+            . ' | ' . ($boxImpact > 0 ? 'Impacto en caja $' . money($boxImpact) : 'Sin impacto en caja');
 
-        $box->movements()->create([
+        $movement = $box->movements()->create([
             'box_session_id' => $boxSession->id,
             'user_id' => $userId,
             'movement_type' => 'customer_credit_payment',
-            'amount' => $amountReceived,
+            'amount' => $boxImpact,
             'balance_before' => $balanceBefore,
             'balance_after' => $balanceAfter,
             'description' => $description,
@@ -280,10 +283,13 @@ class CustomerCreditService
             'action' => 'customer_credit_payment',
             'description' => $description,
             'metadata' => [
+                'movement_id' => $movement->id,
                 'customer_credit_id' => $credit->id,
                 'customer_id' => $credit->customer_id,
                 'sale_id' => $credit->sale_id,
                 'amount' => $amountReceived,
+                'box_impact' => $boxImpact,
+                'payment_method_id' => $paymentMethod?->id,
                 'remaining_balance' => $remainingBalance,
             ],
             'occurred_at' => now(),
@@ -357,6 +363,15 @@ class CustomerCreditService
         }
 
         return strtoupper((string) $paymentMethod->code) === 'CASH';
+    }
+
+    private function boxImpactAmount(float $amountReceived, ?PaymentMethod $paymentMethod): float
+    {
+        if (! $this->isCashPaymentMethod($paymentMethod)) {
+            return 0.0;
+        }
+
+        return money_value($amountReceived);
     }
 
     private function defaultSaleDescription(Sale $sale, string $sourceType): string

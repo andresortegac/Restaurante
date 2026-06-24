@@ -140,15 +140,13 @@ class BillingManagementController extends Controller
             'payment_method_id' => ['nullable', 'exists:payment_methods,id'],
             'amount_received' => ['required', 'numeric', 'min:0'],
             'document_type' => ['nullable', 'in:ticket,electronic'],
-            'payment_mode' => ['nullable', 'in:paid_now,customer_balance,credit'],
+            'payment_mode' => ['nullable', 'in:paid_now,customer_balance'],
             'is_credit' => ['nullable', 'boolean'],
             'apply_customer_balance' => ['nullable', 'boolean'],
         ]);
 
         $paymentMode = $validated['payment_mode'] ?? null;
-        $validated['is_credit'] = $paymentMode
-            ? $paymentMode === 'credit'
-            : $request->boolean('is_credit');
+        $validated['is_credit'] = false;
         $validated['apply_customer_balance'] = $paymentMode
             ? $paymentMode === 'customer_balance'
             : $request->boolean('apply_customer_balance');
@@ -462,17 +460,20 @@ class BillingManagementController extends Controller
                 ->lockForUpdate()
                 ->sum('amount');
             $balanceBefore = money_value((float) $box->opening_balance + $movementTotal);
-            $balanceAfter = money_value($balanceBefore + $appliedAmount);
+            $boxImpact = $this->boxImpactAmount($appliedAmount, $paymentMethod);
+            $balanceAfter = money_value($balanceBefore + $boxImpact);
             $description = ($newRemainingBalance <= 0 ? 'Pago final de credito #' : 'Abono a credito #') . $currentSale->id
-                . ' | Cliente ' . ($currentSale->customer?->name ?: $currentSale->customer_name ?: 'Sin cliente');
+                . ' | Cliente ' . ($currentSale->customer?->name ?: $currentSale->customer_name ?: 'Sin cliente')
+                . ' | Metodo ' . ($paymentMethod?->name ?? 'Efectivo')
+                . ' | ' . ($boxImpact > 0 ? 'Impacto en caja $' . money($boxImpact) : 'Sin impacto en caja');
 
-            $box->movements()->create([
+            $movement = $box->movements()->create([
                 'box_session_id' => $boxSession->id,
                 'sale_id' => $currentSale->id,
                 'payment_id' => $payment->id,
                 'user_id' => $userId,
                 'movement_type' => 'credit_payment',
-                'amount' => $appliedAmount,
+                'amount' => $boxImpact,
                 'balance_before' => $balanceBefore,
                 'balance_after' => $balanceAfter,
                 'description' => $description,
@@ -486,9 +487,12 @@ class BillingManagementController extends Controller
                 'action' => 'credit_payment',
                 'description' => $description,
                 'metadata' => [
+                    'movement_id' => $movement->id,
                     'sale_id' => $currentSale->id,
                     'payment_id' => $payment->id,
                     'amount' => $appliedAmount,
+                    'box_impact' => $boxImpact,
+                    'payment_method_id' => $paymentMethod?->id,
                     'remaining_balance' => $newRemainingBalance,
                 ],
                 'occurred_at' => now(),
@@ -542,6 +546,24 @@ class BillingManagementController extends Controller
             ->where('active', true)
             ->orderBy('name')
             ->get(['id', 'name', 'code']);
+    }
+
+    private function isCashPaymentMethod(?PaymentMethod $paymentMethod): bool
+    {
+        if (! $paymentMethod) {
+            return true;
+        }
+
+        return strtoupper((string) $paymentMethod->code) === 'CASH';
+    }
+
+    private function boxImpactAmount(float $amountReceived, ?PaymentMethod $paymentMethod): float
+    {
+        if (! $this->isCashPaymentMethod($paymentMethod)) {
+            return 0.0;
+        }
+
+        return money_value($amountReceived);
     }
 
     private function denyIfUnauthorized(array $permissions): ?Response

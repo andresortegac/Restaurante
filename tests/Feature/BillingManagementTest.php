@@ -778,7 +778,7 @@ class BillingManagementTest extends TestCase
         ]);
     }
 
-    public function test_billing_checkout_can_send_table_order_to_customer_credit_without_affecting_cash(): void
+    public function test_billing_checkout_rejects_customer_credit_mode(): void
     {
         $user = $this->createAdminUser();
 
@@ -827,58 +827,29 @@ class BillingManagementTest extends TestCase
         $response = $this
             ->actingAs($user)
             ->postJson(route('billing.checkout.store', $order), [
-                'is_credit' => true,
+                'payment_mode' => 'credit',
                 'amount_received' => 0,
                 'document_type' => 'ticket',
             ]);
 
-        $response->assertOk();
-
-        $sale = Sale::query()->firstOrFail();
-
-        $this->assertDatabaseHas('sales', [
-            'id' => $sale->id,
-            'customer_id' => $customer->id,
-            'table_order_id' => $order->id,
-            'status' => 'credit',
-            'payment_status' => 'credit',
-            'credit_due_at' => null,
-        ]);
-
-        $this->assertDatabaseHas('payments', [
-            'sale_id' => $sale->id,
-            'received_amount' => 0,
-            'status' => 'pending',
-        ]);
-
-        $this->assertDatabaseHas('box_movements', [
-            'sale_id' => $sale->id,
-            'movement_type' => 'table_order_payment',
-            'amount' => 0,
-            'balance_before' => 25000,
-            'balance_after' => 25000,
-        ]);
-
-        $this->assertDatabaseHas('customer_credits', [
-            'sale_id' => $sale->id,
-            'customer_id' => $customer->id,
-            'source_type' => 'table_order',
-            'balance' => 28000,
-            'status' => 'pending',
-        ]);
+        $response->assertUnprocessable();
+        $response->assertJsonValidationErrors(['payment_mode']);
 
         $this->assertDatabaseHas('table_orders', [
             'id' => $order->id,
-            'status' => 'paid',
+            'status' => 'open',
         ]);
 
         $this->assertDatabaseHas('restaurant_tables', [
             'id' => $table->id,
-            'status' => 'free',
+            'status' => 'occupied',
         ]);
+
+        $this->assertDatabaseCount('sales', 0);
+        $this->assertDatabaseCount('customer_credits', 0);
     }
 
-    public function test_billing_checkout_can_assign_customer_during_credit_collection_when_order_has_no_customer(): void
+    public function test_billing_checkout_rejects_credit_mode_even_when_customer_is_selected(): void
     {
         $user = $this->createAdminUser();
 
@@ -926,47 +897,22 @@ class BillingManagementTest extends TestCase
             ->actingAs($user)
             ->postJson(route('billing.checkout.store', $order), [
                 'customer_id' => $customer->id,
-                'is_credit' => true,
+                'payment_mode' => 'credit',
                 'amount_received' => 0,
                 'document_type' => 'ticket',
             ]);
 
-        $response->assertOk();
-
-        $sale = Sale::query()->firstOrFail();
-
-        $this->assertDatabaseHas('sales', [
-            'id' => $sale->id,
-            'customer_id' => $customer->id,
-            'customer_name' => $customer->name,
-            'table_order_id' => $order->id,
-            'status' => 'credit',
-            'payment_status' => 'credit',
-            'credit_due_at' => null,
-        ]);
+        $response->assertUnprocessable();
+        $response->assertJsonValidationErrors(['payment_mode']);
 
         $this->assertDatabaseHas('table_orders', [
             'id' => $order->id,
-            'customer_id' => $customer->id,
-            'customer_name' => $customer->name,
-            'status' => 'paid',
+            'customer_id' => null,
+            'status' => 'open',
         ]);
 
-        $this->assertDatabaseHas('customer_credits', [
-            'sale_id' => $sale->id,
-            'customer_id' => $customer->id,
-            'source_type' => 'table_order',
-            'balance' => 31000,
-            'status' => 'pending',
-        ]);
-
-        $this->assertDatabaseHas('box_movements', [
-            'sale_id' => $sale->id,
-            'movement_type' => 'table_order_payment',
-            'amount' => 0,
-            'balance_before' => 25000,
-            'balance_after' => 25000,
-        ]);
+        $this->assertDatabaseCount('sales', 0);
+        $this->assertDatabaseCount('customer_credits', 0);
     }
 
     public function test_manual_billing_can_consume_customer_available_balance_without_affecting_cash(): void

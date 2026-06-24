@@ -124,6 +124,7 @@ class CashManagementController extends Controller
                 ->where('movement_type', 'manual_expense')
                 ->sum('amount'))
             : 0;
+        $paymentBreakdown = $this->paymentMethodBreakdown($currentSession);
 
         return view('cash-management.show', [
             'box' => $box,
@@ -134,6 +135,8 @@ class CashManagementController extends Controller
             'automaticIncome' => $automaticIncome,
             'manualIncome' => $manualIncome,
             'manualExpense' => $manualExpense,
+            'paymentBreakdown' => $paymentBreakdown,
+            'reportedPaymentTotal' => money_value((float) $paymentBreakdown->sum('total')),
             'canRegisterMovements' => $this->canAccess(['boxes.movements']),
         ]);
     }
@@ -436,13 +439,17 @@ class CashManagementController extends Controller
         $movementsQuery = BoxMovement::query()
             ->with([
                 'user',
+                'payment.paymentMethod',
                 'sale.customer',
                 'sale.invoice',
                 'sale.tableOrder.table',
                 'sale.items',
             ])
             ->where('box_session_id', $session->id)
-            ->where('amount', '>', 0)
+            ->where(function ($query): void {
+                $query->where('amount', '>', 0)
+                    ->orWhereNotNull('payment_id');
+            })
             ->when($filters['search'] ?? null, function ($query, string $search): void {
                 $query->where(function ($nestedQuery) use ($search): void {
                     $nestedQuery
@@ -467,18 +474,61 @@ class CashManagementController extends Controller
 
         $allIncomeMovements = BoxMovement::query()
             ->where('box_session_id', $session->id)
+            ->where(function ($query): void {
+                $query->where('amount', '>', 0)
+                    ->orWhereNotNull('payment_id');
+            });
+        $physicalIncomeMovements = BoxMovement::query()
+            ->where('box_session_id', $session->id)
             ->where('amount', '>', 0);
+        $paymentBreakdown = $this->paymentMethodBreakdown($session);
 
         return view('cash-management.history-session', [
             'session' => $session,
             'movements' => $movements,
             'filters' => $filters,
+            'paymentBreakdown' => $paymentBreakdown,
             'summary' => [
                 'income_movements' => (clone $allIncomeMovements)->count(),
-                'income_total' => money_value((float) (clone $allIncomeMovements)->sum('amount')),
-                'sales_income' => money_value((float) (clone $allIncomeMovements)->whereNotNull('sale_id')->sum('amount')),
-                'manual_income' => money_value((float) (clone $allIncomeMovements)->whereNull('sale_id')->sum('amount')),
+                'income_total' => money_value((float) (clone $physicalIncomeMovements)->sum('amount')),
+                'reported_payment_total' => money_value((float) $paymentBreakdown->sum('total')),
+                'sales_income' => money_value((float) (clone $physicalIncomeMovements)->whereNotNull('sale_id')->sum('amount')),
+                'manual_income' => money_value((float) (clone $physicalIncomeMovements)->whereNull('sale_id')->sum('amount')),
             ],
+        ]);
+    }
+
+    public function printSessionSummary(BoxSession $session)
+    {
+        if ($response = $this->denyIfUnauthorized(['boxes.view', 'boxes.reports'])) {
+            return $response;
+        }
+
+        $session->load(['box', 'user', 'closedBy']);
+
+        $movements = BoxMovement::query()
+            ->with(['user', 'payment.paymentMethod', 'sale.customer', 'sale.invoice', 'sale.tableOrder.table'])
+            ->where('box_session_id', $session->id)
+            ->oldest('occurred_at')
+            ->get();
+
+        $paymentBreakdown = $this->paymentMethodBreakdown($session);
+        $physicalIncome = money_value((float) $movements->where('amount', '>', 0)->sum('amount'));
+        $physicalExpense = money_value(abs((float) $movements->where('amount', '<', 0)->sum('amount')));
+
+        return view('cash-management.print-session-summary', [
+            'session' => $session,
+            'movements' => $movements,
+            'paymentBreakdown' => $paymentBreakdown,
+            'summary' => [
+                'opening_balance' => money_value((float) $session->opening_balance),
+                'physical_income' => $physicalIncome,
+                'physical_expense' => $physicalExpense,
+                'expected_balance' => money_value((float) $session->opening_balance + $physicalIncome - $physicalExpense),
+                'reported_payment_total' => money_value((float) $paymentBreakdown->sum('total')),
+                'movement_count' => $movements->count(),
+            ],
+            'printedAt' => now(),
         ]);
     }
 
@@ -540,6 +590,64 @@ class CashManagementController extends Controller
     private function boxPermissions(): array
     {
         return ['boxes.view', 'boxes.open', 'boxes.close', 'boxes.movements', 'boxes.reports'];
+    }
+
+    private function paymentMethodBreakdown(?BoxSession $session)
+    {
+        if (! $session) {
+            return collect();
+        }
+
+        $auditAmountsByMovementId = BoxAuditLog::query()
+            ->where('box_session_id', $session->id)
+            ->get(['metadata'])
+            ->mapWithKeys(function (BoxAuditLog $auditLog): array {
+                $movementId = $auditLog->metadata['movement_id'] ?? null;
+
+                if (! $movementId || ! array_key_exists('amount', $auditLog->metadata ?? [])) {
+                    return [];
+                }
+
+                return [(int) $movementId => money_value((float) $auditLog->metadata['amount'])];
+            });
+
+        return BoxMovement::query()
+            ->with('payment.paymentMethod')
+            ->where('box_session_id', $session->id)
+            ->whereNotNull('payment_id')
+            ->get()
+            ->map(function (BoxMovement $movement) use ($auditAmountsByMovementId): array {
+                $paymentMethod = $movement->payment?->paymentMethod;
+                $paymentName = $paymentMethod?->name ?? 'Sin metodo';
+                $paymentCode = strtoupper((string) ($paymentMethod?->code ?? ''));
+                $reportAmount = (float) $movement->amount > 0
+                    ? money_value((float) $movement->amount)
+                    : money_value((float) ($auditAmountsByMovementId->get((int) $movement->id)
+                        ?? max(0, (float) ($movement->payment?->received_amount ?? 0) - (float) ($movement->payment?->change_amount ?? 0))));
+
+                return [
+                    'name' => $paymentName,
+                    'code' => $paymentCode,
+                    'total' => $reportAmount,
+                    'box_impact' => money_value((float) $movement->amount),
+                    'count' => 1,
+                    'affects_box' => $paymentCode === 'CASH',
+                ];
+            })
+            ->filter(fn (array $row): bool => (float) $row['total'] > 0 || (float) $row['box_impact'] !== 0.0)
+            ->groupBy('name')
+            ->map(function ($rows, string $name): array {
+                return [
+                    'name' => $name,
+                    'code' => $rows->first()['code'],
+                    'total' => money_value((float) $rows->sum('total')),
+                    'box_impact' => money_value((float) $rows->sum('box_impact')),
+                    'count' => (int) $rows->sum('count'),
+                    'affects_box' => (bool) $rows->first()['affects_box'],
+                ];
+            })
+            ->sortBy('name')
+            ->values();
     }
 
     private function denyIfUnauthorizedForCatalog(): ?Response

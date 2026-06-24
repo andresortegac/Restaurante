@@ -27,6 +27,9 @@ class CustomerManagementController extends Controller
 
         $customers = Customer::query()
             ->withCount(['tableOrders', 'sales'])
+            ->withSum([
+                'balanceMovements as consumed_balance_total' => fn ($query) => $query->where('movement_type', 'sale_consumption'),
+            ], 'amount')
             ->when($filters['search'] ?? null, function ($query, string $search) {
                 $query->where(function ($nestedQuery) use ($search) {
                     $nestedQuery
@@ -52,6 +55,9 @@ class CustomerManagementController extends Controller
                     ->where('available_balance', '>', 0)
                     ->count(),
                 'availableBalance' => (float) Customer::query()->sum('available_balance'),
+                'consumedBalance' => abs((float) \App\Models\CustomerBalanceMovement::query()
+                    ->where('movement_type', 'sale_consumption')
+                    ->sum('amount')),
             ],
         ]);
     }
@@ -142,6 +148,49 @@ class CustomerManagementController extends Controller
             'customer' => $customer,
             'movements' => $movements,
             'summary' => $this->customerCreditSummary($customer),
+        ]);
+    }
+
+    public function showConsumedInvoices(Customer $customer)
+    {
+        if ($response = $this->denyIfUnauthorized(['customers.view'])) {
+            return $response;
+        }
+
+        $this->loadCustomerCreditSummary($customer);
+
+        $movements = $this->customerBalanceMovementsQuery($customer)
+            ->where('movement_type', 'sale_consumption')
+            ->whereNotNull('sale_id')
+            ->paginate(15);
+
+        return view('customers.credits.consumed-invoices', [
+            'customer' => $customer,
+            'movements' => $movements,
+            'summary' => $this->customerCreditSummary($customer),
+            'consumedTotal' => abs((float) $customer->balanceMovements()
+                ->where('movement_type', 'sale_consumption')
+                ->sum('amount')),
+        ]);
+    }
+
+    public function printDebtSummary(Customer $customer)
+    {
+        if ($response = $this->denyIfUnauthorized(['customers.view'])) {
+            return $response;
+        }
+
+        $this->loadCustomerCreditSummary($customer);
+
+        $credits = $this->customerCreditsQuery($customer)
+            ->where('status', 'pending')
+            ->get();
+
+        return view('customers.credits.print-debt-summary', [
+            'customer' => $customer,
+            'credits' => $credits,
+            'summary' => $this->customerCreditSummary($customer),
+            'printedAt' => now(),
         ]);
     }
 

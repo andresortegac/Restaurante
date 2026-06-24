@@ -24,6 +24,8 @@
                             <h5 class="mb-1">Saldo a favor</h5>
                         </div>
                         <div class="d-flex align-items-center gap-2">
+                            <a href="{{ route('customers.credits.consumed-invoices', $customer) }}" class="btn btn-outline-success btn-sm">Facturas consumidas</a>
+                            <a href="{{ route('customers.credits.debt-summary.print', $customer) }}" class="btn btn-outline-dark btn-sm" target="_blank" rel="noopener">Imprimir deuda</a>
                             <a href="{{ route('customers.credits.balance-history', $customer) }}" class="btn btn-outline-primary btn-sm">Ver historial del saldo a favor</a>
                             <a href="{{ route('customers.index') }}" class="btn btn-outline-secondary btn-sm">Volver</a>
                         </div>
