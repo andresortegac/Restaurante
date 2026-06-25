@@ -1,13 +1,11 @@
 @php
-    $brandName = config('app.name', 'Solomo & Pomo');
+    $brandName = 'SOLOMO & POMO';
     $documentTitle = $invoice->isElectronic() ? 'Factura electronica' : 'Recibo de caja';
     $customerName = $sale->customer?->name ?: $sale->customer_name;
     $paymentMethods = $sale->paymentMethodSummary();
     $receivedAmount = $sale->externalReceivedTotal();
     $changeAmount = $sale->paymentChangeTotal();
     $tipAmount = $sale->paymentTipTotal();
-    $appliedCustomerBalance = $sale->customerBalanceAppliedTotal();
-    $itemsCount = (float) $sale->items->sum('quantity');
     $isManualDelivery = ! $sale->tableOrder && ! $sale->delivery && str_contains((string) $sale->notes, 'Domicilio manual');
 @endphp
 <!DOCTYPE html>
@@ -330,16 +328,6 @@
         <div class="rule"></div>
 
         <div class="summary">
-            <div class="summary-row">
-                <span>Subtotal</span>
-                <strong>${{ money($sale->subtotal) }}</strong>
-            </div>
-
-            <div class="summary-row">
-                <span>Numero de articulos</span>
-                <strong>{{ number_format($itemsCount, floor($itemsCount) === $itemsCount ? 0 : 2) }}</strong>
-            </div>
-
             @if((float) $sale->discount_amount > 0)
                 <div class="summary-row">
                     <span>Descuento</span>
@@ -371,19 +359,7 @@
                     <span>Saldo credito</span>
                     <strong>${{ money($sale->total) }}</strong>
                 </div>
-            @elseif($appliedCustomerBalance > 0)
-                <div class="summary-row">
-                    <span>Saldo a favor aplicado</span>
-                    <strong>${{ money($appliedCustomerBalance) }}</strong>
-                </div>
             @elseif($receivedAmount > 0)
-                <div class="summary-row">
-                    <span>Recibido</span>
-                    <strong>${{ money($receivedAmount) }}</strong>
-                </div>
-            @endif
-
-            @if($appliedCustomerBalance > 0 && $receivedAmount > 0)
                 <div class="summary-row">
                     <span>Recibido</span>
                     <strong>${{ money($receivedAmount) }}</strong>
@@ -419,6 +395,11 @@
         const fallbackCloseUrl = @json(route('billing.history'));
 
         function handleClose() {
+            if (window.history.length > 1) {
+                window.history.back();
+                return;
+            }
+
             window.location.href = fallbackCloseUrl;
         }
 

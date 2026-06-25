@@ -22,7 +22,27 @@
         <div class="card module-card">
             <div class="card-header d-flex justify-content-between align-items-center gap-3">
                 <h5 class="card-title mb-0"><i class="fas fa-file-invoice-dollar"></i> Consumos con saldo a favor</h5>
-                <a href="{{ route('customers.credits.balance-history', $customer) }}" class="btn btn-outline-primary btn-sm">Historial completo</a>
+                <a href="{{ route('customers.credits.show', $customer) }}" class="btn btn-outline-secondary btn-sm">Volver</a>
+            </div>
+            <div class="card-body">
+                <form method="GET" action="{{ route('customers.credits.consumed-invoices', $customer) }}" class="row g-2 align-items-end">
+                    <div class="col-md-3">
+                        <label class="form-label" for="date_from">Desde</label>
+                        <input type="date" class="form-control" id="date_from" name="date_from" value="{{ $filters['date_from'] ?? '' }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label" for="date_to">Hasta</label>
+                        <input type="date" class="form-control" id="date_to" name="date_to" value="{{ $filters['date_to'] ?? '' }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label" for="invoice">Factura o ticket</label>
+                        <input type="text" class="form-control" id="invoice" name="invoice" value="{{ $filters['invoice'] ?? '' }}" placeholder="Numero de factura, ticket o venta">
+                    </div>
+                    <div class="col-md-3 d-flex gap-2">
+                        <button type="submit" class="btn btn-outline-primary w-100">Filtrar</button>
+                        <a href="{{ route('customers.credits.consumed-invoices', $customer) }}" class="btn btn-outline-secondary w-100">Limpiar</a>
+                    </div>
+                </form>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">

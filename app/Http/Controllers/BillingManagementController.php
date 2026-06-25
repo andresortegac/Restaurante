@@ -20,6 +20,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class BillingManagementController extends Controller
 {
@@ -137,7 +138,7 @@ class BillingManagementController extends Controller
 
         $validated = $request->validate([
             'customer_id' => ['nullable', 'exists:customers,id'],
-            'payment_method_id' => ['nullable', 'exists:payment_methods,id'],
+            'payment_method_id' => ['nullable', $this->allowedPaymentMethodRule()],
             'amount_received' => ['required', 'numeric', 'min:0'],
             'document_type' => ['nullable', 'in:ticket,electronic'],
             'payment_mode' => ['nullable', 'in:paid_now,customer_balance'],
@@ -225,7 +226,7 @@ class BillingManagementController extends Controller
             'customer_name' => ['nullable', 'string', 'max:255'],
             'notes' => ['nullable', 'string', 'max:1000'],
             'document_type' => ['nullable', 'in:ticket,electronic'],
-            'payment_method_id' => ['nullable', 'exists:payment_methods,id'],
+            'payment_method_id' => ['nullable', $this->allowedPaymentMethodRule()],
             'amount_received' => ['required', 'numeric', 'min:0'],
             'tip_amount' => ['nullable', 'numeric', 'min:0'],
             'reference' => ['nullable', 'string', 'max:255'],
@@ -360,7 +361,7 @@ class BillingManagementController extends Controller
         $remainingBalance = (float) ($sale->customerCredit?->balance ?? $sale->total);
 
         $validated = $request->validate([
-            'payment_method_id' => ['nullable', 'exists:payment_methods,id'],
+            'payment_method_id' => ['nullable', $this->allowedPaymentMethodRule()],
             'amount_received' => ['required', 'numeric', 'gt:0', 'max:' . $remainingBalance],
             'reference' => ['nullable', 'string', 'max:255'],
         ]);
@@ -369,8 +370,8 @@ class BillingManagementController extends Controller
 
         if (! empty($validated['payment_method_id'])) {
             $paymentMethod = PaymentMethod::query()
+                ->systemAllowed()
                 ->whereKey($validated['payment_method_id'])
-                ->where('active', true)
                 ->first();
         }
 
@@ -543,9 +544,16 @@ class BillingManagementController extends Controller
     private function paymentMethods()
     {
         return PaymentMethod::query()
-            ->where('active', true)
+            ->systemAllowed()
             ->orderBy('name')
             ->get(['id', 'name', 'code']);
+    }
+
+    private function allowedPaymentMethodRule()
+    {
+        return Rule::exists('payment_methods', 'id')
+            ->where('active', true)
+            ->whereIn('code', PaymentMethod::SYSTEM_ALLOWED_CODES);
     }
 
     private function isCashPaymentMethod(?PaymentMethod $paymentMethod): bool

@@ -64,8 +64,8 @@ class TableOrderBillingService
 
         if (! $isCredit && ! empty($payload['payment_method_id'])) {
             $paymentMethod = PaymentMethod::query()
+                ->systemAllowed()
                 ->whereKey($payload['payment_method_id'] ?? null)
-                ->where('active', true)
                 ->first();
 
             if (! $paymentMethod) {

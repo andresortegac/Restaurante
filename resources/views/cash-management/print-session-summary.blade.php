@@ -87,8 +87,6 @@
                     <th>Metodo</th>
                     <th class="right">Operaciones</th>
                     <th class="right">Total informado</th>
-                    <th class="right">Impacto en caja</th>
-                    <th>Tipo</th>
                 </tr>
             </thead>
             <tbody>
@@ -97,12 +95,10 @@
                         <td>{{ $paymentRow['name'] }}</td>
                         <td class="right">{{ number_format($paymentRow['count']) }}</td>
                         <td class="right">${{ money($paymentRow['total']) }}</td>
-                        <td class="right">${{ money($paymentRow['box_impact']) }}</td>
-                        <td>{{ $paymentRow['affects_box'] ? 'Afecta caja fisica' : 'Solo informativo' }}</td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="5">No hay pagos asociados a esta sesion.</td>
+                        <td colspan="3">No hay pagos asociados a esta sesion.</td>
                     </tr>
                 @endforelse
             </tbody>
@@ -119,7 +115,7 @@
                     <th>Venta / documento</th>
                     <th>Cliente</th>
                     <th>Descripcion</th>
-                    <th class="right">Caja fisica</th>
+                    <th class="right">Valor</th>
                 </tr>
             </thead>
             <tbody>
@@ -127,6 +123,7 @@
                     @php
                         $sale = $movement->sale;
                         $invoice = $sale?->invoice;
+                        $displayAmount = (float) ($movement->display_amount ?? $movement->amount);
                     @endphp
                     <tr>
                         <td>{{ $movement->occurred_at?->format('H:i') ?? '-' }}</td>
@@ -139,7 +136,7 @@
                         </td>
                         <td>{{ $sale?->customer?->name ?: $sale?->customer_name ?: 'Consumidor final' }}</td>
                         <td>{{ $movement->description ?: 'Sin detalle' }}</td>
-                        <td class="right">${{ money($movement->amount) }}</td>
+                        <td class="right">{{ $displayAmount < 0 ? '-' : '' }}${{ money(abs($displayAmount)) }}</td>
                     </tr>
                 @empty
                     <tr>

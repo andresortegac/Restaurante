@@ -52,6 +52,11 @@ class Customer extends Model
         return $this->hasMany(CustomerBalanceMovement::class);
     }
 
+    public function paymentReceipts(): HasMany
+    {
+        return $this->hasMany(CustomerPaymentReceipt::class);
+    }
+
     public function pendingCredits(): HasMany
     {
         return $this->hasMany(CustomerCredit::class)->where('status', 'pending');

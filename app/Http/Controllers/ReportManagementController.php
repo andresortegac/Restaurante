@@ -14,6 +14,7 @@ use Carbon\Carbon;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -56,7 +57,7 @@ class ReportManagementController extends Controller
             ],
             'sales' => $sales,
             'users' => User::query()->orderBy('name')->get(['id', 'name']),
-            'paymentMethods' => PaymentMethod::query()->where('active', true)->orderBy('name')->get(['id', 'name']),
+            'paymentMethods' => PaymentMethod::query()->systemAllowed()->orderBy('name')->get(['id', 'name']),
             'invoiceStatuses' => ['validated', 'submitted', 'pending', 'issued', 'failed', 'rejected'],
             'summary' => [
                 'sales_count' => $summaryRows->count(),
@@ -139,7 +140,7 @@ class ReportManagementController extends Controller
                 'end' => $end,
             ],
             'users' => User::query()->orderBy('name')->get(['id', 'name']),
-            'paymentMethods' => PaymentMethod::query()->where('active', true)->orderBy('name')->get(['id', 'name']),
+            'paymentMethods' => PaymentMethod::query()->systemAllowed()->orderBy('name')->get(['id', 'name']),
             'salesByUser' => $salesByUser,
             'dailySales' => $dailySales,
             'paymentBreakdown' => $paymentBreakdown,
@@ -205,7 +206,13 @@ class ReportManagementController extends Controller
             'date_from' => ['nullable', 'date'],
             'date_to' => ['nullable', 'date'],
             'user_id' => ['nullable', 'integer', 'exists:users,id'],
-            'payment_method_id' => ['nullable', 'integer', 'exists:payment_methods,id'],
+            'payment_method_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('payment_methods', 'id')
+                    ->where('active', true)
+                    ->whereIn('code', PaymentMethod::SYSTEM_ALLOWED_CODES),
+            ],
             'invoice_status' => ['nullable', 'string', 'max:50'],
         ]);
 

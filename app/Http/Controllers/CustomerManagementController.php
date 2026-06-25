@@ -4,6 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\Customer;
 use App\Models\CustomerCredit;
+use App\Models\CustomerPaymentReceipt;
+use App\Models\PaymentMethod;
+use App\Models\Sale;
 use App\Services\CustomerBalanceService;
 use App\Services\CustomerCreditService;
 use Illuminate\Http\RedirectResponse;
@@ -30,6 +33,12 @@ class CustomerManagementController extends Controller
             ->withSum([
                 'balanceMovements as consumed_balance_total' => fn ($query) => $query->where('movement_type', 'sale_consumption'),
             ], 'amount')
+            ->withSum([
+                'balanceMovements as paid_balance_total' => fn ($query) => $query->where('movement_type', 'customer_payment'),
+            ], 'amount')
+            ->withSum([
+                'pendingCredits as pending_credit_total' => fn ($query) => $query->where('status', 'pending'),
+            ], 'balance')
             ->when($filters['search'] ?? null, function ($query, string $search) {
                 $query->where(function ($nestedQuery) use ($search) {
                     $nestedQuery
@@ -55,9 +64,14 @@ class CustomerManagementController extends Controller
                     ->where('available_balance', '>', 0)
                     ->count(),
                 'availableBalance' => (float) Customer::query()->sum('available_balance'),
-                'consumedBalance' => abs((float) \App\Models\CustomerBalanceMovement::query()
-                    ->where('movement_type', 'sale_consumption')
-                    ->sum('amount')),
+                'consumedBalance' => money_value(max(0,
+                    abs((float) \App\Models\CustomerBalanceMovement::query()
+                        ->where('movement_type', 'sale_consumption')
+                        ->sum('amount'))
+                    - (float) \App\Models\CustomerBalanceMovement::query()
+                        ->where('movement_type', 'customer_payment')
+                        ->sum('amount')
+                )),
             ],
         ]);
     }
@@ -133,40 +147,177 @@ class CustomerManagementController extends Controller
         ]);
     }
 
-    public function showBalanceHistory(Customer $customer)
+    public function showCollect(Customer $customer)
     {
-        if ($response = $this->denyIfUnauthorized(['customers.view'])) {
+        if ($response = $this->denyIfUnauthorized(['customers.edit'])) {
             return $response;
         }
 
         $this->loadCustomerCreditSummary($customer);
 
-        $movements = $this->customerBalanceMovementsQuery($customer)
-            ->paginate(15);
+        $pendingCredits = $this->customerCreditsQuery($customer)
+            ->where('status', 'pending')
+            ->get();
 
-        return view('customers.credits.balance-history', [
+        $recentReceipts = $this->customerPaymentReceiptsQuery($customer)
+            ->limit(5)
+            ->get();
+
+        return view('customers.credits.collect', [
             'customer' => $customer,
-            'movements' => $movements,
             'summary' => $this->customerCreditSummary($customer),
+            'pendingCredits' => $pendingCredits,
+            'balanceDebt' => $this->customerBalanceDebt($customer),
+            'paymentMethods' => PaymentMethod::query()->systemAllowed()->orderBy('name')->get(),
+            'recentReceipts' => $recentReceipts,
         ]);
     }
 
-    public function showConsumedInvoices(Customer $customer)
+    public function showPaymentHistory(Request $request, Customer $customer)
     {
         if ($response = $this->denyIfUnauthorized(['customers.view'])) {
             return $response;
         }
+
+        $filters = $request->validate([
+            'date_from' => ['nullable', 'date'],
+            'date_to' => ['nullable', 'date', 'after_or_equal:date_from'],
+            'invoice' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $this->loadCustomerCreditSummary($customer);
+
+        $matchingSaleIds = collect();
+
+        if (filled($filters['invoice'] ?? null)) {
+            $invoice = (string) $filters['invoice'];
+
+            $matchingSaleIds = Sale::query()
+                ->where('customer_id', $customer->id)
+                ->where(function ($query) use ($invoice) {
+                    $query
+                        ->where('id', $invoice)
+                        ->orWhereHas('invoice', fn ($invoiceQuery) => $invoiceQuery->where('invoice_number', 'like', '%' . $invoice . '%'))
+                        ->orWhereHas('tableOrder', fn ($orderQuery) => $orderQuery->where('order_number', 'like', '%' . $invoice . '%'));
+                })
+                ->pluck('id');
+        }
+
+        $receipts = $this->customerPaymentReceiptsQuery($customer)
+            ->when($filters['date_from'] ?? null, fn ($query, string $dateFrom) => $query->whereDate('paid_at', '>=', $dateFrom))
+            ->when($filters['date_to'] ?? null, fn ($query, string $dateTo) => $query->whereDate('paid_at', '<=', $dateTo))
+            ->when($filters['invoice'] ?? null, function ($query, string $invoice) use ($matchingSaleIds) {
+                $query->where(function ($nestedQuery) use ($invoice, $matchingSaleIds) {
+                    $nestedQuery
+                        ->where('receipt_number', 'like', '%' . $invoice . '%')
+                        ->orWhere('reference', 'like', '%' . $invoice . '%');
+
+                    foreach ($matchingSaleIds as $saleId) {
+                        $nestedQuery->orWhere('allocations', 'like', '%"sale_id":' . $saleId . '%');
+                    }
+                });
+            })
+            ->paginate(15)
+            ->withQueryString();
+
+        return view('customers.credits.payment-history', [
+            'customer' => $customer,
+            'summary' => $this->customerCreditSummary($customer),
+            'receipts' => $receipts,
+            'filters' => $filters,
+        ]);
+    }
+
+    public function printPaymentReceipt(Customer $customer, CustomerPaymentReceipt $receipt)
+    {
+        if ($response = $this->denyIfUnauthorized(['customers.view'])) {
+            return $response;
+        }
+
+        if ((int) $receipt->customer_id !== (int) $customer->id) {
+            abort(404);
+        }
+
+        $receipt->load(['customer', 'paymentMethod', 'box', 'receivedBy']);
+
+        return view('customers.credits.print-payment-receipt', [
+            'customer' => $customer,
+            'receipt' => $receipt,
+        ]);
+    }
+
+    public function showBalanceHistory(Request $request, Customer $customer)
+    {
+        if ($response = $this->denyIfUnauthorized(['customers.view'])) {
+            return $response;
+        }
+
+        $filters = $request->validate([
+            'date_from' => ['nullable', 'date'],
+            'date_to' => ['nullable', 'date', 'after_or_equal:date_from'],
+            'ticket' => ['nullable', 'string', 'max:255'],
+            'printable' => ['nullable', 'boolean'],
+        ]);
+
+        $this->loadCustomerCreditSummary($customer);
+
+        $movements = $this->customerBalanceMovementsQuery($customer)
+            ->when($filters['date_from'] ?? null, fn ($query, string $dateFrom) => $query->whereDate('created_at', '>=', $dateFrom))
+            ->when($filters['date_to'] ?? null, fn ($query, string $dateTo) => $query->whereDate('created_at', '<=', $dateTo))
+            ->when($filters['ticket'] ?? null, function ($query, string $ticket) {
+                $query->whereHas('sale', function ($saleQuery) use ($ticket) {
+                    $saleQuery
+                        ->where('id', $ticket)
+                        ->orWhereHas('invoice', fn ($invoiceQuery) => $invoiceQuery->where('invoice_number', 'like', '%' . $ticket . '%'))
+                        ->orWhereHas('tableOrder', fn ($orderQuery) => $orderQuery->where('order_number', 'like', '%' . $ticket . '%'));
+                });
+            })
+            ->when($request->boolean('printable'), fn ($query) => $query->whereNotNull('sale_id'))
+            ->paginate(15)
+            ->withQueryString();
+
+        return view('customers.credits.balance-history', [
+            'customer' => $customer,
+            'movements' => $movements,
+            'filters' => $filters,
+            'summary' => $this->customerCreditSummary($customer),
+        ]);
+    }
+
+    public function showConsumedInvoices(Request $request, Customer $customer)
+    {
+        if ($response = $this->denyIfUnauthorized(['customers.view'])) {
+            return $response;
+        }
+
+        $filters = $request->validate([
+            'date_from' => ['nullable', 'date'],
+            'date_to' => ['nullable', 'date', 'after_or_equal:date_from'],
+            'invoice' => ['nullable', 'string', 'max:255'],
+        ]);
 
         $this->loadCustomerCreditSummary($customer);
 
         $movements = $this->customerBalanceMovementsQuery($customer)
             ->where('movement_type', 'sale_consumption')
             ->whereNotNull('sale_id')
-            ->paginate(15);
+            ->when($filters['date_from'] ?? null, fn ($query, string $dateFrom) => $query->whereDate('created_at', '>=', $dateFrom))
+            ->when($filters['date_to'] ?? null, fn ($query, string $dateTo) => $query->whereDate('created_at', '<=', $dateTo))
+            ->when($filters['invoice'] ?? null, function ($query, string $invoice) {
+                $query->whereHas('sale', function ($saleQuery) use ($invoice) {
+                    $saleQuery
+                        ->where('id', $invoice)
+                        ->orWhereHas('invoice', fn ($invoiceQuery) => $invoiceQuery->where('invoice_number', 'like', '%' . $invoice . '%'))
+                        ->orWhereHas('tableOrder', fn ($orderQuery) => $orderQuery->where('order_number', 'like', '%' . $invoice . '%'));
+                });
+            })
+            ->paginate(15)
+            ->withQueryString();
 
         return view('customers.credits.consumed-invoices', [
             'customer' => $customer,
             'movements' => $movements,
+            'filters' => $filters,
             'summary' => $this->customerCreditSummary($customer),
             'consumedTotal' => abs((float) $customer->balanceMovements()
                 ->where('movement_type', 'sale_consumption')
@@ -189,6 +340,7 @@ class CustomerManagementController extends Controller
         return view('customers.credits.print-debt-summary', [
             'customer' => $customer,
             'credits' => $credits,
+            'balanceDebt' => $this->customerBalanceDebt($customer),
             'summary' => $this->customerCreditSummary($customer),
             'printedAt' => now(),
         ]);
@@ -250,7 +402,7 @@ class CustomerManagementController extends Controller
         }
 
         $validated = $request->validate([
-            'payment_method_id' => ['nullable', 'exists:payment_methods,id'],
+            'payment_method_id' => ['nullable', $this->allowedPaymentMethodRule()],
             'amount_received' => ['required', 'numeric', 'gt:0', 'max:' . (float) $credit->balance],
             'reference' => ['nullable', 'string', 'max:255'],
         ]);
@@ -268,7 +420,7 @@ class CustomerManagementController extends Controller
             return $response;
         }
 
-        $totalPending = money_value((float) $customer->pendingCredits()->sum('balance'));
+        $totalPending = money_value((float) $customer->pendingCredits()->sum('balance') + $this->customerBalanceDebt($customer));
 
         if ($totalPending <= 0) {
             return redirect()
@@ -286,6 +438,7 @@ class CustomerManagementController extends Controller
 
         $validated = $request->validate([
             'payment_mode' => ['nullable', 'in:full,partial'],
+            'payment_method_id' => ['nullable', $this->allowedPaymentMethodRule()],
             'amount_received' => ['required', 'numeric', 'gt:0', 'max:' . $totalPending],
             'reference' => ['nullable', 'string', 'max:255'],
         ]);
@@ -293,7 +446,7 @@ class CustomerManagementController extends Controller
         $result = $customerCreditService->payCustomerBalance($customer, $validated, Auth::id());
 
         return redirect()
-            ->route('customers.credits.show', $customer)
+            ->route('customers.credits.receipts.print', [$customer, $result['receipt']])
             ->with('success', $result['remaining_pending'] <= 0
                 ? 'La deuda del cliente fue cobrada completamente.'
                 : 'Abono registrado correctamente.');
@@ -475,23 +628,55 @@ class CustomerManagementController extends Controller
             ->orderByDesc('id');
     }
 
+    private function customerPaymentReceiptsQuery(Customer $customer)
+    {
+        return $customer->paymentReceipts()
+            ->with(['paymentMethod', 'box', 'receivedBy'])
+            ->latest('paid_at')
+            ->latest('id');
+    }
+
     private function customerCreditSummary(Customer $customer): array
     {
-        $consumedBalance = abs((float) $customer->balanceMovements()
+        $grossConsumedBalance = abs((float) $customer->balanceMovements()
             ->where('movement_type', 'sale_consumption')
             ->sum('amount'));
+        $balanceDebt = $this->customerBalanceDebt($customer);
         $availableBalance = money_value($customer->available_balance ?? 0);
-        $balanceTop = money_value($availableBalance + $consumedBalance);
+        $balanceTop = money_value($availableBalance + $balanceDebt);
+        $pendingCredits = money_value((float) ($customer->pending_credit_total ?? 0));
 
         return [
-            'pending' => (float) ($customer->pending_credit_total ?? 0),
-            'pendingCount' => (int) ($customer->pending_credits_count ?? 0),
+            'pending' => money_value($pendingCredits + $balanceDebt),
+            'pendingCredits' => $pendingCredits,
+            'balanceDebt' => $balanceDebt,
+            'pendingCount' => (int) ($customer->pending_credits_count ?? 0) + ($balanceDebt > 0 ? 1 : 0),
             'paidCount' => (int) ($customer->paid_credits_count ?? 0),
             'available' => $availableBalance,
-            'consumed' => $consumedBalance,
+            'consumed' => $balanceDebt,
+            'grossConsumed' => $grossConsumedBalance,
             'top' => $balanceTop,
             'remainingToTop' => $availableBalance,
         ];
+    }
+
+    private function customerBalanceDebt(Customer $customer): int
+    {
+        $consumed = abs((float) $customer->balanceMovements()
+            ->where('movement_type', 'sale_consumption')
+            ->sum('amount'));
+        $paid = (float) $customer->balanceMovements()
+            ->where('movement_type', 'customer_payment')
+            ->sum('amount');
+
+        return money_value(max(0, $consumed - $paid));
+    }
+
+    private function allowedPaymentMethodRule()
+    {
+        return Rule::exists('payment_methods', 'id')
+            ->where('active', true)
+            ->whereIn('code', PaymentMethod::SYSTEM_ALLOWED_CODES);
     }
 
     private function denyIfUnauthorized(array $permissions): ?Response

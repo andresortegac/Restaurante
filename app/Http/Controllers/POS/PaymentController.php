@@ -7,13 +7,14 @@ use App\Models\Payment;
 use App\Models\PaymentMethod;
 use App\Models\Sale;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class PaymentController extends Controller
 {
     public function getMethods()
     {
         $methods = PaymentMethod::query()
-            ->where('active', true)
+            ->systemAllowed()
             ->orderBy('name')
             ->get()
             ->map(function (PaymentMethod $method): array {
@@ -32,7 +33,12 @@ class PaymentController extends Controller
     {
         $validated = $request->validate([
             'sale_id' => 'required|exists:sales,id',
-            'payment_method_id' => 'required|exists:payment_methods,id',
+            'payment_method_id' => [
+                'required',
+                Rule::exists('payment_methods', 'id')
+                    ->where('active', true)
+                    ->whereIn('code', PaymentMethod::SYSTEM_ALLOWED_CODES),
+            ],
             'amount' => 'required|numeric|min:0',
             'received_amount' => 'nullable|numeric|min:0',
             'change_amount' => 'nullable|numeric|min:0',

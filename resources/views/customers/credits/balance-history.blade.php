@@ -8,6 +8,7 @@
             'manual_addition' => 'Ingreso manual',
             'manual_removal' => 'Descuento manual',
             'sale_consumption' => 'Consumo en venta',
+            'customer_payment' => 'Pago del cliente',
         ];
     @endphp
 
@@ -31,15 +32,39 @@
                 </div>
                 <div class="d-flex align-items-center gap-2">
                     <a href="{{ route('customers.credits.show', $customer) }}" class="btn btn-primary btn-sm">Volver a gestionar</a>
-                    <a href="{{ route('customers.index') }}" class="btn btn-outline-secondary btn-sm">Volver</a>
                 </div>
             </div>
             <div class="card-body">
+                <form method="GET" action="{{ route('customers.credits.balance-history', $customer) }}" class="row g-2 align-items-end mb-4">
+                    <div class="col-md-3">
+                        <label class="form-label" for="date_from">Desde</label>
+                        <input type="date" class="form-control" id="date_from" name="date_from" value="{{ $filters['date_from'] ?? '' }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label" for="date_to">Hasta</label>
+                        <input type="date" class="form-control" id="date_to" name="date_to" value="{{ $filters['date_to'] ?? '' }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label" for="ticket">Ticket o factura</label>
+                        <input type="text" class="form-control" id="ticket" name="ticket" value="{{ $filters['ticket'] ?? '' }}" placeholder="Numero de ticket, factura o venta">
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-check mb-2">
+                            <input type="checkbox" class="form-check-input" id="printable" name="printable" value="1" @checked((bool) ($filters['printable'] ?? false))>
+                            <label class="form-check-label" for="printable">Solo con recibo para imprimir</label>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-outline-primary w-100">Filtrar</button>
+                            <a href="{{ route('customers.credits.balance-history', $customer) }}" class="btn btn-outline-secondary w-100">Limpiar</a>
+                        </div>
+                    </div>
+                </form>
+
                 @if($movements->isEmpty())
                     <div class="empty-state py-4">
                         <i class="fas fa-wallet"></i>
                         <h5 class="mb-2">Sin movimientos de saldo a favor</h5>
-                        <p class="mb-0">Cuando agregues, quites o consumas saldo a favor, los movimientos apareceran aqui.</p>
+                        <p class="mb-0">No hay movimientos que coincidan con los filtros aplicados.</p>
                     </div>
                 @else
                     <div class="table-responsive">

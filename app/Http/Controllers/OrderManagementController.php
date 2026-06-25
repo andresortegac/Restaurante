@@ -16,6 +16,7 @@ use Illuminate\Http\Response;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class OrderManagementController extends Controller
@@ -322,7 +323,7 @@ class OrderManagementController extends Controller
 
         $validated = $request->validate([
             'customer_id' => ['nullable', 'exists:customers,id'],
-            'payment_method_id' => ['nullable', 'exists:payment_methods,id'],
+            'payment_method_id' => ['nullable', Rule::exists('payment_methods', 'id')->where('active', true)->whereIn('code', PaymentMethod::SYSTEM_ALLOWED_CODES)],
             'amount_received' => ['required', 'numeric', 'min:0'],
             'tip_amount' => ['nullable', 'numeric', 'min:0'],
             'reference' => ['nullable', 'string', 'max:255'],
@@ -476,7 +477,7 @@ class OrderManagementController extends Controller
     private function paymentMethods(): Collection
     {
         return PaymentMethod::query()
-            ->where('active', true)
+            ->systemAllowed()
             ->orderBy('name')
             ->get(['id', 'name', 'code']);
     }

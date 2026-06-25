@@ -33,9 +33,19 @@ class DatabaseSeederTest extends TestCase
         ]);
         $this->assertGreaterThan(0, PaymentMethod::query()->count());
         $this->assertDatabaseHas('payment_methods', [
+            'code' => 'CASH',
+            'name' => 'Efectivo',
+            'active' => true,
+        ]);
+        $this->assertDatabaseHas('payment_methods', [
+            'code' => 'TRANSFER',
+            'name' => 'Transferencia Bancaria',
+            'active' => true,
+        ]);
+        $this->assertDatabaseHas('payment_methods', [
             'code' => 'DIGITAL_WALLET',
             'name' => 'Nequi',
-            'active' => true,
+            'active' => false,
         ]);
         $this->assertDatabaseHas('payment_methods', [
             'code' => 'DEBIT_CARD',

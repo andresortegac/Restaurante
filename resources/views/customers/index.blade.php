@@ -15,14 +15,6 @@
                 <span class="module-kicker">Clientes</span>
                 <h1>Clientes del restaurante</h1>
             </div>
-            <div class="summary-group">
-                <span class="summary-chip">{{ $summary['total'] }} registrados</span>
-                <span class="summary-chip">{{ $summary['active'] }} activos</span>
-                <span class="summary-chip">{{ $summary['inactive'] }} inactivos</span>
-                <span class="summary-chip">{{ $summary['customersWithAvailableBalance'] }} con saldo a favor</span>
-                <span class="summary-chip">${{ money($summary['availableBalance']) }} a favor</span>
-                <span class="summary-chip">${{ money($summary['consumedBalance']) }} consumido</span>
-            </div>
         </section>
 
         <div class="module-toolbar">
@@ -60,7 +52,6 @@
                             <tr>
                                 <th>Cliente</th>
                                 <th>Contacto</th>
-                                <th>Movimientos</th>
                                 <th>Consumido</th>
                                 <th>Saldo a favor</th>
                                 <th>Estado</th>
@@ -69,6 +60,10 @@
                         </thead>
                         <tbody>
                             @forelse($customers as $customer)
+                                @php
+                                    $balanceDebt = money_value(max(0, abs((float) ($customer->consumed_balance_total ?? 0)) - (float) ($customer->paid_balance_total ?? 0)));
+                                    $pendingTotal = money_value((float) ($customer->pending_credit_total ?? 0) + $balanceDebt);
+                                @endphp
                                 <tr>
                                     <td>
                                         <strong>{{ $customer->name }}</strong>
@@ -79,18 +74,16 @@
                                         <div class="table-note">{{ $customer->email ?: 'Sin email' }}</div>
                                     </td>
                                     <td>
-                                        <div>{{ $customer->table_orders_count }} pedidos</div>
-                                        <div class="table-note">{{ $customer->sales_count }} ventas</div>
-                                    </td>
-                                    <td>
-                                        <strong>${{ money(abs((float) ($customer->consumed_balance_total ?? 0))) }}</strong>
-                                        <div class="table-note">Desde saldo a favor</div>
+                                        <strong>${{ money($balanceDebt) }}</strong>
+                                        <div class="table-note">Por cobrar desde saldo a favor</div>
                                     </td>
                                     <td>
                                         <strong>${{ money($customer->available_balance ?? 0) }}</strong>
                                         <div class="table-note">
-                                            @if((float) ($customer->pending_credit_total ?? 0) > 0)
-                                                Cartera activa
+                                            @if($pendingTotal > 0)
+                                                Debe ${{ money($pendingTotal) }}
+                                            @elseif((float) ($customer->available_balance ?? 0) > 0)
+                                                Disponible
                                             @else
                                                 Sin saldo a favor
                                             @endif
@@ -104,11 +97,14 @@
                                     <td>
                                         <div class="table-actions justify-content-end">
                                             <a href="{{ route('customers.credits.show', $customer) }}" class="btn btn-outline-secondary btn-sm px-3">Saldo</a>
+                                            @if($pendingTotal > 0)
+                                                <a href="{{ route('customers.credits.collect', $customer) }}" class="btn btn-success btn-sm px-3">Cobrar deuda</a>
+                                            @endif
                                             @if($canEditCustomer)
                                                 <a href="{{ route('customers.edit', $customer) }}" class="btn btn-outline-primary btn-sm px-3">Editar</a>
                                             @endif
                                             @if($canDeleteCustomer)
-                                                <form method="POST" action="{{ route('customers.destroy', $customer) }}" class="m-0 w-100" onsubmit="return confirm('Deseas eliminar este cliente?');">
+                                                <form method="POST" action="{{ route('customers.destroy', $customer) }}" class="m-0 w-100 customer-delete-form" data-customer-name="{{ $customer->name }}">
                                                     @csrf
                                                     @method('DELETE')
                                                     <button type="submit" class="btn btn-outline-danger btn-sm px-3 w-100">Eliminar</button>
@@ -119,7 +115,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="7" class="text-center py-4 text-muted">Todavia no hay clientes registrados.</td>
+                                    <td colspan="6" class="text-center py-4 text-muted">Todavia no hay clientes registrados.</td>
                                 </tr>
                             @endforelse
                         </tbody>
@@ -133,3 +129,41 @@
         </div>
     </div>
 @endsection
+
+@push('scripts')
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            document.querySelectorAll('.customer-delete-form').forEach(function (form) {
+                form.addEventListener('submit', async function (event) {
+                    event.preventDefault();
+
+                    const customerName = form.dataset.customerName || 'este cliente';
+                    const message = 'Deseas eliminar a ' + customerName + '?';
+
+                    if (! window.Swal) {
+                        if (confirm(message)) {
+                            form.submit();
+                        }
+
+                        return;
+                    }
+
+                    const result = await Swal.fire({
+                        icon: 'warning',
+                        title: 'Eliminar cliente',
+                        text: message,
+                        showCancelButton: true,
+                        confirmButtonText: 'Eliminar',
+                        cancelButtonText: 'Cancelar',
+                        confirmButtonColor: '#dc3545',
+                        cancelButtonColor: '#6c757d',
+                    });
+
+                    if (result.isConfirmed) {
+                        form.submit();
+                    }
+                });
+            });
+        });
+    </script>
+@endpush

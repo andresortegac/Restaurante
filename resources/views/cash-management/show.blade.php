@@ -10,8 +10,15 @@
             ? (float) $currentSession->difference_amount
             : 0;
         $requestedPanel = request('panel');
-        $showManualMovement = $currentSession && $currentSession->isOpen() && $canRegisterMovements && $requestedPanel !== 'close';
-        $showClosing = $currentSession && $currentSession->isOpen() && $requestedPanel !== 'movement';
+        $showManualMovement = $currentSession && $currentSession->isOpen() && $canRegisterMovements;
+        $showClosing = $currentSession && $currentSession->isOpen();
+        $bankTransferTotal = $paymentBreakdown
+            ->where('code', 'TRANSFER')
+            ->sum('total');
+        $defaultCashMethodId = $paymentMethods
+            ->firstWhere('code', 'CASH')
+            ?->id;
+        $selectedManualPaymentMethodId = old('payment_method_id', $defaultCashMethodId);
     @endphp
 
     <div class="module-page">
@@ -24,15 +31,9 @@
                 @endif
             </div>
             <div class="summary-group">
-                <span class="summary-chip">{{ $currentSession?->isOpen() ? 'Sesion abierta' : 'Sesion cerrada' }}</span>
-                <span class="summary-chip">${{ money($incomeTotal) }} ingresos</span>
-                <span class="summary-chip">${{ money($expenseTotal) }} egresos</span>
-                <span class="summary-chip">${{ money($currentBalance) }} saldo actual</span>
-                @if($canManageBoxCatalog)
-                    <a href="{{ route('cash-management.edit', $box) }}" class="btn btn-outline-secondary">
-                        <i class="fas fa-pen"></i> Editar caja
-                    </a>
-                @endif
+                <a href="{{ route('cash-management.index') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left"></i> Volver
+                </a>
             </div>
         </section>
 
@@ -106,6 +107,16 @@
                                         <label class="form-label" for="amount">Monto</label>
                                         <input type="number" step="1" min="1" class="form-control" id="amount" name="amount" value="{{ money_input(old('amount', 0)) }}" required>
                                     </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label" for="payment_method_id">Metodo de pago</label>
+                                        <select class="form-select" id="payment_method_id" name="payment_method_id">
+                                            @foreach($paymentMethods as $paymentMethod)
+                                                <option value="{{ $paymentMethod->id }}" @selected((string) $selectedManualPaymentMethodId === (string) $paymentMethod->id)>
+                                                    {{ $paymentMethod->name }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </div>
                                     <div class="col-md-12">
                                         <label class="form-label" for="description">Motivo</label>
                                         <textarea class="form-control" id="description" name="description" rows="3" maxlength="255" required>{{ old('description') }}</textarea>
@@ -134,8 +145,8 @@
                             </div>
                             <div class="col-md-3">
                                 <div class="meta-box h-100">
-                                    <div class="summary-kicker">Ventas efectivo</div>
-                                    <div class="fw-bold">${{ money($automaticIncome) }}</div>
+                                    <div class="summary-kicker">Transferencias bancarias</div>
+                                    <div class="fw-bold">${{ money($bankTransferTotal) }}</div>
                                 </div>
                             </div>
                             <div class="col-md-3">
@@ -152,54 +163,11 @@
                             </div>
                         </div>
 
-                        @if($paymentBreakdown->isNotEmpty())
-                            <div class="meta-box mb-3">
-                                <div class="d-flex flex-wrap justify-content-between gap-3 mb-2">
-                                    <div>
-                                        <div class="summary-kicker">Entradas por metodo de pago</div>
-                                        <div class="h5 mb-0">${{ money($reportedPaymentTotal) }} informado</div>
-                                    </div>
-                                    <a href="{{ route('cash-management.history.sessions.print', $currentSession) }}" class="btn btn-outline-dark btn-sm" target="_blank" rel="noopener">
-                                        <i class="fas fa-print"></i> Imprimir detallado
-                                    </a>
-                                </div>
-                                <div class="table-responsive">
-                                    <table class="table table-sm align-middle mb-0">
-                                        <thead>
-                                            <tr>
-                                                <th>Metodo</th>
-                                                <th class="text-end">Operaciones</th>
-                                                <th class="text-end">Informado</th>
-                                                <th class="text-end">A caja fisica</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            @foreach($paymentBreakdown as $paymentRow)
-                                                <tr>
-                                                    <td>
-                                                        <strong>{{ $paymentRow['name'] }}</strong>
-                                                        <div class="table-note">{{ $paymentRow['affects_box'] ? 'Afecta caja' : 'Solo informativo' }}</div>
-                                                    </td>
-                                                    <td class="text-end">{{ number_format($paymentRow['count']) }}</td>
-                                                    <td class="text-end">${{ money($paymentRow['total']) }}</td>
-                                                    <td class="text-end">${{ money($paymentRow['box_impact']) }}</td>
-                                                </tr>
-                                            @endforeach
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        @endif
-
                         <div class="meta-box mb-3">
                             <div class="d-flex flex-wrap justify-content-between gap-3">
                                 <div>
-                                    <div class="summary-kicker">Saldo esperado segun sistema</div>
+                                    <div class="summary-kicker">Saldo esperado ventas en efectivo</div>
                                     <div class="h5 mb-0">${{ money($expectedClosingBalance) }}</div>
-                                </div>
-                                <div>
-                                    <div class="summary-kicker">Diferencia estimada</div>
-                                    <div class="h5 mb-0" id="closingDifferencePreview">${{ money($closingDifference) }}</div>
                                 </div>
                             </div>
                         </div>
@@ -210,20 +178,15 @@
                             <div class="col-md-4">
                                 <label class="form-label" for="counted_balance">Valor contado fisicamente</label>
                                 <input type="number" step="1" min="0" class="form-control" id="counted_balance" name="counted_balance" value="{{ money_input(old('counted_balance', $expectedClosingBalance)) }}" required>
+                                <div class="form-text" id="closingDifferencePreview"></div>
                             </div>
                             <div class="col-md-8">
                                 <label class="form-label" for="closing_notes">Observaciones</label>
                                 <input type="text" class="form-control" id="closing_notes" name="closing_notes">
                             </div>
                             <div class="col-12">
-                                <div class="table-note">Si el valor contado coincide con el saldo esperado, la diferencia quedara en $0.</div>
-                            </div>
-                            <div class="col-12">
                                 <div class="d-flex flex-wrap gap-2">
                                     <button type="submit" class="btn btn-primary">Cerrar caja</button>
-                                    <a href="{{ route('cash-management.history.sessions.print', $currentSession) }}" class="btn btn-outline-dark" target="_blank" rel="noopener">
-                                        <i class="fas fa-print"></i> Imprimir detallado
-                                    </a>
                                 </div>
                             </div>
                         </form>
@@ -261,20 +224,29 @@
                 return;
             }
 
+            countedBalanceInput.value = countedBalanceInput.value || expectedBalance;
+
             function syncDifferencePreview() {
                 const countedBalance = Number(countedBalanceInput.value || 0);
-                const difference = countedBalance - Number(expectedBalance || 0);
-                differencePreview.textContent = '$' + Math.round(difference).toLocaleString('es-CO');
+                const difference = Math.round(countedBalance - Number(expectedBalance || 0));
+                const absoluteDifference = Math.abs(difference).toLocaleString('es-CO');
 
-                differencePreview.classList.remove('text-success', 'text-danger', 'text-muted', 'text-primary');
+                differencePreview.classList.remove('text-success', 'text-danger', 'text-primary');
 
-                if (Math.abs(difference) < 0.009) {
+                if (difference === 0) {
+                    differencePreview.textContent = 'Sin diferencia.';
                     differencePreview.classList.add('text-success');
-                } else if (difference > 0) {
-                    differencePreview.classList.add('text-primary');
-                } else {
-                    differencePreview.classList.add('text-danger');
+                    return;
                 }
+
+                if (difference > 0) {
+                    differencePreview.textContent = 'Sobra $' + absoluteDifference + ' frente al saldo esperado.';
+                    differencePreview.classList.add('text-primary');
+                    return;
+                }
+
+                differencePreview.textContent = 'Falta $' + absoluteDifference + ' frente al saldo esperado.';
+                differencePreview.classList.add('text-danger');
             }
 
             countedBalanceInput.addEventListener('input', syncDifferencePreview);

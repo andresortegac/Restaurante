@@ -3,9 +3,12 @@
 namespace Tests\Feature;
 
 use App\Models\Box;
+use App\Models\BoxAuditLog;
 use App\Models\BoxMovement;
 use App\Models\BoxSession;
 use App\Models\Invoice;
+use App\Models\Payment;
+use App\Models\PaymentMethod;
 use App\Models\Role;
 use App\Models\Sale;
 use App\Models\User;
@@ -93,6 +96,18 @@ class CashManagementTest extends TestCase
             'code' => 'BOX-CENTRAL',
             'status' => 'closed',
         ]);
+        $cashMethod = PaymentMethod::create([
+            'name' => 'Efectivo',
+            'code' => 'CASH',
+            'description' => 'Pago en efectivo',
+            'active' => true,
+        ]);
+        $transferMethod = PaymentMethod::create([
+            'name' => 'Transferencia Bancaria',
+            'code' => 'TRANSFER',
+            'description' => 'Transferencia electronica',
+            'active' => true,
+        ]);
 
         $this->actingAs($user)
             ->post(route('cash-management.open', $box), [
@@ -111,8 +126,18 @@ class CashManagementTest extends TestCase
         $this->actingAs($user)
             ->post(route('cash-management.movements.store', $box), [
                 'movement_type' => 'manual_income',
+                'payment_method_id' => $cashMethod->id,
                 'amount' => 25,
                 'description' => 'Ingreso por fondo adicional',
+            ])
+            ->assertRedirect(route('cash-management.show', $box));
+
+        $this->actingAs($user)
+            ->post(route('cash-management.movements.store', $box), [
+                'movement_type' => 'manual_income',
+                'payment_method_id' => $transferMethod->id,
+                'amount' => 40,
+                'description' => 'Ingreso por transferencia',
             ])
             ->assertRedirect(route('cash-management.show', $box));
 
@@ -129,6 +154,15 @@ class CashManagementTest extends TestCase
             'user_id' => $user->id,
             'movement_type' => 'manual_income',
             'amount' => '25.00',
+            'description' => 'Ingreso por fondo adicional | Metodo Efectivo',
+        ]);
+
+        $this->assertDatabaseHas('box_movements', [
+            'box_id' => $box->id,
+            'user_id' => $user->id,
+            'movement_type' => 'manual_income',
+            'amount' => '0.00',
+            'description' => 'Ingreso por transferencia | Metodo Transferencia Bancaria',
         ]);
 
         $this->assertDatabaseHas('box_movements', [
@@ -179,12 +213,30 @@ class CashManagementTest extends TestCase
             'code' => 'BOX-AUX',
             'status' => 'closed',
         ]);
+        PaymentMethod::create([
+            'name' => 'Efectivo',
+            'code' => 'CASH',
+            'description' => 'Pago en efectivo',
+            'active' => true,
+        ]);
+        $transferMethod = PaymentMethod::create([
+            'name' => 'Transferencia Bancaria',
+            'code' => 'TRANSFER',
+            'description' => 'Transferencia electronica',
+            'active' => true,
+        ]);
 
         $this->actingAs($user)
             ->post(route('cash-management.open', $box), [
                 'opening_balance' => 80,
             ])
             ->assertRedirect(route('cash-management.show', $box));
+
+        $this->actingAs($user)
+            ->get(route('cash-management.index'))
+            ->assertOk()
+            ->assertDontSee('Movimiento manual')
+            ->assertDontSee('Sesiones acumuladas');
 
         $response = $this->actingAs($user)
             ->get(route('cash-management.show', $box));
@@ -193,22 +245,85 @@ class CashManagementTest extends TestCase
         $response->assertSee('Movimiento manual');
         $response->assertSee('Ingreso manual');
         $response->assertSee('Egreso manual');
+        $response->assertSee('Metodo de pago');
+        $response->assertSee('Efectivo');
+        $response->assertSee('Transferencia Bancaria');
 
         $this->actingAs($user)
             ->get(route('cash-management.movements.create', $box))
             ->assertRedirect(route('cash-management.show', ['box' => $box, 'panel' => 'movement']) . '#manual-movement');
 
+        $session = BoxSession::query()
+            ->where('box_id', $box->id)
+            ->where('status', 'open')
+            ->firstOrFail();
+        $sale = Sale::create([
+            'user_id' => $user->id,
+            'box_id' => $box->id,
+            'subtotal' => 70000,
+            'tax_amount' => 0,
+            'total' => 70000,
+            'status' => 'completed',
+            'payment_status' => 'paid',
+        ]);
+        $payment = Payment::create([
+            'sale_id' => $sale->id,
+            'payment_method_id' => $transferMethod->id,
+            'amount' => 70000,
+            'received_amount' => 70000,
+            'change_amount' => 0,
+            'tip_amount' => 0,
+            'status' => 'completed',
+        ]);
+        $movement = BoxMovement::create([
+            'box_id' => $box->id,
+            'box_session_id' => $session->id,
+            'sale_id' => $sale->id,
+            'payment_id' => $payment->id,
+            'user_id' => $user->id,
+            'movement_type' => 'table_order_payment',
+            'amount' => 0,
+            'balance_before' => 80,
+            'balance_after' => 80,
+            'description' => 'Cobro por transferencia',
+            'occurred_at' => now(),
+        ]);
+        BoxAuditLog::create([
+            'box_id' => $box->id,
+            'box_session_id' => $session->id,
+            'user_id' => $user->id,
+            'action' => 'table_order_payment',
+            'description' => 'Cobro por transferencia',
+            'metadata' => [
+                'movement_id' => $movement->id,
+                'payment_id' => $payment->id,
+                'payment_method_id' => $transferMethod->id,
+                'amount' => 0,
+            ],
+            'occurred_at' => now(),
+        ]);
+
         $this->actingAs($user)
             ->get(route('cash-management.show', ['box' => $box, 'panel' => 'close']))
             ->assertOk()
             ->assertSee('Cierre diario')
-            ->assertDontSee('Movimiento manual');
+            ->assertSee('Volver')
+            ->assertSee(route('cash-management.index'))
+            ->assertSee('Movimiento manual')
+            ->assertSee('Guardar movimiento')
+            ->assertSee('Transferencias bancarias')
+            ->assertSee('$70,000')
+            ->assertSee('Saldo esperado ventas en efectivo')
+            ->assertSee('closingDifferencePreview')
+            ->assertDontSee('Entradas por metodo de pago')
+            ->assertDontSee('Imprimir detallado')
+            ->assertDontSee('Si el valor contado coincide con el saldo esperado');
 
         $this->actingAs($user)
             ->get(route('cash-management.show', ['box' => $box, 'panel' => 'movement']))
             ->assertOk()
             ->assertSee('Movimiento manual')
-            ->assertDontSee('Cierre diario');
+            ->assertSee('Cierre diario');
     }
 
     public function test_user_gets_a_form_error_when_trying_to_open_a_second_box(): void
@@ -303,6 +418,31 @@ class CashManagementTest extends TestCase
             'status' => 'completed',
             'payment_status' => 'paid',
         ]);
+        $transferMethod = PaymentMethod::create([
+            'name' => 'Transferencia Bancaria',
+            'code' => 'TRANSFER',
+            'description' => 'Transferencia electronica',
+            'active' => true,
+        ]);
+        $transferSale = Sale::create([
+            'user_id' => $user->id,
+            'box_id' => $box->id,
+            'customer_name' => 'Cliente Transferencia',
+            'subtotal' => 95,
+            'tax_amount' => 0,
+            'total' => 95,
+            'status' => 'completed',
+            'payment_status' => 'paid',
+        ]);
+        $transferPayment = Payment::create([
+            'sale_id' => $transferSale->id,
+            'payment_method_id' => $transferMethod->id,
+            'amount' => 95,
+            'received_amount' => 95,
+            'change_amount' => 0,
+            'tip_amount' => 0,
+            'status' => 'completed',
+        ]);
 
         Invoice::create([
             'sale_id' => $sale->id,
@@ -328,6 +468,56 @@ class CashManagementTest extends TestCase
 
         BoxMovement::create([
             'box_id' => $box->id,
+            'box_session_id' => $morningSession->id,
+            'sale_id' => $transferSale->id,
+            'payment_id' => $transferPayment->id,
+            'user_id' => $user->id,
+            'movement_type' => 'table_order_payment',
+            'amount' => 0,
+            'balance_before' => 220,
+            'balance_after' => 220,
+            'description' => 'Cobro por transferencia',
+            'occurred_at' => Carbon::parse('2026-06-22 09:30:00'),
+        ]);
+
+        BoxMovement::create([
+            'box_id' => $box->id,
+            'box_session_id' => $morningSession->id,
+            'user_id' => $user->id,
+            'movement_type' => 'manual_income',
+            'amount' => 50,
+            'balance_before' => 220,
+            'balance_after' => 270,
+            'description' => 'Ingreso manual sin recibo',
+            'occurred_at' => Carbon::parse('2026-06-22 10:00:00'),
+        ]);
+
+        BoxMovement::create([
+            'box_id' => $box->id,
+            'box_session_id' => $morningSession->id,
+            'user_id' => $user->id,
+            'movement_type' => 'manual_expense',
+            'amount' => -20,
+            'balance_before' => 270,
+            'balance_after' => 250,
+            'description' => 'Egreso manual de prueba',
+            'occurred_at' => Carbon::parse('2026-06-22 10:30:00'),
+        ]);
+
+        BoxMovement::create([
+            'box_id' => $box->id,
+            'box_session_id' => $morningSession->id,
+            'user_id' => $user->id,
+            'movement_type' => 'customer_balance_payment',
+            'amount' => 30,
+            'balance_before' => 250,
+            'balance_after' => 280,
+            'description' => 'Pago saldo cliente',
+            'occurred_at' => Carbon::parse('2026-06-22 10:45:00'),
+        ]);
+
+        BoxMovement::create([
+            'box_id' => $box->id,
             'box_session_id' => $nightSession->id,
             'user_id' => $user->id,
             'movement_type' => 'manual_income',
@@ -343,17 +533,50 @@ class CashManagementTest extends TestCase
             ->assertOk()
             ->assertSee('Historial de cierres')
             ->assertSee('Caja principal')
+            ->assertSee('Valor transferencia')
+            ->assertSee('$95')
+            ->assertSee('5 movimientos')
+            ->assertDontSee('<th>Caja</th>', false)
+            ->assertDontSee('<th>Responsable</th>', false)
             ->assertSee('Ver movimientos');
 
         $this->actingAs($user)
             ->get(route('cash-management.history.sessions.show', [
                 'session' => $morningSession,
-                'search' => 'TKT-202606-000123',
+                'date_from' => '2026-06-22',
+                'date_to' => '2026-06-22',
             ]))
             ->assertOk()
-            ->assertSee('Ingresos del cierre')
+            ->assertSee('Movimientos para imprimir')
+            ->assertSee('Transferencias')
+            ->assertSee('$95')
+            ->assertSee('Cuadre de caja')
+            ->assertSee('Saldo esperado en efectivo')
+            ->assertSee('Efectivo neto:')
+            ->assertSee('Transferencias:')
+            ->assertDontSee('$95 transferencias')
+            ->assertDontSee('$50 ingresos manuales')
+            ->assertDontSee('$20 egresos manuales')
+            ->assertDontSee('Imprimir detallado')
             ->assertSee('TKT-202606-000123')
             ->assertSee('Cliente Factura')
+            ->assertSee('Ingreso manual sin recibo')
+            ->assertSee('Egreso manual de prueba')
+            ->assertSee('Pago de saldo del cliente')
+            ->assertDontSee('customer balance payment')
+            ->assertDontSee('customer_balance_payment')
+            ->assertSee('Tirilla')
             ->assertDontSee('Ingreso de otra sesion');
+
+        $manualMovement = BoxMovement::query()
+            ->where('description', 'Ingreso manual sin recibo')
+            ->firstOrFail();
+
+        $this->actingAs($user)
+            ->get(route('cash-management.history.movements.print', $manualMovement))
+            ->assertOk()
+            ->assertSee('SOLOMO & POMO', false)
+            ->assertSee('Tirilla de movimiento')
+            ->assertSee('Ingreso manual sin recibo');
     }
 }

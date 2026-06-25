@@ -1,15 +1,13 @@
 @php
-    $brandName = 'Solomo & Pomo';
-    $pendingTotal = (float) ($summary['pending'] ?? 0);
-    $balanceDebt = (float) ($balanceDebt ?? $summary['balanceDebt'] ?? 0);
-    $netToCollect = $pendingTotal;
+    $brandName = 'SOLOMO & POMO';
+    $paymentType = money_value($receipt->remaining_pending) <= 0 ? 'Pago completo' : 'Abono';
 @endphp
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tirilla de deuda - {{ $customer->name }} | {{ $brandName }}</title>
+    <title>Recibo de pago {{ $receipt->receipt_number }} | {{ $brandName }}</title>
     <style>
         :root {
             color-scheme: light;
@@ -58,11 +56,28 @@
             font-weight: 800;
         }
 
+        .number {
+            margin-top: 8px;
+            text-align: center;
+            font-size: 18px;
+            font-weight: 800;
+            line-height: 1.1;
+        }
+
         .subtitle {
-            margin-top: 6px;
+            margin-top: 4px;
             text-align: center;
             font-size: 12px;
             color: #575757;
+        }
+
+        .business-info {
+            margin-top: 10px;
+            text-align: center;
+            font-size: 11px;
+            line-height: 1.45;
+            font-weight: 700;
+            color: #222222;
         }
 
         .rule {
@@ -70,9 +85,7 @@
             border-top: 1px dashed #d6d6d6;
         }
 
-        .meta,
-        .summary,
-        .debts {
+        .rows {
             display: grid;
             gap: 8px;
         }
@@ -99,52 +112,19 @@
         .total {
             padding-top: 10px;
             border-top: 1px dashed #d6d6d6;
-            font-size: 17px;
+            font-size: 16px;
             font-weight: 800;
         }
 
-        .debt {
+        .item {
             padding-top: 10px;
             border-top: 1px dashed #dddddd;
+            font-size: 12px;
         }
 
-        .debt:first-child {
+        .item:first-child {
             padding-top: 0;
             border-top: 0;
-        }
-
-        .debt-head {
-            display: flex;
-            align-items: flex-start;
-            justify-content: space-between;
-            gap: 10px;
-        }
-
-        .debt-title {
-            font-size: 13px;
-            line-height: 1.25;
-            font-weight: 800;
-        }
-
-        .debt-amount {
-            font-size: 14px;
-            line-height: 1.2;
-            font-weight: 800;
-            white-space: nowrap;
-        }
-
-        .debt-meta {
-            margin-top: 4px;
-            font-size: 11px;
-            line-height: 1.35;
-            color: #666666;
-        }
-
-        .empty {
-            text-align: center;
-            font-size: 13px;
-            line-height: 1.4;
-            color: #555555;
         }
 
         .thanks {
@@ -217,12 +197,19 @@
 <body>
     <div class="receipt">
         <div class="brand">{{ strtoupper($brandName) }}</div>
-        <h1 class="title">Deuda cliente</h1>
-        <div class="subtitle">Generado el {{ $printedAt->format('d/m/Y H:i') }}</div>
+        <h1 class="title">Recibo de pago</h1>
+        <div class="number">{{ $receipt->receipt_number }}</div>
+        <div class="subtitle">{{ $receipt->paid_at?->format('d/m/Y H:i') }}</div>
+        <div class="business-info">
+            <div>NIT 1083927195-1</div>
+            <div>CRA 33 NO 14A-25</div>
+            <div>ZONA ROSA - PTO ASIS</div>
+            <div>CEL 3142181805 - 3209447915</div>
+        </div>
 
         <div class="rule"></div>
 
-        <div class="meta">
+        <div class="rows">
             <div class="row">
                 <span>Cliente</span>
                 <strong>{{ $customer->name }}</strong>
@@ -231,71 +218,36 @@
                 <span>Documento</span>
                 <strong>{{ $customer->document_number ?: 'Sin documento' }}</strong>
             </div>
-            @if($customer->phone)
+            <div class="row">
+                <span>Metodo</span>
+                <strong>{{ $receipt->paymentMethod?->name ?: 'Efectivo' }}</strong>
+            </div>
+            @if($receipt->reference)
                 <div class="row">
-                    <span>Telefono</span>
-                    <strong>{{ $customer->phone }}</strong>
+                    <span>Nota</span>
+                    <strong>{{ $receipt->reference }}</strong>
                 </div>
             @endif
         </div>
 
         <div class="rule"></div>
 
-        <div class="summary">
+        <div class="rows">
             <div class="row">
-                <span>Total pendiente</span>
-                <strong>${{ money($pendingTotal) }}</strong>
+                <span>Tipo de pago</span>
+                <strong>{{ $paymentType }}</strong>
             </div>
             <div class="row total">
-                <span>Total a cobrar</span>
-                <strong>${{ money($netToCollect) }}</strong>
+                <span>Valor pagado</span>
+                <strong>${{ money($receipt->amount) }}</strong>
+            </div>
+            <div class="row">
+                <span>Saldo pendiente</span>
+                <strong>${{ money($receipt->remaining_pending) }}</strong>
             </div>
         </div>
 
-        <div class="rule"></div>
-
-        <div class="debts">
-            @if($balanceDebt > 0)
-                <div class="debt">
-                    <div class="debt-head">
-                        <div class="debt-title">Consumo pendiente</div>
-                        <div class="debt-amount">${{ money($balanceDebt) }}</div>
-                    </div>
-                    <div class="debt-meta">
-                        Valor pendiente de pago
-                    </div>
-                </div>
-            @endif
-
-            @foreach($credits as $credit)
-                <div class="debt">
-                    <div class="debt-head">
-                        <div class="debt-title">{{ $credit->description ?: 'Saldo pendiente' }}</div>
-                        <div class="debt-amount">${{ money($credit->balance) }}</div>
-                    </div>
-                    <div class="debt-meta">
-                        {{ $credit->created_at?->format('d/m/Y') }}
-                        @if($credit->due_at)
-                            | Vence {{ $credit->due_at->format('d/m/Y') }}
-                        @endif
-                        <br>
-                        {{ $credit->sale_id ? 'Venta #' . $credit->sale_id : 'Registro manual' }}
-                        @if($credit->sale?->tableOrder?->order_number)
-                            | {{ $credit->sale->tableOrder->order_number }}
-                        @endif
-                        @if($credit->sale?->tableOrder?->table?->name)
-                            | {{ $credit->sale->tableOrder->table->name }}
-                        @endif
-                    </div>
-                </div>
-            @endforeach
-
-            @if($balanceDebt <= 0 && $credits->isEmpty())
-                <div class="empty">El cliente no tiene deuda pendiente.</div>
-            @endif
-        </div>
-
-        <div class="thanks">Resumen de deuda</div>
+        <div class="thanks">Gracias por su pago</div>
         <div class="paper-feed" aria-hidden="true"></div>
     </div>
 
@@ -305,18 +257,10 @@
     </div>
 
     <script>
-        const fallbackCloseUrl = @json(route('customers.credits.show', $customer));
+        const fallbackCloseUrl = @json(route('customers.credits.payments.history', $customer));
 
         function handleClose() {
-            window.close();
-
-            setTimeout(function () {
-                if (window.closed) {
-                    return;
-                }
-
-                window.location.href = fallbackCloseUrl;
-            }, 150);
+            window.location.href = fallbackCloseUrl;
         }
 
         window.addEventListener('load', function () {

@@ -116,18 +116,12 @@
                                                     Caja creada pero aun sin sesiones operativas
                                                 @endif
                                             </div>
-                                            <div class="table-note">Sesiones acumuladas: {{ $box->sessions_count }}</div>
                                         </div>
                                         <div class="cash-box-actions">
                                             <a href="{{ $box->activeSession ? route('cash-management.show', ['box' => $box, 'panel' => 'close']) . '#closing-session' : route('cash-management.show', $box) }}" class="btn btn-primary">
                                                 <i class="fas {{ $box->activeSession ? 'fa-right-from-bracket' : 'fa-lock-open' }}"></i>
                                                 {{ $box->activeSession ? 'Gestionar cierre' : 'Preparar apertura' }}
                                             </a>
-                                            @if($box->activeSession)
-                                                <a href="{{ route('cash-management.show', ['box' => $box, 'panel' => 'movement']) }}#manual-movement" class="btn btn-outline-primary">
-                                                    <i class="fas fa-money-bill-transfer"></i> Movimiento manual
-                                                </a>
-                                            @endif
                                             @if($canManageBoxCatalog)
                                                 <a href="{{ route('cash-management.edit', $box) }}" class="btn btn-outline-secondary">
                                                     <i class="fas fa-pen"></i> Editar
@@ -162,7 +156,6 @@
                                     <div class="d-flex flex-column align-items-end gap-2">
                                         <span class="summary-chip">${{ money($session->currentBalance()) }}</span>
                                         <a href="{{ route('cash-management.show', ['box' => $session->box, 'panel' => 'close']) }}#closing-session" class="btn btn-sm btn-outline-primary">Ver cierre</a>
-                                        <a href="{{ route('cash-management.show', ['box' => $session->box, 'panel' => 'movement']) }}#manual-movement" class="btn btn-sm btn-outline-secondary">Movimiento manual</a>
                                     </div>
                                 </div>
                             @empty

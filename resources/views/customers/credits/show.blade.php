@@ -25,9 +25,12 @@
                             <div class="table-note">Disponible, consumido y movimientos del cliente</div>
                         </div>
                         <div class="d-flex flex-wrap align-items-center justify-content-start justify-content-lg-end gap-2">
+                            @if($summary['pending'] > 0)
+                                <a href="{{ route('customers.credits.collect', $customer) }}" class="btn btn-success btn-sm px-3">Cobrar deuda</a>
+                            @endif
+                            <a href="{{ route('customers.credits.payments.history', $customer) }}" class="btn btn-outline-primary btn-sm px-3">Historial de pagos</a>
                             <a href="{{ route('customers.credits.consumed-invoices', $customer) }}" class="btn btn-outline-success btn-sm px-3">Facturas</a>
                             <a href="{{ route('customers.credits.debt-summary.print', $customer) }}" class="btn btn-outline-dark btn-sm px-3" target="_blank" rel="noopener">Tirilla deuda</a>
-                            <a href="{{ route('customers.credits.balance-history', $customer) }}" class="btn btn-outline-primary btn-sm px-3">Historial saldo a favor</a>
                         </div>
                     </div>
                     <div class="card-body">
@@ -42,7 +45,7 @@
                                 <div class="border rounded-3 p-3 h-100">
                                     <div class="table-note text-uppercase">Consumido</div>
                                     <div class="h5 mb-1">${{ money($summary['consumed']) }}</div>
-                                    <div class="table-note">Usado en facturas</div>
+                                    <div class="table-note">Por cobrar</div>
                                 </div>
                             </div>
                             <div class="col-md-4">

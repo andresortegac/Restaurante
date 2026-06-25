@@ -157,7 +157,7 @@ class DeliveryManagementController extends Controller
         }
 
         $validated = $request->validate([
-            'payment_method_id' => ['required', 'exists:payment_methods,id'],
+            'payment_method_id' => ['required', Rule::exists('payment_methods', 'id')->where('active', true)->whereIn('code', PaymentMethod::SYSTEM_ALLOWED_CODES)],
             'amount_received' => ['required', 'numeric', 'min:0'],
             'reference' => ['nullable', 'string', 'max:255'],
         ]);
@@ -566,7 +566,7 @@ class DeliveryManagementController extends Controller
     private function paymentMethods()
     {
         return PaymentMethod::query()
-            ->where('active', true)
+            ->systemAllowed()
             ->orderBy('name')
             ->get(['id', 'name', 'code']);
     }

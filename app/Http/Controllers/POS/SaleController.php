@@ -14,6 +14,7 @@ use App\Services\Factus\ElectronicInvoiceService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class SaleController extends Controller
@@ -33,7 +34,12 @@ class SaleController extends Controller
     {
         $validated = $request->validate([
             'box_id' => 'required|exists:boxes,id',
-            'payment_method_id' => 'nullable|exists:payment_methods,id',
+            'payment_method_id' => [
+                'nullable',
+                Rule::exists('payment_methods', 'id')
+                    ->where('active', true)
+                    ->whereIn('code', PaymentMethod::SYSTEM_ALLOWED_CODES),
+            ],
             'items' => 'required|array|min:1',
             'items.*.product_id' => 'required|exists:products,id',
             'items.*.quantity' => 'required|integer|min:1',
@@ -98,7 +104,7 @@ class SaleController extends Controller
             $sale->calculateTotal();
 
             if (! empty($validated['payment_method_id'])) {
-                $paymentMethod = PaymentMethod::query()->findOrFail($validated['payment_method_id']);
+                $paymentMethod = PaymentMethod::query()->systemAllowed()->findOrFail($validated['payment_method_id']);
 
                 $payment = $sale->payments()->create([
                     'payment_method_id' => $validated['payment_method_id'],

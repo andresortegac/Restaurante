@@ -37,7 +37,7 @@ class POSController extends Controller
             ->values();
 
         $paymentMethods = PaymentMethod::query()
-            ->where('active', true)
+            ->systemAllowed()
             ->orderBy('name')
             ->get()
             ->map(function (PaymentMethod $paymentMethod): array {

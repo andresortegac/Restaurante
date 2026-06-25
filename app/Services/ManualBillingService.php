@@ -66,8 +66,8 @@ class ManualBillingService
 
         if (! empty($payload['payment_method_id'])) {
             $paymentMethod = PaymentMethod::query()
+                ->systemAllowed()
                 ->whereKey($payload['payment_method_id'])
-                ->where('active', true)
                 ->first();
 
             if (! $paymentMethod) {

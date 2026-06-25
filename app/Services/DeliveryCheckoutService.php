@@ -22,8 +22,8 @@ class DeliveryCheckoutService
     public function checkout(Delivery $delivery, array $payload, int $userId): array
     {
         $paymentMethod = PaymentMethod::query()
+            ->systemAllowed()
             ->whereKey($payload['payment_method_id'])
-            ->where('active', true)
             ->first();
 
         if (! $paymentMethod) {

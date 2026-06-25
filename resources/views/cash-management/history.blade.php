@@ -60,8 +60,7 @@
                         <thead>
                             <tr>
                                 <th>Cierre</th>
-                                <th>Caja</th>
-                                <th>Responsable</th>
+                                <th>Valor transferencia</th>
                                 <th>Resumen</th>
                                 <th class="text-end">Acciones</th>
                             </tr>
@@ -74,14 +73,12 @@
                                         <strong>{{ $closedAt?->format('d/m/Y H:i') ?? 'Sin fecha de cierre' }}</strong>
                                         <div class="table-note">Apertura: {{ $session->opened_at?->format('d/m/Y H:i') ?? '-' }}</div>
                                     </td>
-                                    <td>{{ $session->box?->name ?? 'Sin caja' }}</td>
                                     <td>
-                                        {{ $session->user?->name ?? 'Sin responsable' }}
-                                        <div class="table-note">Cerro: {{ $session->closedBy?->name ?? 'Sin registro' }}</div>
+                                        <strong>${{ money($session->transfer_total ?? 0) }}</strong>
                                     </td>
                                     <td>
                                         <strong>Contado ${{ money($session->counted_balance) }}</strong>
-                                        <div class="table-note">Diferencia ${{ money($session->difference_amount) }} | {{ $session->movements_count }} movimientos</div>
+                                        <div class="table-note">Diferencia ${{ money($session->difference_amount) }} | {{ $session->reportable_movements_count }} movimientos</div>
                                     </td>
                                     <td class="text-end">
                                         <a href="{{ route('cash-management.history.sessions.show', $session) }}" class="btn btn-sm btn-primary">
@@ -91,7 +88,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="5" class="text-center py-4 text-muted">No hay cierres para los filtros seleccionados.</td>
+                                    <td colspan="4" class="text-center py-4 text-muted">No hay cierres para los filtros seleccionados.</td>
                                 </tr>
                             @endforelse
                         </tbody>

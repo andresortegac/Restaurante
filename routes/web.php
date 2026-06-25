@@ -52,6 +52,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/history', [CashManagementController::class, 'history'])->name('history');
         Route::get('/history/sessions/{session}', [CashManagementController::class, 'showHistorySession'])->name('history.sessions.show');
         Route::get('/history/sessions/{session}/print', [CashManagementController::class, 'printSessionSummary'])->name('history.sessions.print');
+        Route::get('/history/movements/{movement}/print', [CashManagementController::class, 'printMovementReceipt'])->name('history.movements.print');
         Route::get('/monthly', [CashManagementController::class, 'monthlyReport'])->name('monthly');
         Route::get('/{box}/movements/create', [CashManagementController::class, 'createMovement'])->name('movements.create');
         Route::get('/{box}/edit', [CashManagementController::class, 'edit'])->name('edit');
@@ -135,6 +136,10 @@ Route::middleware('auth')->group(function () {
             Route::get('/{customer}/balance-history', [CustomerManagementController::class, 'showBalanceHistory'])->name('balance-history');
             Route::get('/{customer}/consumed-invoices', [CustomerManagementController::class, 'showConsumedInvoices'])->name('consumed-invoices');
             Route::get('/{customer}/debt-summary/print', [CustomerManagementController::class, 'printDebtSummary'])->name('debt-summary.print');
+            Route::get('/{customer}/collect', [CustomerManagementController::class, 'showCollect'])->name('collect');
+            Route::post('/{customer}/collect', [CustomerManagementController::class, 'collectCredit'])->name('collect.store');
+            Route::get('/{customer}/payments', [CustomerManagementController::class, 'showPaymentHistory'])->name('payments.history');
+            Route::get('/{customer}/payments/{receipt}/print', [CustomerManagementController::class, 'printPaymentReceipt'])->name('receipts.print');
             Route::get('/{customer}', [CustomerManagementController::class, 'showCredit'])->name('show');
             Route::post('/{customer}/balance', [CustomerManagementController::class, 'storeBalanceMovement'])->name('balance.store');
         });
