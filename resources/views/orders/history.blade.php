@@ -61,7 +61,7 @@
             <div class="card-body">
                 <form method="GET" action="{{ route('orders.history.index') }}">
                     <div class="row g-3">
-                        <div class="col-lg-5">
+                        <div class="col-lg-4">
                             <label class="form-label" for="search">Buscar pedido</label>
                             <input
                                 type="text"
@@ -72,7 +72,7 @@
                                 placeholder="Numero, cliente o nota"
                             >
                         </div>
-                        <div class="col-md-6 col-lg-3">
+                        <div class="col-md-6 col-lg-2">
                             <label class="form-label" for="status">Estado</label>
                             <select class="form-select" id="status" name="status">
                                 <option value="">Todos</option>
@@ -81,7 +81,7 @@
                                 @endforeach
                             </select>
                         </div>
-                        <div class="col-md-6 col-lg-4">
+                        <div class="col-md-6 col-lg-2">
                             <label class="form-label" for="table_id">Mesa</label>
                             <select class="form-select" id="table_id" name="table_id">
                                 <option value="">Todas las mesas</option>
@@ -91,6 +91,14 @@
                                     </option>
                                 @endforeach
                             </select>
+                        </div>
+                        <div class="col-md-6 col-lg-2">
+                            <label class="form-label" for="date_from">Desde</label>
+                            <input type="date" class="form-control" id="date_from" name="date_from" value="{{ $filters['date_from'] ?? '' }}">
+                        </div>
+                        <div class="col-md-6 col-lg-2">
+                            <label class="form-label" for="date_to">Hasta</label>
+                            <input type="date" class="form-control" id="date_to" name="date_to" value="{{ $filters['date_to'] ?? '' }}">
                         </div>
                     </div>
 
@@ -186,7 +194,7 @@
 
                                                 @if($order->sale)
                                                     <a href="{{ route('pos.sales.print', $order->sale) }}" target="_blank" class="btn btn-sm btn-outline-primary">
-                                                        <i class="fas fa-print"></i> Imprimir documento
+                                                        <i class="fas fa-print"></i> Imprimir
                                                     </a>
                                                 @endif
                                             </div>

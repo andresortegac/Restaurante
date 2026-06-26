@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Box;
 use App\Models\BoxSession;
-use App\Models\Customer;
 use App\Models\PaymentMethod;
 use App\Models\Product;
 use App\Models\RestaurantTable;
@@ -61,6 +60,8 @@ class OrderManagementController extends Controller
             'search' => ['nullable', 'string', 'max:255'],
             'status' => ['nullable', 'in:open,paid,cancelled'],
             'table_id' => ['nullable', 'integer', 'exists:restaurant_tables,id'],
+            'date_from' => ['nullable', 'date'],
+            'date_to' => ['nullable', 'date', 'after_or_equal:date_from'],
         ]);
 
         $orders = TableOrder::query()
@@ -76,6 +77,8 @@ class OrderManagementController extends Controller
             })
             ->when($filters['status'] ?? null, fn ($query, string $status) => $query->where('status', $status))
             ->when($filters['table_id'] ?? null, fn ($query, int $tableId) => $query->where('restaurant_table_id', $tableId))
+            ->when($filters['date_from'] ?? null, fn ($query, string $dateFrom) => $query->whereDate('created_at', '>=', $dateFrom))
+            ->when($filters['date_to'] ?? null, fn ($query, string $dateTo) => $query->whereDate('created_at', '<=', $dateTo))
             ->latest()
             ->paginate(15)
             ->withQueryString();
@@ -116,7 +119,6 @@ class OrderManagementController extends Controller
             'restaurantTable' => $table,
             'openOrder' => $table->openOrder,
             'availableProducts' => $this->availableProducts(),
-            'availableCustomers' => $this->availableCustomers(),
             'orderRows' => $this->orderRows(),
             'transferTargets' => $this->transferTargets($table),
             'activeBox' => $this->activeBox(),
@@ -139,7 +141,6 @@ class OrderManagementController extends Controller
         }
 
         $validated = $request->validate([
-            'customer_id' => ['nullable', 'exists:customers,id'],
             'notes' => ['nullable', 'string'],
             'items' => ['required', 'array', 'min:1'],
             'items.*.product_id' => ['nullable', 'exists:products,id'],
@@ -166,16 +167,6 @@ class OrderManagementController extends Controller
         $createdItemIds = [];
 
         DB::transaction(function () use ($validated, $rows, $table, &$order, &$createdItemIds): void {
-            $customer = ! empty($validated['customer_id'])
-                ? Customer::query()->whereKey($validated['customer_id'])->where('is_active', true)->first()
-                : null;
-
-            if (! empty($validated['customer_id']) && ! $customer) {
-                throw ValidationException::withMessages([
-                    'customer_id' => 'Selecciona un cliente activo o usa la opcion sin cliente.',
-                ]);
-            }
-
             $order = $table->orders()
                 ->where('status', 'open')
                 ->first();
@@ -183,16 +174,14 @@ class OrderManagementController extends Controller
             if (! $order) {
                 $order = $table->orders()->create([
                     'order_number' => TableOrder::generateOrderNumber(),
-                    'customer_id' => $customer?->id,
-                    'customer_name' => $customer?->name,
+                    'customer_id' => null,
+                    'customer_name' => null,
                     'status' => 'open',
                     'opened_by_user_id' => Auth::id(),
                     'notes' => $validated['notes'] ?? null,
                 ]);
             } else {
                 $order->update([
-                    'customer_id' => $customer?->id,
-                    'customer_name' => $customer?->name,
                     'notes' => $validated['notes'] ?? $order->notes,
                 ]);
             }
@@ -411,14 +400,6 @@ class OrderManagementController extends Controller
                 'products.sort_order',
                 'products.image_path',
             ]);
-    }
-
-    private function availableCustomers(): Collection
-    {
-        return Customer::query()
-            ->where('is_active', true)
-            ->orderBy('name')
-            ->get(['id', 'name', 'document_number', 'phone', 'email']);
     }
 
     private function transferTargets(RestaurantTable $currentTable): Collection

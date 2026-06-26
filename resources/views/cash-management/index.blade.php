@@ -10,16 +10,7 @@
     <div class="module-page">
         <section class="module-hero">
             <div>
-                <span class="module-kicker">POS / Gestion de Caja</span>
                 <h1>Cajas y sesiones activas</h1>
-                <p>Diferencia la configuracion fija de cada caja del flujo diario de apertura, movimientos y cierre del turno.</p>
-            </div>
-            <div class="summary-group">
-                <span class="summary-chip">{{ $summary['boxes'] }} cajas</span>
-                <span class="summary-chip">{{ $summary['openSessions'] }} abiertas</span>
-                <span class="summary-chip">{{ $summary['closedToday'] }} cierres hoy</span>
-                <span class="summary-chip">${{ money($summary['todayIncome']) }} ingresos hoy</span>
-                <span class="summary-chip">${{ money($summary['todayExpense']) }} egresos hoy</span>
             </div>
         </section>
 
@@ -64,9 +55,6 @@
                         @endif
                         <a href="{{ route('cash-management.history') }}" class="btn btn-outline-secondary">
                             <i class="fas fa-clock-rotate-left"></i> Historial
-                        </a>
-                        <a href="{{ route('cash-management.monthly') }}" class="btn btn-outline-secondary">
-                            <i class="fas fa-calendar-days"></i> Cierre mensual
                         </a>
                     </div>
                 </div>

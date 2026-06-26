@@ -38,7 +38,7 @@ class InvoiceController extends Controller
         return response()->json($invoice, 201);
     }
 
-    public function printSale(Sale $sale)
+    public function printSale(Request $request, Sale $sale)
     {
         $sale->load(['user', 'box', 'items.product', 'payments.paymentMethod', 'invoice', 'tableOrder.table', 'customer', 'delivery']);
 
@@ -50,7 +50,25 @@ class InvoiceController extends Controller
         return view('pos.invoices.print', [
             'sale' => $sale,
             'invoice' => $invoice,
+            'returnTo' => $this->internalReturnUrl($request->query('return_to'), $request),
         ]);
+    }
+
+    private function internalReturnUrl(?string $url, Request $request): ?string
+    {
+        if (! $url) {
+            return null;
+        }
+
+        if (str_starts_with($url, '/')) {
+            return $url;
+        }
+
+        $appHost = parse_url(config('app.url'), PHP_URL_HOST);
+        $currentHost = $request->getHost();
+        $returnHost = parse_url($url, PHP_URL_HOST);
+
+        return $returnHost === null || $returnHost === $appHost || $returnHost === $currentHost ? $url : null;
     }
 
     private function issueInvoice(Sale $sale, string $invoiceType): Invoice

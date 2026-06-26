@@ -157,7 +157,6 @@
                     <ul class="sidebar-submenu {{ $isCashRoute ? 'show' : '' }}">
                         <li><a href="{{ route('cash-management.index') }}" class="{{ request()->routeIs('cash-management.index') || request()->routeIs('cash-management.show') || request()->routeIs('cash-management.edit') ? 'active' : '' }}"><i class="fas fa-wallet"></i> Cajas</a></li>
                         <li><a href="{{ route('cash-management.history') }}" class="{{ request()->routeIs('cash-management.history') ? 'active' : '' }}"><i class="fas fa-clock-rotate-left"></i> Historial</a></li>
-                        <li><a href="{{ route('cash-management.monthly') }}" class="{{ request()->routeIs('cash-management.monthly') ? 'active' : '' }}"><i class="fas fa-calendar-days"></i> Cierre mensual</a></li>
                     </ul>
                 </li>
                 @endif

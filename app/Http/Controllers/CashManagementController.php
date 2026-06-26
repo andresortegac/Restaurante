@@ -453,11 +453,39 @@ class CashManagementController extends Controller
 
         $filters = $request->validate([
             'search' => ['nullable', 'string', 'max:255'],
-            'date_from' => ['nullable', 'date'],
-            'date_to' => ['nullable', 'date', 'after_or_equal:date_from'],
+            'payment_method' => ['nullable', 'in:cash,transfer'],
         ]);
 
         $session->load(['box', 'user', 'closedBy']);
+
+        $paymentMethodFilter = $filters['payment_method'] ?? null;
+        $paymentMethodCodes = [
+            'cash' => 'CASH',
+            'transfer' => 'TRANSFER',
+        ];
+        $filteredPaymentMethodCode = $paymentMethodFilter ? $paymentMethodCodes[$paymentMethodFilter] : null;
+        $filteredPaymentMethodIds = $filteredPaymentMethodCode
+            ? PaymentMethod::query()
+                ->whereRaw('UPPER(code) = ?', [$filteredPaymentMethodCode])
+                ->pluck('id')
+                ->map(fn ($id) => (int) $id)
+                ->all()
+            : [];
+        $auditMovementIdsByPaymentMethod = $filteredPaymentMethodIds
+            ? BoxAuditLog::query()
+                ->where('box_session_id', $session->id)
+                ->get(['metadata'])
+                ->filter(function (BoxAuditLog $auditLog) use ($filteredPaymentMethodIds): bool {
+                    $movementId = $auditLog->metadata['movement_id'] ?? null;
+                    $paymentMethodId = $auditLog->metadata['payment_method_id'] ?? null;
+
+                    return $movementId && $paymentMethodId && in_array((int) $paymentMethodId, $filteredPaymentMethodIds, true);
+                })
+                ->map(fn (BoxAuditLog $auditLog) => (int) $auditLog->metadata['movement_id'])
+                ->unique()
+                ->values()
+                ->all()
+            : [];
 
         $movementsQuery = BoxMovement::query()
             ->with([
@@ -470,8 +498,29 @@ class CashManagementController extends Controller
             ])
             ->where('box_session_id', $session->id)
             ->where(fn ($query) => $this->reportableMovementScope($query))
-            ->when($filters['date_from'] ?? null, fn ($query, string $dateFrom) => $query->whereDate('occurred_at', '>=', $dateFrom))
-            ->when($filters['date_to'] ?? null, fn ($query, string $dateTo) => $query->whereDate('occurred_at', '<=', $dateTo))
+            ->when($filteredPaymentMethodCode, function ($query) use ($filteredPaymentMethodCode, $auditMovementIdsByPaymentMethod): void {
+                $query->where(function ($nestedQuery) use ($filteredPaymentMethodCode, $auditMovementIdsByPaymentMethod): void {
+                    $nestedQuery->whereHas('payment.paymentMethod', function ($paymentMethodQuery) use ($filteredPaymentMethodCode): void {
+                        $paymentMethodQuery->whereRaw('UPPER(code) = ?', [$filteredPaymentMethodCode]);
+                    });
+
+                    if ($auditMovementIdsByPaymentMethod) {
+                        $nestedQuery->orWhereIn('id', $auditMovementIdsByPaymentMethod);
+                    }
+
+                    if ($filteredPaymentMethodCode === 'CASH') {
+                        $nestedQuery->orWhere(function ($cashQuery): void {
+                            $cashQuery
+                                ->whereNull('payment_id')
+                                ->where(function ($cashMovementQuery): void {
+                                    $cashMovementQuery
+                                        ->where('amount', '<>', 0)
+                                        ->orWhere('movement_type', 'manual_expense');
+                                });
+                        });
+                    }
+                });
+            })
             ->when($filters['search'] ?? null, function ($query, string $search): void {
                 $query->where(function ($nestedQuery) use ($search): void {
                     $nestedQuery
@@ -586,6 +635,7 @@ class CashManagementController extends Controller
                 'physical_expense' => $physicalExpense,
                 'expected_balance' => money_value((float) $session->opening_balance + $physicalIncome - $physicalExpense),
                 'reported_payment_total' => money_value((float) $paymentBreakdown->sum('total')),
+                'transfer_total' => money_value((float) $paymentBreakdown->where('code', 'TRANSFER')->sum('total')),
                 'movement_count' => $movements->count(),
             ],
             'printedAt' => now(),
@@ -722,7 +772,11 @@ class CashManagementController extends Controller
         $auditAmount = $auditAmountsByMovementId->get((int) $movement->id);
 
         if ($auditAmount !== null) {
-            return money_value((float) $auditAmount);
+            $signedAuditAmount = $movement->movement_type === 'manual_expense' || (float) $movement->amount < 0
+                ? -1 * abs((float) $auditAmount)
+                : abs((float) $auditAmount);
+
+            return money_value($signedAuditAmount);
         }
 
         return money_value((float) $movement->amount);

@@ -56,6 +56,22 @@ class OrderHistoryPageTest extends TestCase
             'opened_by_user_id' => $user->id,
             'notes' => 'Sin azucar',
         ]);
+        $order->forceFill([
+            'created_at' => '2026-06-22 10:00:00',
+            'updated_at' => '2026-06-22 10:00:00',
+        ])->save();
+
+        $oldOrder = TableOrder::create([
+            'restaurant_table_id' => $table->id,
+            'order_number' => 'PED-TEST-HISTORY-OLD',
+            'customer_name' => 'Pedido Viejo',
+            'status' => 'paid',
+            'opened_by_user_id' => $user->id,
+        ]);
+        $oldOrder->forceFill([
+            'created_at' => '2026-06-01 10:00:00',
+            'updated_at' => '2026-06-01 10:00:00',
+        ])->save();
 
         $order->items()->create([
             'product_id' => $product->id,
@@ -78,5 +94,18 @@ class OrderHistoryPageTest extends TestCase
         $response->assertSee('PED-TEST-HISTORY-001');
         $response->assertSee('Mesa 12');
         $response->assertSee('Ana Mesa');
+
+        $filteredResponse = $this
+            ->actingAs($user)
+            ->get(route('orders.history.index', [
+                'date_from' => '2026-06-22',
+                'date_to' => '2026-06-22',
+            ]));
+
+        $filteredResponse->assertOk();
+        $filteredResponse->assertSee('Desde');
+        $filteredResponse->assertSee('Hasta');
+        $filteredResponse->assertSee('PED-TEST-HISTORY-001');
+        $filteredResponse->assertDontSee('PED-TEST-HISTORY-OLD');
     }
 }

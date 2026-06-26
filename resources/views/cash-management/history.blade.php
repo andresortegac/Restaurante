@@ -81,9 +81,14 @@
                                         <div class="table-note">Diferencia ${{ money($session->difference_amount) }} | {{ $session->reportable_movements_count }} movimientos</div>
                                     </td>
                                     <td class="text-end">
-                                        <a href="{{ route('cash-management.history.sessions.show', $session) }}" class="btn btn-sm btn-primary">
-                                            Ver movimientos
-                                        </a>
+                                        <div class="table-actions justify-content-end">
+                                            <a href="{{ route('cash-management.history.sessions.print', $session) }}" target="_blank" class="btn btn-sm btn-outline-dark">
+                                                <i class="fas fa-print"></i> Tirilla general
+                                            </a>
+                                            <a href="{{ route('cash-management.history.sessions.show', $session) }}" class="btn btn-sm btn-primary">
+                                                Ver movimientos
+                                            </a>
+                                        </div>
                                     </td>
                                 </tr>
                             @empty

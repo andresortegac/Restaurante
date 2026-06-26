@@ -392,9 +392,15 @@
     </div>
 
     <script>
+        const returnToUrl = @json($returnTo ?? null);
         const fallbackCloseUrl = @json(route('billing.history'));
 
         function handleClose() {
+            if (returnToUrl) {
+                window.location.href = returnToUrl;
+                return;
+            }
+
             if (window.history.length > 1) {
                 window.history.back();
                 return;

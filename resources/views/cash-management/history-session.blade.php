@@ -116,53 +116,21 @@
             </div>
         </div>
 
-        @if($paymentBreakdown->isNotEmpty())
-            <div class="card module-card mb-4">
-                <div class="card-header">
-                    <h5 class="card-title mb-0"><i class="fas fa-credit-card"></i> Entradas por metodo de pago</h5>
-                </div>
-                <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle mb-0">
-                            <thead>
-                                <tr>
-                                    <th>Metodo</th>
-                                    <th class="text-end">Operaciones</th>
-                                    <th class="text-end">Total informado</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach($paymentBreakdown as $paymentRow)
-                                    <tr>
-                                        <td>
-                                            <strong>{{ $paymentRow['name'] }}</strong>
-                                        </td>
-                                        <td class="text-end">{{ number_format($paymentRow['count']) }}</td>
-                                        <td class="text-end">${{ money($paymentRow['total']) }}</td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        @endif
-
         <div class="card module-card mb-4">
             <div class="card-body">
                 <form method="GET" action="{{ route('cash-management.history.sessions.show', $session) }}">
                     <div class="row g-3 align-items-end">
-                        <div class="col-lg-5">
+                        <div class="col-lg-6">
                             <label class="form-label" for="search">Buscar movimiento</label>
                             <input type="text" class="form-control" id="search" name="search" value="{{ $filters['search'] ?? '' }}" placeholder="Numero de factura, venta, cliente, CUFE o descripcion">
                         </div>
-                        <div class="col-lg-2">
-                            <label class="form-label" for="date_from">Desde</label>
-                            <input type="date" class="form-control" id="date_from" name="date_from" value="{{ $filters['date_from'] ?? '' }}">
-                        </div>
-                        <div class="col-lg-2">
-                            <label class="form-label" for="date_to">Hasta</label>
-                            <input type="date" class="form-control" id="date_to" name="date_to" value="{{ $filters['date_to'] ?? '' }}">
+                        <div class="col-lg-3">
+                            <label class="form-label" for="payment_method">Metodo de pago</label>
+                            <select class="form-select" id="payment_method" name="payment_method">
+                                <option value="">Todos</option>
+                                <option value="cash" @selected(($filters['payment_method'] ?? '') === 'cash')>Efectivo</option>
+                                <option value="transfer" @selected(($filters['payment_method'] ?? '') === 'transfer')>Transferencia</option>
+                            </select>
                         </div>
                         <div class="col-lg-3 d-flex gap-2">
                             <button type="submit" class="btn btn-primary w-100">
@@ -225,6 +193,9 @@
                                     <td>{{ $customerName ?: 'Consumidor final' }}</td>
                                     <td>
                                         {{ $movement->description ?: 'Sin detalle' }}
+                                        @if($movement->movement_type === 'manual_expense')
+                                            <div class="table-note">Metodo de pago: Efectivo</div>
+                                        @endif
                                         @if($sale?->tableOrder)
                                             <div class="table-note">{{ $sale->tableOrder->order_number }} | {{ $sale->tableOrder->table?->name ?? 'Mesa' }}</div>
                                         @endif
@@ -238,7 +209,7 @@
                                                 <i class="fas fa-print"></i> Tirilla
                                             </a>
                                             @if($sale)
-                                                <a href="{{ route('pos.sales.print', $sale) }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                                <a href="{{ route('pos.sales.print', ['sale' => $sale, 'return_to' => request()->getRequestUri()]) }}" target="_blank" class="btn btn-sm btn-outline-primary">
                                                     <i class="fas fa-download"></i> Factura
                                                 </a>
                                             @endif
@@ -256,16 +227,6 @@
                                 </tr>
                             @endforelse
                         </tbody>
-                        <tfoot>
-                            <tr>
-                                <th colspan="5">Totales de la sesion</th>
-                                <th class="text-end">
-                                    <div>Efectivo neto: ${{ money($summary['cash_net_total']) }}</div>
-                                    <div>Transferencias: ${{ money($summary['transfer_total']) }}</div>
-                                </th>
-                                <th></th>
-                            </tr>
-                        </tfoot>
                     </table>
                 </div>
             </div>

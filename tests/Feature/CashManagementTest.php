@@ -538,22 +538,45 @@ class CashManagementTest extends TestCase
             ->assertSee('5 movimientos')
             ->assertDontSee('<th>Caja</th>', false)
             ->assertDontSee('<th>Responsable</th>', false)
+            ->assertSee('Tirilla general')
             ->assertSee('Ver movimientos');
+
+        $this->actingAs($user)
+            ->get(route('cash-management.history.sessions.print', $morningSession))
+            ->assertOk()
+            ->assertSee('SOLOMO & POMO', false)
+            ->assertDontSee('Laravel')
+            ->assertSee('Tirilla general de cierre')
+            ->assertSee('Cierre')
+            ->assertSee('22/06/2026 11:30')
+            ->assertSee('Base inicial')
+            ->assertSee('Entradas en efectivo')
+            ->assertSee('Salidas en efectivo')
+            ->assertSee('Saldo esperado en efectivo')
+            ->assertSee('Valor contado en efectivo')
+            ->assertSee('Diferencia de efectivo')
+            ->assertSee('Transferencias informadas')
+            ->assertSee('Observaciones')
+            ->assertSee('Sin observaciones')
+            ->assertSee('$95')
+            ->assertDontSee('Detalle de movimientos')
+            ->assertDontSee('Entradas por metodo de pago');
 
         $this->actingAs($user)
             ->get(route('cash-management.history.sessions.show', [
                 'session' => $morningSession,
-                'date_from' => '2026-06-22',
-                'date_to' => '2026-06-22',
             ]))
             ->assertOk()
             ->assertSee('Movimientos para imprimir')
+            ->assertSee('Metodo de pago')
+            ->assertSee('Efectivo')
+            ->assertSee('Transferencia')
+            ->assertDontSee('for="date_from"', false)
+            ->assertDontSee('for="date_to"', false)
             ->assertSee('Transferencias')
             ->assertSee('$95')
             ->assertSee('Cuadre de caja')
             ->assertSee('Saldo esperado en efectivo')
-            ->assertSee('Efectivo neto:')
-            ->assertSee('Transferencias:')
             ->assertDontSee('$95 transferencias')
             ->assertDontSee('$50 ingresos manuales')
             ->assertDontSee('$20 egresos manuales')
@@ -567,6 +590,32 @@ class CashManagementTest extends TestCase
             ->assertDontSee('customer_balance_payment')
             ->assertSee('Tirilla')
             ->assertDontSee('Ingreso de otra sesion');
+
+        $this->actingAs($user)
+            ->get(route('cash-management.history.sessions.show', [
+                'session' => $morningSession,
+                'payment_method' => 'transfer',
+            ]))
+            ->assertOk()
+            ->assertSee('Cliente Transferencia')
+            ->assertSee('Transferencia Bancaria')
+            ->assertDontSee('Cliente Factura')
+            ->assertDontSee('Ingreso manual sin recibo')
+            ->assertDontSee('Egreso manual de prueba');
+
+        $this->actingAs($user)
+            ->get(route('cash-management.history.sessions.show', [
+                'session' => $morningSession,
+                'payment_method' => 'cash',
+            ]))
+            ->assertOk()
+            ->assertSee('Cliente Factura')
+            ->assertSee('Ingreso manual sin recibo')
+            ->assertSee('Egreso manual de prueba')
+            ->assertSee('Metodo de pago: Efectivo')
+            ->assertSee('<strong class="text-danger">-$20</strong>', false)
+            ->assertDontSee('Cliente Transferencia')
+            ->assertDontSee('Transferencia Bancaria');
 
         $manualMovement = BoxMovement::query()
             ->where('description', 'Ingreso manual sin recibo')
