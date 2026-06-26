@@ -2,6 +2,40 @@
 
 @section('title', 'Cobro manual - Facturacion')
 
+@push('styles')
+    <style>
+        .manual-confirm-popup {
+            max-width: 520px;
+        }
+
+        .manual-confirm-summary {
+            text-align: left;
+            font-size: 0.92rem;
+        }
+
+        .manual-confirm-summary ul {
+            margin: 0;
+            padding-left: 1.1rem;
+        }
+
+        .manual-confirm-summary li {
+            margin-bottom: 0.35rem;
+        }
+
+        .manual-confirm-products {
+            border-top: 1px solid #e5e7eb;
+            margin-top: 0.75rem;
+            padding-top: 0.75rem;
+        }
+
+        .manual-confirm-products li {
+            display: flex;
+            justify-content: space-between;
+            gap: 0.75rem;
+        }
+    </style>
+@endpush
+
 @section('content')
 @php
     $initialDocumentType = old('document_type', 'ticket');
@@ -60,13 +94,7 @@
 <div class="module-page">
     <section class="module-hero">
         <div>
-            <span class="module-kicker">Caja / Facturacion</span>
             <h1>Cobro manual</h1>
-        </div>
-        <div class="summary-group">
-            <span class="summary-chip">Mesa por defecto</span>
-            <span class="summary-chip">Ticket o factura electronica</span>
-            <span class="summary-chip">Pago inmediato o credito</span>
         </div>
     </section>
 
@@ -302,6 +330,54 @@ document.addEventListener('DOMContentLoaded', function () {
     const findProduct = productId => products.find(product => String(product.id) === String(productId)) || null;
     const placeholderMarkup = icon => '<div class="waiter-image-placeholder"><i class="' + icon + '"></i></div>';
     const requiresRegisteredCustomer = () => isBalanceCreditMode() || documentType.value === 'electronic';
+    const selectedItemsSummary = () => Array.from(selectedItems.values())
+        .map(entry => ({
+            name: entry.product.name,
+            quantity: entry.quantity,
+            total: entry.quantity * entry.unitPrice,
+        }));
+    const manualCheckoutSummaryHtml = () => {
+        const itemRows = selectedItemsSummary()
+            .slice(0, 6)
+            .map(item => '<li><strong>' + item.quantity + 'x</strong> ' + escapeHtml(item.name) + ' <span>' + money(item.total) + '</span></li>')
+            .join('');
+        const remainingItems = selectedItems.size > 6
+            ? '<li>+' + (selectedItems.size - 6) + ' referencias mas</li>'
+            : '';
+
+        return '' +
+            '<div class="manual-confirm-summary">' +
+                '<div class="manual-confirm-products">' +
+                    '<strong>Productos</strong>' +
+                    '<ul>' + itemRows + remainingItems + '</ul>' +
+                '</div>' +
+            '</div>';
+    };
+    const confirmManualCheckout = async () => {
+        const title = 'Confirmar cobro manual';
+        const html = manualCheckoutSummaryHtml();
+
+        if (!window.Swal) {
+            return confirm('Confirma el cobro manual por ' + money(calculateSubtotal()) + '?');
+        }
+
+        const result = await Swal.fire({
+            icon: 'question',
+            title,
+            html,
+            showCancelButton: true,
+            confirmButtonText: 'Confirmar',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#198754',
+            cancelButtonColor: '#6c757d',
+            reverseButtons: true,
+            customClass: {
+                popup: 'manual-confirm-popup',
+            },
+        });
+
+        return result.isConfirmed;
+    };
 
     const syncCustomerSummary = (projectedAmount = null, appliedBalance = 0) => {
         const customer = selectedCustomer();
@@ -687,6 +763,10 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
+        if (!await confirmManualCheckout()) {
+            return;
+        }
+
         const submitButton = form.querySelector('button[type="submit"]');
         const originalLabel = submitButton.innerHTML;
         submitButton.disabled = true;
@@ -708,16 +788,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 const message = data?.errors ? Object.values(data.errors).flat().join('\n') : (data?.message || 'No se pudo registrar el cobro.');
                 window.Swal ? await Swal.fire({ icon: 'error', title: 'No se pudo registrar', text: message, confirmButtonText: 'Aceptar', confirmButtonColor: '#dc3545' }) : alert(message);
                 return;
-            }
-
-            if (window.Swal) {
-                await Swal.fire({
-                    icon: data?.cufe ? 'success' : 'info',
-                    title: data?.cufe ? 'Cobro y factura listos' : 'Cobro registrado',
-                    text: data?.message || 'El documento se esta preparando para impresion.',
-                    confirmButtonText: 'Continuar',
-                    confirmButtonColor: '#2563eb',
-                });
             }
 
             window.location.href = data?.printUrl || form.action;

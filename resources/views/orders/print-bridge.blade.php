@@ -21,6 +21,9 @@
         <p>{{ $message ?? 'Estamos abriendo la impresion de cocina y en unos segundos volveras al pedido de la mesa.' }}</p>
         <div class="actions">
             <a class="btn btn-primary" href="{{ $printUrl }}" target="_blank" rel="noopener noreferrer">{{ $primaryActionLabel ?? 'Abrir impresion' }}</a>
+            @if($secondaryPrintUrl ?? null)
+                <a class="btn btn-secondary" href="{{ $secondaryPrintUrl }}" target="_blank" rel="noopener noreferrer">{{ $secondaryPrintLabel ?? 'Abrir copia' }}</a>
+            @endif
             <a class="btn btn-secondary" href="{{ $redirectUrl }}">{{ $secondaryActionLabel ?? 'Volver al pedido' }}</a>
         </div>
     </div>

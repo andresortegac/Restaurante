@@ -258,8 +258,10 @@ class BillingManagementController extends Controller
             return response()->json([
                 'message' => $documentWarning
                     ? 'Cobro manual registrado, pero el documento quedo con novedad: ' . $documentWarning
-                    : 'Cobro manual registrado correctamente.',
-                'printUrl' => route('pos.sales.print', $sale),
+                    : 'Cobro manual registrado correctamente. La comanda quedo lista para cocina.',
+                'printUrl' => route('pos.sales.print', ['sale' => $sale, 'return_to' => route('billing.manual', [], false)]),
+                'documentUrl' => route('pos.sales.print', ['sale' => $sale, 'return_to' => route('billing.manual', [], false)]),
+                'kitchenPrintUrl' => route('billing.manual.kitchen-ticket', ['sale' => $sale, 'return_to' => route('billing.manual', [], false)]),
                 'redirectUrl' => route('billing.history'),
                 'invoiceStatus' => $invoice?->status,
                 'cufe' => $invoice?->cufe,
@@ -270,17 +272,53 @@ class BillingManagementController extends Controller
             $documentWarning ? 'warning' : 'success',
             $documentWarning
                 ? 'Cobro manual registrado, pero el documento quedo con novedad: ' . $documentWarning
-                : 'Cobro manual registrado correctamente.'
+                : 'Cobro manual registrado correctamente. La comanda quedo lista para cocina.'
         );
 
         return view('orders.print-bridge', [
-            'title' => 'Preparando documento',
-            'message' => 'Estamos abriendo el documento y en unos segundos volveras al historial de facturacion.',
-            'primaryActionLabel' => 'Abrir documento',
+            'title' => 'Preparando factura y comanda',
+            'message' => 'Estamos abriendo la comanda para cocina y la factura para entregar al cliente.',
+            'primaryActionLabel' => 'Abrir factura',
             'secondaryActionLabel' => 'Ir a facturacion',
             'redirectUrl' => route('billing.history'),
-            'printUrl' => route('pos.sales.print', $sale),
+            'printUrl' => route('pos.sales.print', ['sale' => $sale, 'return_to' => route('billing.manual', [], false)]),
+            'secondaryPrintUrl' => route('billing.manual.kitchen-ticket', ['sale' => $sale, 'return_to' => route('billing.manual', [], false)]),
+            'secondaryPrintLabel' => 'Abrir comanda',
         ]);
+    }
+
+    public function printManualKitchenTicket(Request $request, Sale $sale)
+    {
+        if ($response = $this->denyIfUnauthorized(['billing.view', 'billing.charge'])) {
+            return $response;
+        }
+
+        $sale->load(['items.product', 'customer', 'user', 'invoice']);
+        $returnTo = $this->internalReturnUrl($request->query('return_to'), $request) ?? route('billing.manual', [], false);
+
+        return view('billing.manual-kitchen-ticket', [
+            'sale' => $sale,
+            'documentUrl' => route('pos.sales.print', ['sale' => $sale, 'return_to' => $returnTo]),
+            'returnTo' => $returnTo,
+            'printedAt' => now(),
+        ]);
+    }
+
+    private function internalReturnUrl(?string $url, Request $request): ?string
+    {
+        if (! $url) {
+            return null;
+        }
+
+        if (str_starts_with($url, '/')) {
+            return $url;
+        }
+
+        $appHost = parse_url(config('app.url'), PHP_URL_HOST);
+        $currentHost = $request->getHost();
+        $returnHost = parse_url($url, PHP_URL_HOST);
+
+        return $returnHost === null || $returnHost === $appHost || $returnHost === $currentHost ? $url : null;
     }
 
     public function history(Request $request)

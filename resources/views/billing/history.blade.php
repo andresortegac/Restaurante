@@ -2,6 +2,31 @@
 
 @section('title', 'Ventas Generales - Facturacion')
 
+@push('styles')
+    <style>
+        .billing-history-pagination .pagination {
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 0.35rem;
+            margin-bottom: 0;
+        }
+
+        .billing-history-pagination .page-link {
+            min-width: 34px;
+            min-height: 34px;
+            padding: 0.35rem 0.65rem;
+            border-radius: 10px;
+            font-size: 0.85rem;
+            line-height: 1.1;
+        }
+
+        .billing-history-pagination .page-item:first-child .page-link,
+        .billing-history-pagination .page-item:last-child .page-link {
+            padding-inline: 0.75rem;
+        }
+    </style>
+@endpush
+
 @section('content')
     <div class="module-page">
         <section class="module-hero">
@@ -183,8 +208,8 @@
                         </table>
                     </div>
 
-                    <div class="mt-3">
-                        {{ $sales->links() }}
+                    <div class="billing-history-pagination mt-3">
+                        {{ $sales->links('pagination::bootstrap-5') }}
                     </div>
                 @endif
             </div>

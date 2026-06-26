@@ -508,6 +508,17 @@ class BillingManagementTest extends TestCase
         $response->assertSee('Efectivo');
         $response->assertSee('Transferencia Bancaria');
         $response->assertSee('Saldo a favor / credito al cliente');
+        $response->assertSee('Confirmar cobro manual');
+        $response->assertSee('confirmButtonText: \'Confirmar\'', false);
+        $response->assertSee('cancelButtonText: \'Cancelar\'', false);
+        $response->assertSee('manual-confirm-products', false);
+        $response->assertDontSee('<li><strong>Cliente:</strong>', false);
+        $response->assertDontSee('<li><strong>Documento:</strong>', false);
+        $response->assertDontSee('<li><strong>Metodo:</strong>', false);
+        $response->assertDontSee('<li><strong>Recibido:</strong>', false);
+        $response->assertDontSee('<li><strong>Cambio:</strong>', false);
+        $response->assertDontSee('Cobro registrado\',', false);
+        $response->assertDontSee('window.open(data.kitchenPrintUrl', false);
     }
 
     public function test_manual_billing_registers_table_charge_by_default(): void
@@ -549,7 +560,7 @@ class BillingManagementTest extends TestCase
             ]);
 
         $response->assertOk();
-        $response->assertJsonPath('message', 'Cobro manual registrado correctamente.');
+        $response->assertJsonPath('message', 'Cobro manual registrado correctamente. La comanda quedo lista para cocina.');
 
         $this->assertDatabaseHas('sales', [
             'box_id' => $box->id,
@@ -640,6 +651,97 @@ class BillingManagementTest extends TestCase
             'balance_before' => 50000,
             'balance_after' => 68000,
         ]);
+    }
+
+    public function test_manual_delivery_billing_returns_kitchen_ticket_for_preparation(): void
+    {
+        $user = $this->createAdminUser();
+
+        $paymentMethod = PaymentMethod::create([
+            'name' => 'Efectivo',
+            'code' => 'CASH',
+            'description' => 'Pago en efectivo',
+            'active' => true,
+        ]);
+
+        Box::create([
+            'name' => 'Caja domicilio manual',
+            'code' => 'BOX-MANUAL-DELIVERY',
+            'user_id' => $user->id,
+            'opening_balance' => 50000,
+            'status' => 'open',
+            'opened_at' => now(),
+        ]);
+
+        $response = $this
+            ->actingAs($user)
+            ->postJson(route('billing.manual.store'), [
+                'origin_type' => 'delivery',
+                'delivery_address' => 'Calle 10 # 5-20',
+                'customer_name' => 'Cliente domicilio',
+                'notes' => 'Sin cebolla',
+                'document_type' => 'ticket',
+                'payment_method_id' => $paymentMethod->id,
+                'amount_received' => 30000,
+                'items' => [
+                    [
+                        'name' => 'Hamburguesa domicilio',
+                        'quantity' => 2,
+                        'unit_price' => 15000,
+                    ],
+                ],
+            ]);
+
+        $sale = Sale::query()->firstOrFail();
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('message', 'Cobro manual registrado correctamente. La comanda quedo lista para cocina.')
+            ->assertJsonPath('printUrl', route('pos.sales.print', [
+                'sale' => $sale,
+                'return_to' => route('billing.manual', [], false),
+            ]))
+            ->assertJsonPath('documentUrl', route('pos.sales.print', [
+                'sale' => $sale,
+                'return_to' => route('billing.manual', [], false),
+            ]))
+            ->assertJsonPath('kitchenPrintUrl', route('billing.manual.kitchen-ticket', [
+                'sale' => $sale,
+                'return_to' => route('billing.manual', [], false),
+            ]));
+
+        $kitchenResponse = $this
+            ->actingAs($user)
+            ->get(route('billing.manual.kitchen-ticket', [
+                'sale' => $sale,
+                'return_to' => route('billing.manual', [], false),
+            ]));
+
+        $kitchenResponse
+            ->assertOk()
+            ->assertSee('Cobro manual de domicilio')
+            ->assertSee('Domicilio para llevar')
+            ->assertSee('Cliente domicilio')
+            ->assertSee('Calle 10 # 5-20')
+            ->assertSee('Hamburguesa domicilio')
+            ->assertSee('2x')
+            ->assertSee('Sin cebolla')
+            ->assertSee('Factura')
+            ->assertSee(route('pos.sales.print', [
+                'sale' => $sale,
+                'return_to' => route('billing.manual', [], false),
+            ]), false)
+            ->assertDontSee('/kitchen-ticket?return_to=', false);
+
+        $this
+            ->actingAs($user)
+            ->get(route('pos.sales.print', [
+                'sale' => $sale,
+                'return_to' => route('billing.manual', [], false),
+            ]))
+            ->assertOk()
+            ->assertSee('Domicilio')
+            ->assertSee('Comanda');
     }
 
     public function test_manual_billing_credit_requires_registered_customer(): void

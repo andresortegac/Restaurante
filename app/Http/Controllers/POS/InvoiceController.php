@@ -51,6 +51,23 @@ class InvoiceController extends Controller
             'sale' => $sale,
             'invoice' => $invoice,
             'returnTo' => $this->internalReturnUrl($request->query('return_to'), $request),
+            'kitchenTicketUrl' => $this->manualDeliveryKitchenTicketUrl($sale, $request),
+        ]);
+    }
+
+    private function manualDeliveryKitchenTicketUrl(Sale $sale, Request $request): ?string
+    {
+        $isManualDelivery = ! $sale->tableOrder
+            && ! $sale->delivery
+            && str_contains((string) $sale->notes, 'Domicilio manual');
+
+        if (! $isManualDelivery) {
+            return null;
+        }
+
+        return route('billing.manual.kitchen-ticket', [
+            'sale' => $sale,
+            'return_to' => $request->getRequestUri(),
         ]);
     }
 

@@ -388,6 +388,9 @@
 
     <div class="actions">
         <button class="btn btn-secondary" type="button" onclick="handleClose()">Cerrar</button>
+        @if($kitchenTicketUrl ?? null)
+            <a class="btn btn-secondary" href="{{ $kitchenTicketUrl }}" target="_blank" rel="noopener noreferrer">Comanda</a>
+        @endif
         <button class="btn btn-primary" type="button" onclick="window.print()">Imprimir</button>
     </div>
 
@@ -403,6 +406,11 @@
 
             if (window.history.length > 1) {
                 window.history.back();
+                return;
+            }
+
+            if (document.referrer) {
+                window.location.href = document.referrer;
                 return;
             }
 
