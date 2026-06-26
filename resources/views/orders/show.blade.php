@@ -66,14 +66,7 @@
 <div class="module-page">
     <section class="module-hero">
         <div>
-            <span class="module-kicker">Pedidos por Mesa / RF-08 al RF-10</span>
             <h1>Servicio de {{ $restaurantTable->name }}</h1>
-            <p>Toma el pedido con una carta tactil por categorias, agrega multiples unidades y manda la comanda a cocina sin salir de la mesa.</p>
-        </div>
-        <div class="summary-group">
-            <span class="summary-chip">Codigo {{ $restaurantTable->code }}</span>
-            <span class="summary-chip">{{ $restaurantTable->area ?: 'Salon principal' }}</span>
-            <span class="summary-chip">{{ $statusLabel }}</span>
         </div>
     </section>
 
@@ -113,8 +106,8 @@
                         <div class="row g-3 mt-1">
                             <div class="col-lg-6">
                                 <div class="meta-box h-100">
-                                    <div class="summary-kicker">Cliente</div>
-                                    <div class="fw-bold">{{ $openOrder->customer?->name ?: $openOrder->customer_name ?: 'Sin cliente' }}</div>
+                                    <div class="summary-kicker">Notas</div>
+                                    <div class="fw-bold">Comanda de la mesa</div>
                                     <div class="seat-note">{{ $openOrder->notes ?: 'Sin notas en el pedido.' }}</div>
                                 </div>
                             </div>
@@ -201,36 +194,11 @@
                                     <h5 class="mb-1">{{ $openOrder ? 'Agregar productos al pedido' : 'Tomar pedido para la mesa' }}</h5>
                                     <p class="table-note mb-0">Actualiza los datos del servicio y revisa el resumen en tiempo real.</p>
                                 </div>
-                                <span class="summary-chip">Comanda visual</span>
                             </div>
                         </div>
                         <div class="card-body">
                                 <div class="form-grid waiter-order-meta-grid">
-                                    <div>
-                                        <label class="form-label" for="customer_search">Cliente</label>
-                                        <input type="search" class="form-control mb-2" id="customer_search" placeholder="Buscar cliente por nombre, documento, telefono o email">
-                                        <select class="form-select" id="customer_id" name="customer_id">
-                                            <option value="">Sin cliente</option>
-                                            @foreach($availableCustomers as $customer)
-                                                <option
-                                                    value="{{ $customer->id }}"
-                                                    data-search="{{ \Illuminate\Support\Str::lower(trim($customer->name . ' ' . $customer->document_number . ' ' . $customer->phone . ' ' . $customer->email)) }}"
-                                                    @selected((string) old('customer_id', $openOrder?->customer_id) === (string) $customer->id)
-                                                >
-                                                    {{ $customer->name }}@if($customer->document_number) - {{ $customer->document_number }}@endif
-                                                </option>
-                                            @endforeach
-                                        </select>
-                                        <div class="form-help mt-2" id="customerSelectionHelp">
-                                            @if(old('customer_id', $openOrder?->customer_id))
-                                                Cliente seleccionado: {{ $openOrder?->customer?->name ?: 'Cliente cargado' }}.
-                                            @else
-                                                Se usara la opcion sin cliente a menos que selecciones uno.
-                                            @endif
-                                        </div>
-                                    </div>
-
-                                    <div>
+                                    <div class="order-notes-field">
                                         <label class="form-label" for="notes">Notas del pedido</label>
                                         <textarea class="form-control order-notes-textarea" id="notes" name="notes" rows="4" placeholder="Ej: sin cebolla, termino medio, mesa de cumpleanos">{{ old('notes', $openOrder?->notes) }}</textarea>
                                         <div class="form-help">Estas notas viajaran junto con la comanda enviada a cocina.</div>
@@ -286,59 +254,6 @@
 document.addEventListener('DOMContentLoaded', function () {
     const orderServiceForm = document.getElementById('orderServiceForm');
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-    const customerSearch = document.getElementById('customer_search');
-    const customerSelect = document.getElementById('customer_id');
-    const customerSelectionHelp = document.getElementById('customerSelectionHelp');
-    const customerOptions = customerSelect ? Array.from(customerSelect.options).slice(1).map(option => ({
-        value: option.value,
-        label: option.textContent,
-        search: option.dataset.search || '',
-    })) : [];
-
-    const updateCustomerHelp = () => {
-        if (!customerSelect || !customerSelectionHelp) {
-            return;
-        }
-
-        const selectedOption = customerSelect.options[customerSelect.selectedIndex];
-
-        if (!selectedOption || selectedOption.value === '') {
-            customerSelectionHelp.textContent = 'Se usara la opcion sin cliente a menos que selecciones uno.';
-            return;
-        }
-
-        customerSelectionHelp.textContent = 'Cliente seleccionado: ' + selectedOption.textContent + '.';
-    };
-
-    const renderCustomerOptions = searchTerm => {
-        if (!customerSelect) {
-            return;
-        }
-
-        const normalizedSearch = (searchTerm || '').toString().trim().toLowerCase();
-        const currentValue = customerSelect.value;
-        const filteredOptions = normalizedSearch === ''
-            ? customerOptions
-            : customerOptions.filter(option => option.search.includes(normalizedSearch));
-
-        customerSelect.innerHTML = '<option value="">Sin cliente</option>' + filteredOptions.map(option => '<option value="' + option.value + '"' + (option.value === currentValue ? ' selected' : '') + '>' + option.label + '</option>').join('');
-
-        if (currentValue && !filteredOptions.some(option => option.value === currentValue)) {
-            customerSelect.value = '';
-        }
-
-        updateCustomerHelp();
-    };
-
-    if (customerSearch && customerSelect) {
-        customerSearch.addEventListener('input', function () {
-            renderCustomerOptions(customerSearch.value);
-        });
-
-        customerSelect.addEventListener('change', updateCustomerHelp);
-        renderCustomerOptions('');
-        updateCustomerHelp();
-    }
 
     if (!orderServiceForm) {
         return;

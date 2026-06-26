@@ -125,14 +125,13 @@
                             <div>
                                 <label class="form-label" for="payment_method_id">Metodo de pago</label>
                                 <select class="form-select" id="payment_method_id" name="payment_method_id">
-                                    <option value="" @selected(! old('payment_method_id'))>Sin dato</option>
                                     @foreach($paymentMethods as $paymentMethod)
                                         <option value="{{ $paymentMethod->id }}" data-payment-code="{{ strtoupper((string) $paymentMethod->code) }}" @selected((int) old('payment_method_id') === (int) $paymentMethod->id)>
                                             {{ $paymentMethod->name }}
                                         </option>
                                     @endforeach
                                 </select>
-                                <div class="form-help mt-1">Puedes dejarlo en blanco; se guardara como sin dato.</div>
+                                <div class="form-help mt-1">Solo efectivo o transferencia bancaria.</div>
                             </div>
 
                             <div>

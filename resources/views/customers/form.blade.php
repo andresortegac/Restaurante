@@ -12,7 +12,10 @@
             </div>
         </section>
 
-        @include('products.partials.form-errors')
+        @include('products.partials.form-errors', [
+            'formErrorTitle' => 'No pudimos guardar el cliente.',
+            'formErrorLead' => 'Revisa los campos marcados y vuelve a intentarlo.',
+        ])
 
         <div class="card module-card">
             <div class="card-body">
@@ -25,23 +28,23 @@
                     <div class="row g-3">
                         <div class="col-md-6">
                             <label class="form-label" for="name">Nombre o razon social</label>
-                            <input type="text" class="form-control" id="name" name="name" value="{{ old('name', $customer->name) }}" required>
+                            <input type="text" class="form-control" id="name" name="name" value="{{ old('name', $customer->name) }}" required data-required-message="Escribe el nombre o razón social del cliente.">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label" for="document_number">Documento / NIT</label>
-                            <input type="text" class="form-control" id="document_number" name="document_number" value="{{ old('document_number', $customer->document_number) }}" required>
+                            <input type="text" class="form-control" id="document_number" name="document_number" value="{{ old('document_number', $customer->document_number) }}" required data-required-message="Escribe el documento o NIT del cliente.">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label" for="phone">Telefono</label>
-                            <input type="text" class="form-control" id="phone" name="phone" value="{{ old('phone', $customer->phone) }}" required>
+                            <input type="text" class="form-control" id="phone" name="phone" value="{{ old('phone', $customer->phone) }}" required data-required-message="Escribe un teléfono de contacto.">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label" for="email">Email</label>
-                            <input type="email" class="form-control" id="email" name="email" value="{{ old('email', $customer->email) }}" required>
+                            <input type="email" class="form-control" id="email" name="email" value="{{ old('email', $customer->email) }}" required data-required-message="Escribe el correo electrónico del cliente." data-type-message="Escribe un correo electrónico válido, por ejemplo cliente@correo.com.">
                         </div>
                         <div class="col-12">
                             <label class="form-label" for="billing_address">Direccion de facturacion</label>
-                            <input type="text" class="form-control" id="billing_address" name="billing_address" value="{{ old('billing_address', $customer->billing_address) }}" required>
+                            <input type="text" class="form-control" id="billing_address" name="billing_address" value="{{ old('billing_address', $customer->billing_address) }}" required data-required-message="Escribe la dirección de facturación del cliente.">
                         </div>
 
                         <div class="col-md-6">
@@ -94,3 +97,29 @@
         </div>
     </div>
 @endsection
+
+@push('scripts')
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('[data-required-message]').forEach(function(field) {
+                field.addEventListener('invalid', function() {
+                    if (field.validity.valueMissing) {
+                        field.setCustomValidity(field.dataset.requiredMessage);
+                        return;
+                    }
+
+                    if (field.validity.typeMismatch && field.dataset.typeMessage) {
+                        field.setCustomValidity(field.dataset.typeMessage);
+                        return;
+                    }
+
+                    field.setCustomValidity('');
+                });
+
+                field.addEventListener('input', function() {
+                    field.setCustomValidity('');
+                });
+            });
+        });
+    </script>
+@endpush

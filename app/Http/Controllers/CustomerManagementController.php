@@ -573,6 +573,28 @@ class CustomerManagementController extends Controller
             'email' => ['required', 'email', 'max:255', Rule::unique('customers', 'email')->ignore($customer?->id)],
             'notes' => ['nullable', 'string'],
             'is_active' => ['nullable', 'boolean'],
+        ], [
+            'name.required' => 'Escribe el nombre o razón social del cliente.',
+            'document_number.required' => 'Escribe el documento o NIT del cliente.',
+            'document_number.unique' => 'Ya existe un cliente registrado con ese documento o NIT.',
+            'phone.required' => 'Escribe un teléfono de contacto.',
+            'billing_address.required' => 'Escribe la dirección de facturación del cliente.',
+            'email.required' => 'Escribe el correo electrónico del cliente.',
+            'email.email' => 'Escribe un correo electrónico válido, por ejemplo cliente@correo.com.',
+            'email.unique' => 'Ya existe un cliente registrado con ese correo electrónico.',
+        ], [
+            'name' => 'nombre o razón social',
+            'document_number' => 'documento o NIT',
+            'billing_identification' => 'identificación de facturación',
+            'identification_document_code' => 'tipo de documento',
+            'legal_organization_code' => 'tipo de persona',
+            'tribute_code' => 'responsabilidad tributaria',
+            'municipality_code' => 'municipio DIAN',
+            'phone' => 'teléfono',
+            'billing_address' => 'dirección de facturación',
+            'trade_name' => 'nombre comercial',
+            'email' => 'correo electrónico',
+            'notes' => 'notas',
         ]);
 
         $validated['is_active'] = $request->boolean('is_active');

@@ -453,6 +453,25 @@ class BillingManagementTest extends TestCase
     {
         $user = $this->createAdminUser();
 
+        PaymentMethod::create([
+            'name' => 'Efectivo',
+            'code' => 'CASH',
+            'description' => 'Pago en efectivo',
+            'active' => true,
+        ]);
+        PaymentMethod::create([
+            'name' => 'Transferencia Bancaria',
+            'code' => 'TRANSFER',
+            'description' => 'Transferencia electronica',
+            'active' => true,
+        ]);
+        PaymentMethod::create([
+            'name' => 'Tarjeta de Credito',
+            'code' => 'CREDIT_CARD',
+            'description' => 'Tarjeta de Credito',
+            'active' => true,
+        ]);
+
         $box = Box::create([
             'name' => 'Caja manual vista',
             'code' => 'BOX-MANUAL-VIEW',
@@ -484,6 +503,10 @@ class BillingManagementTest extends TestCase
         $response->assertDontSee('Propina');
         $response->assertDontSee('Usar saldo a favor');
         $response->assertDontSee('Credito al cliente');
+        $response->assertDontSee('Sin dato');
+        $response->assertDontSee('Tarjeta de Credito');
+        $response->assertSee('Efectivo');
+        $response->assertSee('Transferencia Bancaria');
         $response->assertSee('Saldo a favor / credito al cliente');
     }
 

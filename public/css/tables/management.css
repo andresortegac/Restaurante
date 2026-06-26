@@ -174,10 +174,17 @@
 }
 
 .waiter-order-meta-grid {
+    grid-template-columns: 1fr;
     margin-bottom: 1.5rem;
 }
 
+.order-notes-field {
+    grid-column: 1 / -1;
+    width: 100%;
+}
+
 .order-notes-textarea {
+    width: 100%;
     min-height: 128px;
     resize: vertical;
     line-height: 1.45;

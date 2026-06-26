@@ -54,12 +54,13 @@ class TableOrderShowPageTest extends TestCase
             ->get(route('orders.show', $table));
 
         $response->assertOk();
-        $response->assertSee('Comanda visual');
         $response->assertSee('Todo el menu');
         $response->assertSee('Limonada de coco');
         $response->assertSee('Bebidas');
         $response->assertSee('waiter-menu-search waiter-menu-search-emphasis', false);
         $response->assertSee('order-notes-textarea', false);
+        $response->assertDontSee('customer_search', false);
+        $response->assertDontSee('name="customer_id"', false);
         $response->assertSee('const normalizeText = value', false);
     }
 

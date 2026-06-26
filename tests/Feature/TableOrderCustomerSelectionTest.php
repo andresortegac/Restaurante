@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Models\Customer;
 use App\Models\Product;
 use App\Models\RestaurantTable;
 use App\Models\Role;
@@ -14,7 +13,7 @@ class TableOrderCustomerSelectionTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_order_store_uses_selected_customer_and_defaults_to_without_customer(): void
+    public function test_order_store_creates_table_order_without_customer(): void
     {
         $user = User::factory()->create();
         $adminRole = Role::create([
@@ -44,57 +43,20 @@ class TableOrderCustomerSelectionTest extends TestCase
             'active' => true,
         ]);
 
-        $customer = Customer::create([
-            'name' => 'Pedro Perez',
-            'document_number' => 'CC-9001',
-            'phone' => '3010001111',
-            'email' => 'pedro@example.com',
-            'is_active' => true,
-        ]);
-
-        $withCustomerResponse = $this
+        $response = $this
             ->actingAs($user)
             ->postJson(route('orders.store', $table), [
-                'customer_id' => $customer->id,
                 'notes' => 'Sin tomate',
                 'items' => [
                     ['product_id' => $product->id, 'quantity' => 2],
                 ],
             ]);
 
-        $withCustomerResponse->assertOk();
-        $withCustomerResponse->assertJsonStructure(['message', 'redirectUrl', 'printUrl']);
+        $response->assertOk();
+        $response->assertJsonStructure(['message', 'redirectUrl', 'printUrl']);
 
         $this->assertDatabaseHas('table_orders', [
             'restaurant_table_id' => $table->id,
-            'customer_id' => $customer->id,
-            'customer_name' => 'Pedro Perez',
-            'status' => 'open',
-        ]);
-
-        $secondTable = RestaurantTable::create([
-            'name' => 'Mesa 4',
-            'code' => 'M-04',
-            'area' => 'Salon',
-            'capacity' => 4,
-            'status' => 'free',
-            'is_active' => true,
-        ]);
-
-        $withoutCustomerResponse = $this
-            ->actingAs($user)
-            ->postJson(route('orders.store', $secondTable), [
-                'customer_id' => '',
-                'notes' => 'Sin cliente asociado',
-                'items' => [
-                    ['product_id' => $product->id, 'quantity' => 1],
-                ],
-            ]);
-
-        $withoutCustomerResponse->assertOk();
-
-        $this->assertDatabaseHas('table_orders', [
-            'restaurant_table_id' => $secondTable->id,
             'customer_id' => null,
             'customer_name' => null,
             'status' => 'open',
