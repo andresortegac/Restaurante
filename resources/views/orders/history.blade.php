@@ -192,6 +192,12 @@
                                                     </a>
                                                 @endif
 
+                                                @if(in_array($order->status, ['open', 'paid'], true) && ! $order->sale?->isVoided())
+                                                    <a href="{{ route('orders.edit', $order) }}" class="btn btn-sm btn-outline-secondary">
+                                                        <i class="fas fa-pen"></i> Editar
+                                                    </a>
+                                                @endif
+
                                                 @if($order->sale)
                                                     <a href="{{ route('pos.sales.print', $order->sale) }}" target="_blank" class="btn btn-sm btn-outline-primary">
                                                         <i class="fas fa-print"></i> Imprimir

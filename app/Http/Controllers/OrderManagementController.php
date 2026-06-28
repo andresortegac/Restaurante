@@ -3,10 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Models\Box;
+use App\Models\BoxAuditLog;
+use App\Models\BoxMovement;
 use App\Models\BoxSession;
 use App\Models\PaymentMethod;
 use App\Models\Product;
 use App\Models\RestaurantTable;
+use App\Models\Sale;
 use App\Models\TableOrder;
 use App\Services\TableOrderBillingService;
 use Illuminate\Http\RedirectResponse;
@@ -67,6 +70,14 @@ class OrderManagementController extends Controller
         $orders = TableOrder::query()
             ->with(['table', 'previousTable', 'openedBy', 'sale', 'customer'])
             ->withCount('items')
+            ->where(function ($query): void {
+                $query->whereDoesntHave('sale')
+                    ->orWhereHas('sale', function ($saleQuery): void {
+                        $saleQuery
+                            ->where('status', '<>', 'voided')
+                            ->whereDoesntHave('invoice', fn ($invoiceQuery) => $invoiceQuery->where('status', 'voided'));
+                    });
+            })
             ->when($filters['search'] ?? null, function ($query, string $search) {
                 $query->where(function ($nestedQuery) use ($search) {
                     $nestedQuery
@@ -91,10 +102,10 @@ class OrderManagementController extends Controller
                 ->orderBy('name')
                 ->get(['id', 'name', 'code', 'area']),
             'summary' => [
-                'total' => TableOrder::query()->count(),
+                'total' => $this->visibleOrdersQuery()->count(),
                 'open' => TableOrder::query()->where('status', 'open')->count(),
-                'paid' => TableOrder::query()->where('status', 'paid')->count(),
-                'today' => TableOrder::query()->whereDate('created_at', today())->count(),
+                'paid' => $this->visibleOrdersQuery()->where('status', 'paid')->count(),
+                'today' => $this->visibleOrdersQuery()->whereDate('created_at', today())->count(),
             ],
         ]);
     }
@@ -128,6 +139,99 @@ class OrderManagementController extends Controller
     public function showCheckout(TableOrder $order)
     {
         return redirect()->route('billing.checkout', $order);
+    }
+
+    public function edit(TableOrder $order)
+    {
+        $order->load(['table', 'items.product', 'openedBy', 'sale.payments.paymentMethod', 'sale.boxMovements.session', 'sale.invoice']);
+
+        $this->assertOrderCanBeEdited($order);
+
+        return view('orders.edit', [
+            'order' => $order,
+            'products' => $this->editableProducts($order),
+            'canAdjustPaidSale' => $this->canAdjustPaidSale($order),
+        ]);
+    }
+
+    public function update(Request $request, TableOrder $order): RedirectResponse|Response
+    {
+        $validated = $request->validate([
+            'notes' => ['nullable', 'string'],
+            'items' => ['required', 'array'],
+            'items.*.product_id' => ['required', 'integer', 'exists:products,id'],
+            'items.*.quantity' => ['nullable', 'integer', 'min:0'],
+        ]);
+
+        $updatedOrder = null;
+
+        DB::transaction(function () use ($order, $validated, &$updatedOrder): void {
+            $currentOrder = TableOrder::query()
+                ->with(['items', 'sale.items', 'sale.payments.paymentMethod', 'sale.boxMovements.session', 'sale.invoice'])
+                ->lockForUpdate()
+                ->findOrFail($order->id);
+
+            $this->assertOrderCanBeEdited($currentOrder);
+
+            if ($currentOrder->sale && ! $this->canAdjustPaidSale($currentOrder)) {
+                throw ValidationException::withMessages([
+                    'items' => 'Este pedido ya pertenece a una caja cerrada. No se puede ajustar el pedido, recibo ni cierre.',
+                ]);
+            }
+
+            $rows = $this->normalizedSubmittedRows($validated['items']);
+
+            if ($rows->isEmpty()) {
+                throw ValidationException::withMessages([
+                    'items' => 'El pedido debe conservar al menos un producto.',
+                ]);
+            }
+
+            $products = Product::query()
+                ->whereIn('products.id', $rows->pluck('product_id'))
+                ->get()
+                ->keyBy('id');
+
+            $currentOrder->items()->delete();
+
+            foreach ($rows as $row) {
+                $product = $products->get($row['product_id']);
+
+                if (! $product) {
+                    throw ValidationException::withMessages([
+                        'items' => 'Uno de los productos seleccionados ya no existe.',
+                    ]);
+                }
+
+                $currentOrder->items()->create([
+                    'product_id' => $product->id,
+                    'product_name' => $product->name,
+                    'unit_price' => $product->price,
+                    'quantity' => $row['quantity'],
+                    'subtotal' => money_value((float) $product->price * (int) $row['quantity']),
+                    'split_group' => 1,
+                ]);
+            }
+
+            $currentOrder->notes = $validated['notes'] ?? null;
+            $currentOrder->save();
+            $currentOrder->load('items.product.taxRate');
+            $currentOrder->recalculateTotals();
+
+            if ($currentOrder->sale) {
+                $this->syncSaleFromEditedOrder($currentOrder);
+            }
+
+            $updatedOrder = $currentOrder->fresh(['table', 'sale.invoice']);
+        });
+
+        $redirect = $updatedOrder->table
+            ? redirect()->route('orders.show', $updatedOrder->table)
+            : redirect()->route('orders.edit', $updatedOrder);
+
+        return $redirect->with('success', $updatedOrder->sale
+            ? 'Pedido, recibo y caja ajustados correctamente.'
+            : 'Pedido actualizado correctamente. Puedes reenviar la comanda a cocina.');
     }
 
     public function storeOrder(Request $request, RestaurantTable $table)
@@ -188,7 +292,7 @@ class OrderManagementController extends Controller
 
             $products = Product::query()
                 ->visibleInMenu()
-                ->whereIn('id', $rows->pluck('product_id'))
+                ->whereIn('products.id', $rows->pluck('product_id'))
                 ->get()
                 ->keyBy('id');
 
@@ -402,6 +506,26 @@ class OrderManagementController extends Controller
             ]);
     }
 
+    private function editableProducts(TableOrder $order): Collection
+    {
+        $currentProductIds = $order->items
+            ->pluck('product_id')
+            ->filter()
+            ->values();
+
+        return Product::query()
+            ->with('menuCategory:id,name,description,sort_order,is_active')
+            ->where(function ($query) use ($currentProductIds): void {
+                $query->visibleInMenu();
+
+                if ($currentProductIds->isNotEmpty()) {
+                    $query->orWhereIn('products.id', $currentProductIds);
+                }
+            })
+            ->orderedForMenu()
+            ->get();
+    }
+
     private function transferTargets(RestaurantTable $currentTable): Collection
     {
         return RestaurantTable::query()
@@ -463,6 +587,151 @@ class OrderManagementController extends Controller
             ->get(['id', 'name', 'code']);
     }
 
+    private function assertOrderCanBeEdited(TableOrder $order): void
+    {
+        if (! in_array($order->status, ['open', 'paid'], true)) {
+            throw ValidationException::withMessages([
+                'items' => 'Solo se pueden editar pedidos abiertos o cobrados.',
+            ]);
+        }
+
+        if ($order->sale?->isVoided() || $order->sale?->invoice?->isVoided()) {
+            throw ValidationException::withMessages([
+                'items' => 'No se puede editar un pedido con factura anulada.',
+            ]);
+        }
+    }
+
+    private function canAdjustPaidSale(TableOrder $order): bool
+    {
+        if (! $order->sale) {
+            return true;
+        }
+
+        return $order->sale->canBeEditedInOpenCashSession();
+    }
+
+    private function normalizedSubmittedRows(array $items): Collection
+    {
+        return collect($items)
+            ->map(fn (array $row): array => [
+                'product_id' => (int) ($row['product_id'] ?? 0),
+                'quantity' => max(0, (int) ($row['quantity'] ?? 0)),
+            ])
+            ->filter(fn (array $row): bool => $row['product_id'] > 0 && $row['quantity'] > 0)
+            ->groupBy('product_id')
+            ->map(fn (Collection $rows, int $productId): array => [
+                'product_id' => $productId,
+                'quantity' => (int) $rows->sum('quantity'),
+            ])
+            ->values();
+    }
+
+    private function syncSaleFromEditedOrder(TableOrder $order): void
+    {
+        $sale = $order->sale;
+        $sale->loadMissing(['items', 'payments.paymentMethod', 'boxMovements.session', 'invoice']);
+
+        $oldTotal = money_value((float) $sale->total);
+
+        $sale->items()->delete();
+
+        foreach ($order->items as $item) {
+            $sale->items()->create([
+                'product_id' => $item->product_id,
+                'product_name' => $item->product_name,
+                'quantity' => $item->quantity,
+                'unit_price' => $item->unit_price,
+                'subtotal' => $item->subtotal,
+            ]);
+        }
+
+        $sale->notes = collect([
+            'Pedido ' . $order->order_number,
+            $order->table ? 'Mesa ' . $order->table->name : null,
+            $order->notes ? 'Notas: ' . $order->notes : null,
+        ])->filter()->implode(' | ') ?: null;
+        $sale->save();
+        $sale->unsetRelation('items');
+        $sale->calculateTotal();
+        $sale->refresh();
+
+        $delta = money_value((float) $sale->total - $oldTotal);
+
+        $payment = $sale->payments->first();
+
+        if ($payment) {
+            $paymentMethodCode = strtoupper((string) ($payment->paymentMethod?->code ?? ''));
+            $movementImpact = money_value((float) $sale->boxMovements->sum('amount'));
+            $affectsCash = $paymentMethodCode === 'CASH' || ($paymentMethodCode === '' && abs($movementImpact) > 0.009);
+
+            $payment->update([
+                'amount' => $sale->total,
+                'received_amount' => $sale->payment_status === 'paid'
+                    ? money_value(max(0, (float) $payment->received_amount + $delta))
+                    : $payment->received_amount,
+            ]);
+
+            if ($sale->payment_status === 'paid') {
+                $this->adjustSaleBoxMovements($sale, $delta, $affectsCash);
+            }
+        }
+
+        if ($sale->customerCredit) {
+            $newBalance = money_value(max(0, (float) $sale->customerCredit->balance + $delta));
+
+            $sale->customerCredit->update([
+                'amount' => money_value(max(0, (float) $sale->customerCredit->amount + $delta)),
+                'balance' => $newBalance,
+                'status' => $newBalance > 0 ? 'pending' : 'paid',
+            ]);
+        }
+
+        if ($sale->invoice) {
+            $sale->invoice->update([
+                'status_message' => 'Recibo actualizado por edicion del pedido ' . $order->order_number . '.',
+            ]);
+        }
+    }
+
+    private function adjustSaleBoxMovements(Sale $sale, float $delta, bool $affectsCash): void
+    {
+        $movement = $sale->boxMovements
+            ->where('movement_type', 'table_order_payment')
+            ->first();
+
+        if (! $movement) {
+            return;
+        }
+
+        $boxImpactDelta = $affectsCash ? money_value($delta) : 0.0;
+        $newAmount = money_value((float) $movement->amount + $boxImpactDelta);
+
+        $movement->update([
+            'amount' => $newAmount,
+            'balance_after' => money_value((float) $movement->balance_before + $newAmount),
+            'description' => trim((string) $movement->description) . ' | Ajustado por edicion de pedido $' . money($delta),
+        ]);
+
+        if ($movement->box_id && $movement->box_session_id) {
+            BoxAuditLog::query()->create([
+                'box_id' => $movement->box_id,
+                'box_session_id' => $movement->box_session_id,
+                'user_id' => Auth::id(),
+                'action' => 'order_edited',
+                'description' => 'Ajuste de pedido cobrado #' . $sale->table_order_id . ' por $' . money($delta),
+                'metadata' => [
+                    'sale_id' => $sale->id,
+                    'movement_id' => $movement->id,
+                    'delta' => $delta,
+                    'box_impact_delta' => $boxImpactDelta,
+                    'new_sale_total' => (float) $sale->total,
+                ],
+                'occurred_at' => now(),
+            ]);
+        }
+    }
+
     private function denyIfUnauthorized(array $permissions): ?Response
     {
         $user = auth()->user();
@@ -472,5 +741,18 @@ class OrderManagementController extends Controller
         }
 
         return response()->view('errors.403', [], 403);
+    }
+
+    private function visibleOrdersQuery()
+    {
+        return TableOrder::query()
+            ->where(function ($query): void {
+                $query->whereDoesntHave('sale')
+                    ->orWhereHas('sale', function ($saleQuery): void {
+                        $saleQuery
+                            ->where('status', '<>', 'voided')
+                            ->whereDoesntHave('invoice', fn ($invoiceQuery) => $invoiceQuery->where('status', 'voided'));
+                    });
+            });
     }
 }

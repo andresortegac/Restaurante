@@ -41,6 +41,11 @@
                 <span class="summary-chip">${{ money($summary['revenue']) }} vendidos</span>
                 <span class="summary-chip">{{ number_format($summary['electronic']) }} electronicas</span>
                 <span class="summary-chip">${{ money($summary['credit']) }} en credito</span>
+                @if(Auth::user()->hasRole('Admin'))
+                    <a href="{{ route('billing.voided') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-ban"></i> Facturas anuladas
+                    </a>
+                @endif
             </div>
         </section>
 
@@ -200,6 +205,24 @@
                                                         Ver FE
                                                     </a>
                                                 @endif
+                                                @if($sale->tableOrder && $sale->canBeEditedInOpenCashSession())
+                                                    <a href="{{ route('orders.edit', $sale->tableOrder) }}" class="btn btn-sm btn-outline-secondary">
+                                                        <i class="fas fa-pen"></i> Editar pedido
+                                                    </a>
+                                                @elseif($sale->canBeEditedInOpenCashSession())
+                                                    <a href="{{ route('billing.sales.edit', $sale) }}" class="btn btn-sm btn-outline-secondary">
+                                                        <i class="fas fa-pen"></i> Editar factura
+                                                    </a>
+                                                @endif
+                                                @if(Auth::user()->hasRole('Admin'))
+                                                    <form method="POST" action="{{ route('billing.sales.void', $sale) }}" class="m-0" data-void-sale-form data-sale-label="factura #{{ $invoice?->invoice_number ?? $sale->id }}">
+                                                        @csrf
+                                                        <input type="hidden" name="void_reason">
+                                                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                            <i class="fas fa-ban"></i> Anular
+                                                        </button>
+                                                    </form>
+                                                @endif
                                             </div>
                                         </td>
                                     </tr>
@@ -259,6 +282,48 @@
                     }
                 }
 
+                form.submit();
+            });
+        });
+
+        document.querySelectorAll('[data-void-sale-form]').forEach(function (form) {
+            form.addEventListener('submit', async function (event) {
+                event.preventDefault();
+
+                const label = form.dataset.saleLabel || 'esta factura';
+                let reason = '';
+
+                if (window.Swal) {
+                    const result = await Swal.fire({
+                        icon: 'warning',
+                        title: 'Anular factura',
+                        text: 'La venta dejara de sumar en caja y no aparecera en el cierre. Esta accion queda registrada.',
+                        input: 'text',
+                        inputLabel: 'Motivo',
+                        inputPlaceholder: 'Ej: Pedido de prueba',
+                        inputValidator: (value) => value && value.trim().length ? undefined : 'Escribe el motivo de anulacion.',
+                        showCancelButton: true,
+                        confirmButtonText: 'Anular',
+                        cancelButtonText: 'Cancelar',
+                        confirmButtonColor: '#dc3545',
+                        cancelButtonColor: '#6c757d',
+                    });
+
+                    if (!result.isConfirmed) {
+                        return;
+                    }
+
+                    reason = String(result.value || '').trim();
+                } else {
+                    reason = prompt('Motivo para anular ' + label + ':') || '';
+                    reason = reason.trim();
+
+                    if (!reason) {
+                        return;
+                    }
+                }
+
+                form.querySelector('input[name="void_reason"]').value = reason;
                 form.submit();
             });
         });

@@ -71,6 +71,7 @@
                 $isPosSalesHistoryRoute = request()->routeIs('pos.sales-history.*');
                 $isBillingRoute = request()->routeIs('billing.*');
                 $isBillingHistoryRoute = request()->routeIs('billing.history') || $isPosSalesHistoryRoute;
+                $isBillingVoidedRoute = request()->routeIs('billing.voided');
                 $isProductsRoute = request()->routeIs('products.*');
                 $isProductsCategoriesRoute = request()->routeIs('products.categories.*');
                 $isTablesRoute = request()->routeIs('tables.*');
@@ -194,6 +195,9 @@
                         @endif
                         @if(Auth::user()->hasRole('Admin') || Auth::user()->hasAnyPermission(['billing.view', 'billing.history']))
                         <li><a href="{{ route('billing.history') }}" class="{{ $isBillingHistoryRoute ? 'active' : '' }}"><i class="fas fa-receipt"></i> Ventas generales</a></li>
+                        @endif
+                        @if(Auth::user()->hasRole('Admin'))
+                        <li><a href="{{ route('billing.voided') }}" class="{{ $isBillingVoidedRoute ? 'active' : '' }}"><i class="fas fa-ban"></i> Facturas anuladas</a></li>
                         @endif
                         @if(Auth::user()->hasRole('Admin') || Auth::user()->hasAnyPermission(['electronic_invoices.view', 'electronic_invoices.manage']))
                         <li><a href="{{ route('electronic-invoices.index') }}" class="{{ request()->routeIs('electronic-invoices.index') || request()->routeIs('electronic-invoices.show') ? 'active' : '' }}"><i class="fas fa-list"></i> Facturas electrónicas</a></li>

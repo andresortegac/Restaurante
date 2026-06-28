@@ -7,6 +7,8 @@ use App\Models\BoxAuditLog;
 use App\Models\BoxMovement;
 use App\Models\BoxSession;
 use App\Models\Customer;
+use App\Models\CustomerBalanceMovement;
+use App\Models\CustomerCredit;
 use App\Models\Invoice;
 use App\Models\PaymentMethod;
 use App\Models\Product;
@@ -18,9 +20,11 @@ use App\Services\SaleDocumentService;
 use App\Services\TableOrderBillingService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class BillingManagementController extends Controller
 {
@@ -304,6 +308,156 @@ class BillingManagementController extends Controller
         ]);
     }
 
+    public function editSale(Sale $sale)
+    {
+        if ($response = $this->denyIfUnauthorized(['billing.view', 'billing.charge', 'billing.history'])) {
+            return $response;
+        }
+
+        $sale->load(['items.product', 'payments.paymentMethod', 'boxMovements.session', 'invoice', 'tableOrder', 'delivery.items']);
+
+        if ($sale->tableOrder) {
+            return redirect()->route('orders.edit', $sale->tableOrder);
+        }
+
+        $this->assertSaleCanBeEdited($sale);
+
+        return view('billing.sale-edit', [
+            'sale' => $sale,
+            'products' => $this->editableProductsForSale($sale),
+            'canAdjustSale' => $this->canAdjustSale($sale),
+        ]);
+    }
+
+    public function updateSale(Request $request, Sale $sale)
+    {
+        if ($response = $this->denyIfUnauthorized(['billing.charge'])) {
+            return $response;
+        }
+
+        $validated = $request->validate([
+            'notes' => ['nullable', 'string'],
+            'items' => ['required', 'array'],
+            'items.*.product_id' => ['required', 'integer', 'exists:products,id'],
+            'items.*.quantity' => ['nullable', 'integer', 'min:0'],
+        ]);
+
+        DB::transaction(function () use ($sale, $validated): void {
+            $currentSale = Sale::query()
+                ->with(['items', 'payments.paymentMethod', 'boxMovements.session', 'invoice', 'delivery.items', 'tableOrder'])
+                ->lockForUpdate()
+                ->findOrFail($sale->id);
+
+            if ($currentSale->tableOrder) {
+                throw ValidationException::withMessages([
+                    'items' => 'Las ventas de mesa se editan desde el pedido.',
+                ]);
+            }
+
+            $this->assertSaleCanBeEdited($currentSale);
+
+            if (! $this->canAdjustSale($currentSale)) {
+                throw ValidationException::withMessages([
+                    'items' => 'Esta factura pertenece a una caja cerrada. No se puede ajustar el recibo ni el cierre.',
+                ]);
+            }
+
+            $rows = $this->normalizedSaleRows($validated['items']);
+
+            if ($rows->isEmpty()) {
+                throw ValidationException::withMessages([
+                    'items' => 'La factura debe conservar al menos un producto.',
+                ]);
+            }
+
+            $products = Product::query()
+                ->whereIn('products.id', $rows->pluck('product_id'))
+                ->get()
+                ->keyBy('id');
+
+            $oldTotal = money_value((float) $currentSale->total);
+            $deliveryFee = money_value((float) ($currentSale->delivery?->delivery_fee ?? 0));
+
+            $currentSale->items()->delete();
+            $deliveryItems = collect();
+
+            foreach ($rows as $row) {
+                $product = $products->get($row['product_id']);
+
+                if (! $product) {
+                    throw ValidationException::withMessages([
+                        'items' => 'Uno de los productos seleccionados ya no existe.',
+                    ]);
+                }
+
+                $quantity = (int) $row['quantity'];
+                $subtotal = money_value((float) $product->price * $quantity);
+
+                $currentSale->items()->create([
+                    'product_id' => $product->id,
+                    'product_name' => $product->name,
+                    'quantity' => $quantity,
+                    'unit_price' => $product->price,
+                    'subtotal' => $subtotal,
+                ]);
+
+                $deliveryItems->push([
+                    'product_id' => $product->id,
+                    'product_name' => $product->name,
+                    'quantity' => $quantity,
+                    'unit_price' => money_value($product->price),
+                    'subtotal' => $subtotal,
+                ]);
+            }
+
+            if ($deliveryFee > 0) {
+                $currentSale->items()->create([
+                    'product_id' => null,
+                    'product_name' => 'Costo domicilio',
+                    'quantity' => 1,
+                    'unit_price' => $deliveryFee,
+                    'subtotal' => $deliveryFee,
+                ]);
+            }
+
+            $currentSale->notes = $validated['notes'] ?? $currentSale->notes;
+            $currentSale->save();
+            $currentSale->unsetRelation('items');
+            $currentSale->calculateTotal();
+            $currentSale->refresh();
+            $currentSale->load(['payments.paymentMethod', 'boxMovements.session', 'delivery.items', 'invoice']);
+
+            if ($currentSale->delivery) {
+                $orderTotal = money_value((float) $deliveryItems->sum('subtotal'));
+                $totalCharge = money_value($orderTotal + $deliveryFee);
+                $currentSale->delivery->items()->delete();
+
+                foreach ($deliveryItems as $item) {
+                    $currentSale->delivery->items()->create($item);
+                }
+
+                $currentSale->delivery->update([
+                    'order_total' => $orderTotal,
+                    'total_charge' => $totalCharge,
+                    'change_required' => max(0, money_value((float) $currentSale->delivery->customer_payment_amount - $totalCharge)),
+                ]);
+            }
+
+            $delta = money_value((float) $currentSale->total - $oldTotal);
+            $this->adjustSalePaymentAndBox($currentSale, $delta);
+
+            if ($currentSale->invoice) {
+                $currentSale->invoice->update([
+                    'status_message' => 'Recibo actualizado por edicion de factura #' . $currentSale->id . '.',
+                ]);
+            }
+        });
+
+        return redirect()
+            ->route('billing.history')
+            ->with('success', 'Factura actualizada correctamente. El recibo y la caja abierta quedaron ajustados.');
+    }
+
     private function internalReturnUrl(?string $url, Request $request): ?string
     {
         if (! $url) {
@@ -335,8 +489,10 @@ class BillingManagementController extends Controller
         ]);
 
         $salesQuery = Sale::query()
-            ->with(['user', 'box', 'invoice', 'payments.paymentMethod', 'tableOrder.table', 'customer', 'delivery', 'customerCredit', 'customerBalanceMovements'])
+            ->with(['user', 'box', 'invoice', 'payments.paymentMethod', 'boxMovements.session', 'tableOrder.table', 'customer', 'delivery', 'customerCredit', 'customerBalanceMovements'])
             ->withCount('items')
+            ->where('status', '<>', 'voided')
+            ->whereDoesntHave('invoice', fn ($invoiceQuery) => $invoiceQuery->where('status', 'voided'))
             ->when($filters['search'] ?? null, function ($query, string $search) {
                 $query->where(function ($nestedQuery) use ($search) {
                     $nestedQuery
@@ -364,7 +520,9 @@ class BillingManagementController extends Controller
             ->paginate(15)
             ->withQueryString();
 
-        $summaryBaseQuery = Sale::query();
+        $summaryBaseQuery = Sale::query()
+            ->where('status', '<>', 'voided')
+            ->whereDoesntHave('invoice', fn ($invoiceQuery) => $invoiceQuery->where('status', 'voided'));
 
         return view('billing.history', [
             'sales' => $sales,
@@ -375,13 +533,149 @@ class BillingManagementController extends Controller
                 'revenue' => (float) (clone $summaryBaseQuery)->sum('total'),
                 'electronic' => Invoice::query()
                     ->where('invoice_type', Invoice::TYPE_ELECTRONIC)
+                    ->where('status', '<>', 'voided')
                     ->count(),
-                'credit' => (float) \App\Models\CustomerCredit::query()
+                'credit' => (float) CustomerCredit::query()
                     ->where('status', 'pending')
                     ->sum('balance'),
             ],
             'paymentMethods' => $this->paymentMethods(),
         ]);
+    }
+
+    public function voidedHistory(Request $request)
+    {
+        if (! Auth::user()?->hasRole('Admin')) {
+            return response()->view('errors.403', [], 403);
+        }
+
+        $filters = $request->validate([
+            'search' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $salesQuery = Sale::query()
+            ->with(['user', 'box', 'invoice', 'payments.paymentMethod', 'tableOrder.table', 'customer', 'delivery', 'voidedBy'])
+            ->withCount('items')
+            ->where(function ($query): void {
+                $query->where('status', 'voided')
+                    ->orWhereHas('invoice', fn ($invoiceQuery) => $invoiceQuery->where('status', 'voided'));
+            })
+            ->when($filters['search'] ?? null, function ($query, string $search) {
+                $query->where(function ($nestedQuery) use ($search) {
+                    $nestedQuery
+                        ->where('customer_name', 'like', '%' . $search . '%')
+                        ->orWhere('id', 'like', '%' . $search . '%')
+                        ->orWhere('void_reason', 'like', '%' . $search . '%')
+                        ->orWhereHas('invoice', fn ($invoiceQuery) => $invoiceQuery
+                            ->where('invoice_number', 'like', '%' . $search . '%')
+                            ->orWhere('cufe', 'like', '%' . $search . '%'));
+                });
+            })
+            ->latest('voided_at');
+
+        return view('billing.voided', [
+            'sales' => $salesQuery->paginate(15)->withQueryString(),
+            'filters' => $filters,
+            'summary' => [
+                'voided' => (clone $salesQuery)->count(),
+                'today' => (clone $salesQuery)->whereDate('voided_at', today())->count(),
+                'total' => (float) (clone $salesQuery)->sum('total'),
+            ],
+        ]);
+    }
+
+    public function voidSale(Request $request, Sale $sale)
+    {
+        $user = Auth::user();
+
+        if (! $user?->hasRole('Admin')) {
+            return response()->view('errors.403', [], 403);
+        }
+
+        $validated = $request->validate([
+            'void_reason' => ['required', 'string', 'max:255'],
+        ]);
+
+        DB::transaction(function () use ($sale, $validated, $user): void {
+            $currentSale = Sale::query()
+                ->with(['invoice', 'payments', 'boxMovements.session', 'customerCredit', 'customerBalanceMovements.customer'])
+                ->lockForUpdate()
+                ->findOrFail($sale->id);
+
+            if ($currentSale->isVoided()) {
+                throw ValidationException::withMessages([
+                    'void_reason' => 'Esta factura ya fue anulada.',
+                ]);
+            }
+
+            $reason = $validated['void_reason'];
+            $voidedAt = now();
+
+            $this->restoreConsumedCustomerBalance($currentSale, $user->id, $reason);
+
+            if ($currentSale->customerCredit) {
+                $currentSale->customerCredit->update([
+                    'balance' => 0,
+                    'status' => 'voided',
+                    'paid_reference' => 'Anulada: ' . $reason,
+                    'paid_at' => $voidedAt,
+                ]);
+            }
+
+            $currentSale->payments()->update([
+                'status' => 'voided',
+            ]);
+
+            $currentSale->boxMovements->each(function (BoxMovement $movement) use ($currentSale, $user, $reason, $voidedAt): void {
+                $originalAmount = money_value((float) $movement->amount);
+                $description = trim((string) $movement->description);
+
+                $movement->update([
+                    'amount' => 0,
+                    'balance_after' => $movement->balance_before,
+                    'description' => ($description ? $description . ' | ' : '') . 'ANULADA: ' . $reason,
+                ]);
+
+                if ($movement->box_id && $movement->box_session_id) {
+                    BoxAuditLog::query()->create([
+                        'box_id' => $movement->box_id,
+                        'box_session_id' => $movement->box_session_id,
+                        'user_id' => $user->id,
+                        'action' => 'sale_voided',
+                        'description' => 'Anulacion de venta #' . $currentSale->id . ': ' . $reason,
+                        'metadata' => [
+                            'sale_id' => $currentSale->id,
+                            'movement_id' => $movement->id,
+                            'original_amount' => $originalAmount,
+                            'voided_at' => $voidedAt->toDateTimeString(),
+                        ],
+                        'occurred_at' => $voidedAt,
+                    ]);
+                }
+            });
+
+            $currentSale->update([
+                'status' => 'voided',
+                'payment_status' => 'voided',
+                'voided_by_user_id' => $user->id,
+                'voided_at' => $voidedAt,
+                'void_reason' => $reason,
+            ]);
+
+            if ($currentSale->invoice) {
+                $currentSale->invoice->update([
+                    'status' => 'voided',
+                    'status_message' => 'Factura anulada por administrador: ' . $reason,
+                    'voided_by_user_id' => $user->id,
+                    'voided_at' => $voidedAt,
+                    'void_reason' => $reason,
+                ]);
+            }
+        });
+
+        return redirect()
+            ->route('billing.voided')
+            ->with('success', 'Factura anulada correctamente. Ya no suma en caja ni en cierres.');
     }
 
     public function payCredit(Request $request, Sale $sale)
@@ -610,6 +904,149 @@ class BillingManagementController extends Controller
         }
 
         return money_value($amountReceived);
+    }
+
+    private function restoreConsumedCustomerBalance(Sale $sale, int $userId, string $reason): void
+    {
+        $movements = $sale->customerBalanceMovements
+            ->where('movement_type', 'sale_consumption')
+            ->filter(fn (CustomerBalanceMovement $movement) => (float) $movement->amount < 0);
+
+        foreach ($movements as $movement) {
+            $customer = $movement->customer;
+
+            if (! $customer) {
+                continue;
+            }
+
+            $restoreAmount = money_value(abs((float) $movement->amount));
+            $balanceBefore = money_value((float) $customer->available_balance);
+            $balanceAfter = money_value($balanceBefore + $restoreAmount);
+
+            $customer->update([
+                'available_balance' => $balanceAfter,
+            ]);
+
+            CustomerBalanceMovement::query()->create([
+                'customer_id' => $customer->id,
+                'sale_id' => $sale->id,
+                'created_by_user_id' => $userId,
+                'movement_type' => 'customer_payment',
+                'description' => 'Reversion de saldo por anulacion de factura: ' . $reason,
+                'amount' => $restoreAmount,
+                'balance_before' => $balanceBefore,
+                'balance_after' => $balanceAfter,
+            ]);
+        }
+    }
+
+    private function assertSaleCanBeEdited(Sale $sale): void
+    {
+        if ($sale->isVoided() || $sale->invoice?->isVoided()) {
+            throw ValidationException::withMessages([
+                'items' => 'No se puede editar una factura anulada.',
+            ]);
+        }
+    }
+
+    private function canAdjustSale(Sale $sale): bool
+    {
+        return $sale->canBeEditedInOpenCashSession();
+    }
+
+    private function editableProductsForSale(Sale $sale): Collection
+    {
+        $currentProductIds = $sale->items
+            ->pluck('product_id')
+            ->filter()
+            ->values();
+
+        return Product::query()
+            ->with('menuCategory:id,name,description,sort_order,is_active')
+            ->where(function ($query) use ($currentProductIds): void {
+                $query->visibleInMenu();
+
+                if ($currentProductIds->isNotEmpty()) {
+                    $query->orWhereIn('products.id', $currentProductIds);
+                }
+            })
+            ->orderedForMenu()
+            ->get();
+    }
+
+    private function normalizedSaleRows(array $items): Collection
+    {
+        return collect($items)
+            ->map(fn (array $row): array => [
+                'product_id' => (int) ($row['product_id'] ?? 0),
+                'quantity' => max(0, (int) ($row['quantity'] ?? 0)),
+            ])
+            ->filter(fn (array $row): bool => $row['product_id'] > 0 && $row['quantity'] > 0)
+            ->groupBy('product_id')
+            ->map(fn (Collection $rows, int $productId): array => [
+                'product_id' => $productId,
+                'quantity' => (int) $rows->sum('quantity'),
+            ])
+            ->values();
+    }
+
+    private function adjustSalePaymentAndBox(Sale $sale, float $delta): void
+    {
+        $payment = $sale->payments->first();
+
+        if (! $payment) {
+            return;
+        }
+
+        $paymentMethodCode = strtoupper((string) ($payment->paymentMethod?->code ?? ''));
+        $movementImpact = money_value((float) $sale->boxMovements->sum('amount'));
+        $affectsCash = $paymentMethodCode === 'CASH' || ($paymentMethodCode === '' && abs($movementImpact) > 0.009);
+
+        $payment->update([
+            'amount' => $sale->total,
+            'received_amount' => $sale->payment_status === 'paid'
+                ? money_value(max(0, (float) $payment->received_amount + $delta))
+                : $payment->received_amount,
+        ]);
+
+        if ($sale->payment_status !== 'paid') {
+            return;
+        }
+
+        $movement = $sale->boxMovements
+            ->whereIn('movement_type', ['manual_payment', 'delivery_payment', 'sale_income'])
+            ->first();
+
+        if (! $movement) {
+            return;
+        }
+
+        $boxImpactDelta = $affectsCash ? money_value($delta) : 0.0;
+        $newAmount = money_value((float) $movement->amount + $boxImpactDelta);
+
+        $movement->update([
+            'amount' => $newAmount,
+            'balance_after' => money_value((float) $movement->balance_before + $newAmount),
+            'description' => trim((string) $movement->description) . ' | Ajustado por edicion de factura $' . money($delta),
+        ]);
+
+        if ($movement->box_id && $movement->box_session_id) {
+            BoxAuditLog::query()->create([
+                'box_id' => $movement->box_id,
+                'box_session_id' => $movement->box_session_id,
+                'user_id' => Auth::id(),
+                'action' => 'sale_edited',
+                'description' => 'Ajuste de factura #' . $sale->id . ' por $' . money($delta),
+                'metadata' => [
+                    'sale_id' => $sale->id,
+                    'movement_id' => $movement->id,
+                    'delta' => $delta,
+                    'box_impact_delta' => $boxImpactDelta,
+                    'new_sale_total' => (float) $sale->total,
+                ],
+                'occurred_at' => now(),
+            ]);
+        }
     }
 
     private function denyIfUnauthorized(array $permissions): ?Response

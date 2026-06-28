@@ -76,10 +76,14 @@ Route::middleware('auth')->group(function () {
     Route::prefix('billing')->name('billing.')->group(function () {
         Route::get('/', [BillingManagementController::class, 'index'])->name('index');
         Route::get('/history', [BillingManagementController::class, 'history'])->name('history');
+        Route::get('/voided', [BillingManagementController::class, 'voidedHistory'])->name('voided');
         Route::get('/manual', [BillingManagementController::class, 'showManualCheckout'])->name('manual');
         Route::post('/manual', [BillingManagementController::class, 'processManualCheckout'])->name('manual.store');
         Route::get('/manual/sales/{sale}/kitchen-ticket', [BillingManagementController::class, 'printManualKitchenTicket'])->name('manual.kitchen-ticket');
+        Route::get('/sales/{sale}/edit', [BillingManagementController::class, 'editSale'])->name('sales.edit');
+        Route::put('/sales/{sale}', [BillingManagementController::class, 'updateSale'])->name('sales.update');
         Route::post('/credits/{sale}/pay', [BillingManagementController::class, 'payCredit'])->name('credits.pay');
+        Route::post('/sales/{sale}/void', [BillingManagementController::class, 'voidSale'])->name('sales.void');
         Route::get('/{order}/checkout', [BillingManagementController::class, 'showCheckout'])->name('checkout');
         Route::post('/{order}/checkout', [BillingManagementController::class, 'processCheckout'])->name('checkout.store');
     });
@@ -171,6 +175,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/history', [OrderManagementController::class, 'history'])->name('history.index');
         Route::get('/tables/{table}', [OrderManagementController::class, 'show'])->name('show');
         Route::post('/tables/{table}', [OrderManagementController::class, 'storeOrder'])->name('store');
+        Route::get('/{order}/edit', [OrderManagementController::class, 'edit'])->name('edit');
+        Route::put('/{order}', [OrderManagementController::class, 'update'])->name('update');
         Route::get('/{order}/checkout', [OrderManagementController::class, 'showCheckout'])->name('checkout');
         Route::post('/{order}/checkout', [OrderManagementController::class, 'processCheckout'])->name('checkout.store');
         Route::post('/{order}/transfer', [OrderManagementController::class, 'transferOrder'])->name('transfer');

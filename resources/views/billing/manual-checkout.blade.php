@@ -209,6 +209,14 @@
                     <span class="summary-chip" id="manualUniqueItemsChip">0 referencias</span>
                 </div>
                 <div class="card-body">
+                    <div class="form-grid waiter-order-meta-grid mb-4">
+                        <div class="order-notes-field">
+                            <label class="form-label" for="notes">Notas del pedido</label>
+                            <textarea class="form-control order-notes-textarea" id="notes" name="notes" rows="4" placeholder="Ej: sin cebolla, termino medio, mesa de cumpleanos">{{ old('notes') }}</textarea>
+                            <div class="form-help">Estas notas viajaran junto con la comanda enviada a cocina.</div>
+                        </div>
+                    </div>
+
                     @if($products->isEmpty())
                         <div class="empty-state py-4">
                             <i class="fas fa-utensils"></i>

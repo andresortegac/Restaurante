@@ -68,6 +68,11 @@
         <div>
             <h1>Servicio de {{ $restaurantTable->name }}</h1>
         </div>
+        <div class="summary-group">
+            <a href="{{ route('orders.index') }}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left"></i> Volver a pedidos
+            </a>
+        </div>
     </section>
 
     @include('products.partials.form-errors')
@@ -88,6 +93,9 @@
                     </div>
                     <div class="table-card-actions">
                         @if($openOrder)
+                            <a href="{{ route('orders.edit', $openOrder) }}" class="btn btn-outline-secondary btn-sm">
+                                <i class="fas fa-pen"></i> Editar pedido
+                            </a>
                             <a href="{{ route('orders.kitchen-ticket', $openOrder) }}" target="_blank" class="btn btn-outline-primary btn-sm">
                                 <i class="fas fa-print"></i> Imprimir cocina
                             </a>

@@ -38,10 +38,14 @@ class Invoice extends Model
         'sent_at',
         'synced_at',
         'issued_at',
+        'voided_by_user_id',
+        'voided_at',
+        'void_reason',
     ];
 
     protected $casts = [
         'issued_at' => 'datetime',
+        'voided_at' => 'datetime',
         'validation_errors' => 'array',
         'factus_payload' => 'array',
         'factus_response' => 'array',
@@ -54,6 +58,11 @@ class Invoice extends Model
     public function sale()
     {
         return $this->belongsTo(Sale::class);
+    }
+
+    public function voidedBy()
+    {
+        return $this->belongsTo(User::class, 'voided_by_user_id');
     }
 
     public function logs(): HasMany
@@ -82,5 +91,10 @@ class Invoice extends Model
     public function isTicket(): bool
     {
         return $this->invoice_type === self::TYPE_TICKET;
+    }
+
+    public function isVoided(): bool
+    {
+        return $this->status === 'voided' || $this->voided_at !== null;
     }
 }

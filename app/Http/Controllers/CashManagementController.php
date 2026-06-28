@@ -112,6 +112,7 @@ class CashManagementController extends Controller
 
         $automaticIncome = $currentSession
             ? (float) $currentSession->movements()
+                ->where(fn ($query) => $this->nonVoidedSaleMovementScope($query))
                 ->whereIn('movement_type', ['sale_income', 'table_order_payment', 'credit_payment', 'customer_credit_payment'])
                 ->where('amount', '>', 0)
                 ->sum('amount')
@@ -497,6 +498,7 @@ class CashManagementController extends Controller
                 'sale.items',
             ])
             ->where('box_session_id', $session->id)
+            ->where(fn ($query) => $this->nonVoidedSaleMovementScope($query))
             ->where(fn ($query) => $this->reportableMovementScope($query))
             ->when($filteredPaymentMethodCode, function ($query) use ($filteredPaymentMethodCode, $auditMovementIdsByPaymentMethod): void {
                 $query->where(function ($nestedQuery) use ($filteredPaymentMethodCode, $auditMovementIdsByPaymentMethod): void {
@@ -546,17 +548,21 @@ class CashManagementController extends Controller
 
         $allMovements = BoxMovement::query()
             ->where('box_session_id', $session->id)
+            ->where(fn ($query) => $this->nonVoidedSaleMovementScope($query))
             ->where(fn ($query) => $this->reportableMovementScope($query));
         $physicalIncomeMovements = BoxMovement::query()
             ->where('box_session_id', $session->id)
+            ->where(fn ($query) => $this->nonVoidedSaleMovementScope($query))
             ->where('amount', '>', 0);
         $physicalExpenseMovements = BoxMovement::query()
             ->where('box_session_id', $session->id)
+            ->where(fn ($query) => $this->nonVoidedSaleMovementScope($query))
             ->where('amount', '<', 0);
         $paymentBreakdown = $this->paymentMethodBreakdown($session);
         $summaryMovements = BoxMovement::query()
             ->with('payment.paymentMethod')
             ->where('box_session_id', $session->id)
+            ->where(fn ($query) => $this->nonVoidedSaleMovementScope($query))
             ->where(fn ($query) => $this->reportableMovementScope($query))
             ->get();
         $this->attachMovementDisplayData($summaryMovements, $session);
@@ -617,6 +623,7 @@ class CashManagementController extends Controller
         $movements = BoxMovement::query()
             ->with(['user', 'payment.paymentMethod', 'sale.customer', 'sale.invoice', 'sale.tableOrder.table'])
             ->where('box_session_id', $session->id)
+            ->where(fn ($query) => $this->nonVoidedSaleMovementScope($query))
             ->oldest('occurred_at')
             ->get();
         $this->attachMovementDisplayData($movements, $session);
@@ -659,6 +666,7 @@ class CashManagementController extends Controller
         $movements = BoxMovement::query()
             ->with(['box', 'session.user'])
             ->whereBetween('occurred_at', [$start, $end])
+            ->where(fn ($query) => $this->nonVoidedSaleMovementScope($query))
             ->get();
 
         $sessions = BoxSession::query()
@@ -733,6 +741,16 @@ class CashManagementController extends Controller
         $query->where('amount', '<>', 0)
             ->orWhereNotNull('payment_id')
             ->orWhereIn('movement_type', ['manual_income', 'manual_expense']);
+    }
+
+    private function nonVoidedSaleMovementScope($query): void
+    {
+        $query->whereNull('sale_id')
+            ->orWhereHas('sale', function ($saleQuery): void {
+                $saleQuery
+                    ->where('status', '<>', 'voided')
+                    ->whereDoesntHave('invoice', fn ($invoiceQuery) => $invoiceQuery->where('status', 'voided'));
+            });
     }
 
     private function attachMovementDisplayData($movements, ?BoxSession $session): void
@@ -830,6 +848,7 @@ class CashManagementController extends Controller
         $transferTotals = BoxMovement::query()
             ->with('payment')
             ->whereIn('box_session_id', $sessionIds)
+            ->where(fn ($query) => $this->nonVoidedSaleMovementScope($query))
             ->whereHas('payment', fn ($query) => $query->whereIn('payment_method_id', $transferMethodIds))
             ->get()
             ->groupBy('box_session_id')
@@ -840,6 +859,7 @@ class CashManagementController extends Controller
         $manualTransferMovements = BoxMovement::query()
             ->whereIn('box_session_id', $sessionIds)
             ->whereNull('payment_id')
+            ->where(fn ($query) => $this->nonVoidedSaleMovementScope($query))
             ->get(['id', 'box_session_id'])
             ->keyBy('id');
         $manualTransferTotals = BoxAuditLog::query()
@@ -890,6 +910,7 @@ class CashManagementController extends Controller
         return BoxMovement::query()
             ->with('payment.paymentMethod')
             ->where('box_session_id', $session->id)
+            ->where(fn ($query) => $this->nonVoidedSaleMovementScope($query))
             ->where(function ($query) use ($auditPaymentMethodIdsByMovementId): void {
                 $query->whereNotNull('payment_id')
                     ->orWhereIn('id', $auditPaymentMethodIdsByMovementId->keys()->all());

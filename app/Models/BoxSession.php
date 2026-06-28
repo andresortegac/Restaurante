@@ -65,16 +65,29 @@ class BoxSession extends Model
 
     public function currentBalance(): float
     {
-        return money_value((float) $this->opening_balance + (float) $this->movements()->sum('amount'));
+        return money_value((float) $this->opening_balance + (float) $this->reportableBalanceMovements()->sum('amount'));
     }
 
     public function incomeTotal(): float
     {
-        return money_value((float) $this->movements()->where('amount', '>', 0)->sum('amount'));
+        return money_value((float) $this->reportableBalanceMovements()->where('amount', '>', 0)->sum('amount'));
     }
 
     public function expenseTotal(): float
     {
-        return money_value(abs((float) $this->movements()->where('amount', '<', 0)->sum('amount')));
+        return money_value(abs((float) $this->reportableBalanceMovements()->where('amount', '<', 0)->sum('amount')));
+    }
+
+    private function reportableBalanceMovements()
+    {
+        return $this->movements()
+            ->where(function ($query): void {
+                $query->whereNull('sale_id')
+                    ->orWhereHas('sale', function ($saleQuery): void {
+                        $saleQuery
+                            ->where('status', '<>', 'voided')
+                            ->whereDoesntHave('invoice', fn ($invoiceQuery) => $invoiceQuery->where('status', 'voided'));
+                    });
+            });
     }
 }

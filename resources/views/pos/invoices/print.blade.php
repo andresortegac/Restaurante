@@ -1,6 +1,8 @@
 @php
     $brandName = 'SOLOMO & POMO';
-    $documentTitle = $invoice->isElectronic() ? 'Factura electronica' : 'Recibo de caja';
+    $documentTitle = $sale->isVoided()
+        ? 'Factura anulada'
+        : ($invoice->isElectronic() ? 'Factura electronica' : 'Recibo de caja');
     $customerName = $sale->customer?->name ?: $sale->customer_name;
     $paymentMethods = $sale->paymentMethodSummary();
     $receivedAmount = $sale->externalReceivedTotal();
@@ -75,6 +77,16 @@
             text-align: center;
             font-size: 12px;
             color: #575757;
+        }
+
+        .void-banner {
+            margin-top: 12px;
+            padding: 8px;
+            border: 2px solid #111111;
+            text-align: center;
+            font-size: 13px;
+            font-weight: 900;
+            text-transform: uppercase;
         }
 
         .business-info {
@@ -256,6 +268,12 @@
         <h1 class="title">{{ $documentTitle }}</h1>
         <div class="number">{{ $invoice->invoice_number }}</div>
         <div class="subtitle">{{ $sale->created_at?->format('d/m/Y H:i') }}</div>
+        @if($sale->isVoided())
+            <div class="void-banner">Anulada</div>
+            <div class="subtitle">
+                {{ $sale->voided_at?->format('d/m/Y H:i') }} | {{ $sale->void_reason ?: 'Sin motivo registrado' }}
+            </div>
+        @endif
         <div class="business-info">
             <div>NIT 1083927195-1</div>
             <div>CRA 33 NO 14A-25</div>

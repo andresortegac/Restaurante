@@ -51,7 +51,7 @@
                             @csrf
                             <div class="mb-3">
                                 <label class="form-label" for="opening_balance">Base de caja</label>
-                                <input type="number" step="1" min="0" class="form-control" id="opening_balance" name="opening_balance" value="{{ money_input(old('opening_balance', 0)) }}" required>
+                                <input type="number" step="1" min="0" class="form-control" id="opening_balance" name="opening_balance" value="{{ money_input(old('opening_balance', 200000)) }}" required>
                             </div>
                             <div class="mb-3">
                                 <label class="form-label" for="opening_notes">Observaciones</label>

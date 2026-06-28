@@ -6,6 +6,7 @@ use App\Models\Box;
 use App\Models\BoxSession;
 use App\Models\Customer;
 use App\Models\CustomerCredit;
+use App\Models\Invoice;
 use App\Models\PaymentMethod;
 use App\Models\Product;
 use App\Models\RestaurantTable;
@@ -449,6 +450,335 @@ class BillingManagementTest extends TestCase
         $response->assertSee('TKT-202605-000001');
     }
 
+    public function test_admin_can_void_invoice_and_remove_it_from_cash_closing_history(): void
+    {
+        $user = $this->createAdminUser();
+
+        $box = Box::create([
+            'name' => 'Caja anulaciones',
+            'code' => 'BOX-VOID',
+            'user_id' => $user->id,
+            'opening_balance' => 10000,
+            'status' => 'closed',
+            'opened_at' => now()->subHours(2),
+            'closed_at' => now(),
+        ]);
+
+        $session = BoxSession::create([
+            'box_id' => $box->id,
+            'user_id' => $user->id,
+            'opening_balance' => 10000,
+            'status' => 'closed',
+            'opened_at' => now()->subHours(2),
+            'closed_at' => now(),
+        ]);
+
+        $table = RestaurantTable::create([
+            'name' => 'Mesa anulada',
+            'code' => 'M-VOID',
+            'area' => 'Salon',
+            'capacity' => 4,
+            'status' => 'free',
+            'is_active' => true,
+        ]);
+
+        $order = TableOrder::create([
+            'restaurant_table_id' => $table->id,
+            'order_number' => 'PED-VOID-001',
+            'customer_name' => 'Cliente prueba',
+            'status' => 'paid',
+            'opened_by_user_id' => $user->id,
+            'subtotal' => 25000,
+            'total' => 25000,
+        ]);
+
+        $sale = Sale::create([
+            'user_id' => $user->id,
+            'box_id' => $box->id,
+            'table_order_id' => $order->id,
+            'customer_name' => 'Cliente prueba',
+            'status' => 'completed',
+            'payment_status' => 'paid',
+            'subtotal' => 25000,
+            'total' => 25000,
+        ]);
+
+        $sale->invoice()->create([
+            'invoice_number' => 'TKT-VOID-001',
+            'invoice_type' => 'ticket',
+            'provider' => 'local',
+            'status' => 'issued',
+            'issued_at' => now(),
+        ]);
+
+        $sale->boxMovements()->create([
+            'box_id' => $box->id,
+            'box_session_id' => $session->id,
+            'user_id' => $user->id,
+            'movement_type' => 'manual_payment',
+            'amount' => 25000,
+            'balance_before' => 10000,
+            'balance_after' => 35000,
+            'description' => 'Factura de prueba',
+            'occurred_at' => now()->subHour(),
+        ]);
+
+        $response = $this
+            ->actingAs($user)
+            ->post(route('billing.sales.void', $sale), [
+                'void_reason' => 'Pedido de prueba',
+            ]);
+
+        $response->assertRedirect(route('billing.voided'));
+
+        $this->assertDatabaseHas('sales', [
+            'id' => $sale->id,
+            'status' => 'voided',
+            'payment_status' => 'voided',
+            'void_reason' => 'Pedido de prueba',
+        ]);
+
+        $this->assertDatabaseHas('invoices', [
+            'sale_id' => $sale->id,
+            'invoice_number' => 'TKT-VOID-001',
+            'status' => 'voided',
+        ]);
+
+        $this->assertDatabaseHas('box_movements', [
+            'sale_id' => $sale->id,
+            'amount' => 0,
+            'balance_after' => 10000,
+        ]);
+
+        $this
+            ->actingAs($user)
+            ->get(route('billing.history'))
+            ->assertOk()
+            ->assertDontSee('TKT-VOID-001');
+
+        $this
+            ->actingAs($user)
+            ->get(route('billing.voided'))
+            ->assertOk()
+            ->assertSee('TKT-VOID-001')
+            ->assertSee('PED-VOID-001')
+            ->assertSee('Pedido de prueba');
+
+        $this
+            ->actingAs($user)
+            ->get(route('orders.history.index'))
+            ->assertOk()
+            ->assertDontSee('PED-VOID-001');
+
+        $this
+            ->actingAs($user)
+            ->get(route('cash-management.history.sessions.show', $session))
+            ->assertOk()
+            ->assertDontSee('TKT-VOID-001')
+            ->assertDontSee('Factura de prueba');
+    }
+
+    public function test_manual_sale_can_be_edited_from_billing_history_and_adjusts_open_cash_session(): void
+    {
+        $user = $this->createAdminUser();
+
+        $oldProduct = Product::create([
+            'name' => 'Producto manual anterior',
+            'description' => 'Producto de prueba',
+            'price' => 18000,
+            'stock' => 100,
+            'tracks_stock' => false,
+            'category' => 'Pruebas',
+            'sku' => 'MANUAL-OLD',
+            'product_type' => 'simple',
+            'active' => true,
+        ]);
+        $newProduct = Product::create([
+            'name' => 'Producto manual nuevo',
+            'description' => 'Producto de prueba',
+            'price' => 26000,
+            'stock' => 100,
+            'tracks_stock' => false,
+            'category' => 'Pruebas',
+            'sku' => 'MANUAL-NEW',
+            'product_type' => 'simple',
+            'active' => true,
+        ]);
+        $paymentMethod = PaymentMethod::create([
+            'name' => 'Efectivo',
+            'code' => 'CASH',
+            'description' => 'Pago en efectivo',
+            'active' => true,
+        ]);
+        $box = Box::create([
+            'name' => 'Caja edicion manual',
+            'code' => 'BOX-EDIT-MANUAL',
+            'user_id' => $user->id,
+            'opening_balance' => 10000,
+            'status' => 'open',
+            'opened_at' => now(),
+        ]);
+        $session = BoxSession::create([
+            'box_id' => $box->id,
+            'user_id' => $user->id,
+            'opening_balance' => 10000,
+            'status' => 'open',
+            'opened_at' => now(),
+        ]);
+        $sale = Sale::create([
+            'user_id' => $user->id,
+            'box_id' => $box->id,
+            'customer_name' => 'Cliente manual editable',
+            'status' => 'completed',
+            'payment_status' => 'paid',
+            'subtotal' => 18000,
+            'total' => 18000,
+            'notes' => 'Pedido de mesa manual',
+        ]);
+        $sale->items()->create([
+            'product_id' => $oldProduct->id,
+            'product_name' => $oldProduct->name,
+            'quantity' => 1,
+            'unit_price' => 18000,
+            'subtotal' => 18000,
+        ]);
+        $payment = $sale->payments()->create([
+            'payment_method_id' => $paymentMethod->id,
+            'amount' => 18000,
+            'received_amount' => 18000,
+            'change_amount' => 0,
+            'tip_amount' => 0,
+            'status' => 'completed',
+        ]);
+        $sale->invoice()->create([
+            'invoice_number' => 'TKT-MANUAL-EDIT',
+            'invoice_type' => Invoice::TYPE_TICKET,
+            'provider' => 'local',
+            'status' => 'issued',
+            'issued_at' => now(),
+        ]);
+        $sale->boxMovements()->create([
+            'box_id' => $box->id,
+            'box_session_id' => $session->id,
+            'payment_id' => $payment->id,
+            'user_id' => $user->id,
+            'movement_type' => 'manual_payment',
+            'amount' => 18000,
+            'balance_before' => 10000,
+            'balance_after' => 28000,
+            'description' => 'Cobro manual editable',
+            'occurred_at' => now(),
+        ]);
+
+        $this
+            ->actingAs($user)
+            ->get(route('billing.history'))
+            ->assertOk()
+            ->assertSee(route('billing.sales.edit', $sale));
+
+        $this
+            ->actingAs($user)
+            ->put(route('billing.sales.update', $sale), [
+                'items' => [
+                    ['product_id' => $oldProduct->id, 'quantity' => 0],
+                    ['product_id' => $newProduct->id, 'quantity' => 1],
+                ],
+            ])
+            ->assertRedirect(route('billing.history'));
+
+        $this->assertDatabaseHas('sales', [
+            'id' => $sale->id,
+            'total' => 26000,
+        ]);
+        $this->assertDatabaseHas('sale_items', [
+            'sale_id' => $sale->id,
+            'product_id' => $newProduct->id,
+            'subtotal' => 26000,
+        ]);
+        $this->assertDatabaseHas('payments', [
+            'sale_id' => $sale->id,
+            'amount' => 26000,
+            'received_amount' => 26000,
+        ]);
+        $this->assertDatabaseHas('box_movements', [
+            'sale_id' => $sale->id,
+            'amount' => 26000,
+            'balance_after' => 36000,
+        ]);
+    }
+
+    public function test_billing_history_hides_edit_button_for_sales_from_closed_cash_session(): void
+    {
+        $user = $this->createAdminUser();
+        $product = Product::create([
+            'name' => 'Producto cierre cerrado',
+            'description' => 'Producto de prueba',
+            'price' => 12000,
+            'stock' => 100,
+            'tracks_stock' => false,
+            'category' => 'Pruebas',
+            'sku' => 'CLOSED-HISTORY-EDIT',
+            'product_type' => 'simple',
+            'active' => true,
+        ]);
+        $box = Box::create([
+            'name' => 'Caja cerrada historial',
+            'code' => 'BOX-CLOSED-HISTORY',
+            'opening_balance' => 10000,
+            'status' => 'closed',
+        ]);
+        $session = BoxSession::create([
+            'box_id' => $box->id,
+            'user_id' => $user->id,
+            'opening_balance' => 10000,
+            'status' => 'closed',
+            'opened_at' => now()->subHours(3),
+            'closed_at' => now()->subHour(),
+        ]);
+        $sale = Sale::create([
+            'user_id' => $user->id,
+            'box_id' => $box->id,
+            'customer_name' => 'Cliente cierre cerrado',
+            'status' => 'completed',
+            'payment_status' => 'paid',
+            'subtotal' => 12000,
+            'total' => 12000,
+            'notes' => 'Pedido de mesa manual',
+        ]);
+        $sale->items()->create([
+            'product_id' => $product->id,
+            'product_name' => $product->name,
+            'quantity' => 1,
+            'unit_price' => 12000,
+            'subtotal' => 12000,
+        ]);
+        $sale->invoice()->create([
+            'invoice_number' => 'TKT-CLOSED-EDIT',
+            'invoice_type' => Invoice::TYPE_TICKET,
+            'provider' => 'local',
+            'status' => 'issued',
+            'issued_at' => now(),
+        ]);
+        $sale->boxMovements()->create([
+            'box_id' => $box->id,
+            'box_session_id' => $session->id,
+            'user_id' => $user->id,
+            'movement_type' => 'manual_payment',
+            'amount' => 12000,
+            'balance_before' => 10000,
+            'balance_after' => 22000,
+            'description' => 'Cobro cerrado',
+            'occurred_at' => now()->subHours(2),
+        ]);
+
+        $this
+            ->actingAs($user)
+            ->get(route('billing.history'))
+            ->assertOk()
+            ->assertSee('TKT-CLOSED-EDIT')
+            ->assertDontSee(route('billing.sales.edit', $sale));
+    }
+
     public function test_manual_billing_page_hides_removed_sections_and_fields(): void
     {
         $user = $this->createAdminUser();
@@ -508,6 +838,9 @@ class BillingManagementTest extends TestCase
         $response->assertSee('Efectivo');
         $response->assertSee('Transferencia Bancaria');
         $response->assertSee('Saldo a favor / credito al cliente');
+        $response->assertSee('Notas del pedido');
+        $response->assertSee('order-notes-textarea', false);
+        $response->assertSee('Estas notas viajaran junto con la comanda enviada a cocina.');
         $response->assertSee('Confirmar cobro manual');
         $response->assertSee('confirmButtonText: \'Confirmar\'', false);
         $response->assertSee('cancelButtonText: \'Cancelar\'', false);

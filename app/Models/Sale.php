@@ -24,6 +24,9 @@ class Sale extends Model
         'payment_status',
         'credit_due_at',
         'notes',
+        'voided_by_user_id',
+        'voided_at',
+        'void_reason',
     ];
 
     protected $casts = [
@@ -32,11 +35,17 @@ class Sale extends Model
         'tax_amount' => 'integer',
         'total' => 'integer',
         'credit_due_at' => 'date',
+        'voided_at' => 'datetime',
     ];
 
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function voidedBy()
+    {
+        return $this->belongsTo(User::class, 'voided_by_user_id');
     }
 
     public function box()
@@ -77,6 +86,28 @@ class Sale extends Model
     public function invoice()
     {
         return $this->hasOne(Invoice::class);
+    }
+
+    public function isVoided(): bool
+    {
+        return $this->status === 'voided' || $this->voided_at !== null;
+    }
+
+    public function canBeEditedInOpenCashSession(): bool
+    {
+        if ($this->isVoided() || $this->invoice?->isVoided()) {
+            return false;
+        }
+
+        $movements = $this->relationLoaded('boxMovements')
+            ? $this->boxMovements
+            : $this->boxMovements()->with('session')->get();
+
+        if ($movements->isEmpty()) {
+            return false;
+        }
+
+        return $movements->every(fn (BoxMovement $movement): bool => $movement->session?->status === 'open');
     }
 
     public function customerCredit()
